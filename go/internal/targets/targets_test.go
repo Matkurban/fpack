@@ -704,3 +704,20 @@ func TestIPADistributionCertificateForOtherTeamOnly(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestKeytoolOutputIsLocaleIndependent(t *testing.T) {
+	c := newCtx(t, "darwin", "", "")
+	c.Project.AndroidReleaseDebugSigned = false
+	chk := signerCheck(c, `(?m)^(?:Owner|所有者): (.+)$`)
+	// keytool on a Chinese macOS without -J-Duser.language=en
+	zh := "签名者 #1:\n\nCertificate #1:\n所有者: CN=example-signer, O=example-signer, C=CN\n发布者: CN=example-signer\n"
+	if note, _ := chk(runnerResult(zh)); note != "signed by CN=example-signer, O=example-signer, C=CN" {
+		t.Fatalf("%q", note)
+	}
+	if note, _ := chk(runnerResult("Signer #1:\n\nCertificate #1:\nOwner: CN=X, C=CN\nIssuer: CN=X\n")); note != "signed by CN=X, C=CN" {
+		t.Fatalf("%q", note)
+	}
+	if a := keytoolEnglish(); len(a) != 2 || a[0] != "-J-Duser.language=en" {
+		t.Fatal(a)
+	}
+}

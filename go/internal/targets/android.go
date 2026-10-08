@@ -160,9 +160,16 @@ func debugSigningExpected(c *Context) bool {
 	return !c.Signing.Enabled && c.Project.AndroidReleaseDebugSigned && !c.Project.AndroidKeyProperties && c.Mode() == "release"
 }
 
+// keytoolEnglish forces keytool's messages to English: the JVM localizes
+// them from the system locale (e.g. "所有者:" instead of "Owner:" on a
+// Chinese macOS), which would break output parsing.
+func keytoolEnglish() []string {
+	return []string{"-J-Duser.language=en", "-J-Duser.country=US"}
+}
+
 func verifyKeystore(c *Context, keytool string) []Issue {
 	s := c.Signing
-	out, ok := c.Tools.ProbeEnv([]string{"FPACK_KS_PASS=" + s.StorePassword}, keytool, "-list", "-keystore", s.StoreFile, "-storepass:env", "FPACK_KS_PASS", "-alias", s.KeyAlias)
+	out, ok := c.Tools.ProbeEnv([]string{"FPACK_KS_PASS=" + s.StorePassword}, keytool, append(keytoolEnglish(), "-list", "-keystore", s.StoreFile, "-storepass:env", "FPACK_KS_PASS", "-alias", s.KeyAlias)...)
 	out = runner.Redact(out, []string{s.StorePassword, s.KeyPassword})
 	if ok {
 		return nil
@@ -409,8 +416,8 @@ func (*AAB) Package(c *Context, in Inputs) (*Plan, error) {
 	}
 	pl := &Plan{Ops: []Op{copyOp(c, in["aab"], dst)}, Artifacts: []Artifact{{Path: dst, Kind: "AAB"}}}
 	if kt := c.Android().Keytool(c.Tools); kt != "" {
-		pl.Ops = append(pl.Ops, Op{Desc: i18n.S("verify AAB signature", "校验 AAB 签名"), Cmd: &runner.Cmd{Name: kt, Args: []string{"-printcert", "-jarfile", dst}, Capture: true},
-			Optional: true, Check: signerCheck(c, `(?m)Owner: (.+)$`)})
+		pl.Ops = append(pl.Ops, Op{Desc: i18n.S("verify AAB signature", "校验 AAB 签名"), Cmd: &runner.Cmd{Name: kt, Args: append(keytoolEnglish(), "-printcert", "-jarfile", dst), Capture: true},
+			Optional: true, Check: signerCheck(c, `(?m)^(?:Owner|所有者): (.+)$`)})
 	}
 	return pl, nil
 }

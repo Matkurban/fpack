@@ -323,7 +323,7 @@ func platformInfo(pl host.Platform, in Input) []Line {
 				if m.Source != "" {
 					src = "  [" + m.Source + "]"
 				}
-				out = append(out, Line{OK, i18n.S("Developer ID signing: ", "Developer ID 签名：") + m.IdentityLabel() + src, ""})
+				out = append(out, Line{Info, i18n.S("Developer ID signing configured: ", "已配置 Developer ID 签名：") + m.IdentityLabel() + src, ""})
 				if m.Notarize {
 					out = append(out, Line{Info, i18n.F("notarization: keychain profile %q (check: xcrun notarytool history --keychain-profile %s)", "公证：钥匙串配置 %q（检查：xcrun notarytool history --keychain-profile %s）", m.Profile, m.Profile), ""})
 				}
