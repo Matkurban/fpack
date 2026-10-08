@@ -18,6 +18,7 @@ type initValues struct {
 	Keystore     string
 	Alias        string
 	ExportMethod string
+	Flavor       string
 	OutDir       string
 	DevIDs       []string // "Developer ID Application" identities found in the keychain (hint only)
 	KeychainSeen bool     // the keychain was checked (running on macOS)
@@ -77,6 +78,9 @@ func initDefaults(v initValues) (active, detected map[string]string, hints map[s
 	if v.ExportMethod != "" {
 		active["ios.export_method"] = v.ExportMethod
 	}
+	if v.Flavor != "" {
+		active["build.flavor"] = yq(v.Flavor)
+	}
 	set := func(k, val string) {
 		if val != "" && !strings.Contains(val, "$") {
 			detected[k] = yq(val)
@@ -91,6 +95,18 @@ func initDefaults(v initValues) (active, detected map[string]string, hints map[s
 	if fl := p.AndroidFlavors; len(fl) > 0 {
 		set("build.flavor", fl[0])
 		hints["build.flavor"] = []string{i18n.S("Android flavors found: ", "检测到的 Android flavor：") + strings.Join(fl, ", ")}
+	}
+	set("app.publisher", p.WindowsCompany)
+	if df := p.DefineFiles; len(df) > 0 {
+		pick := df[0]
+		for _, f := range df {
+			if v.Flavor != "" && strings.Contains(f, v.Flavor) {
+				pick = f
+				break
+			}
+		}
+		detected["build.dart_define_from_file"] = "[" + yq(pick) + "]"
+		hints["build.dart_define_from_file"] = []string{i18n.S("files found: ", "检测到的文件：") + strings.Join(df, ", ")}
 	}
 	set("ios.team_id", p.IOSTeam)
 	set("macos.pkg.identifier", orStr(p.MacBundleID, id))

@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Matkurban/fpack/go/internal/config"
@@ -83,6 +84,32 @@ type Op struct {
 	Optional bool
 	// Hint is shown if the op fails.
 	Hint string
+	// Run is an op implemented in Go that runs commands itself (e.g.
+	// notarization: submit, record, wait). Preview lists the commands it
+	// runs for --dry-run.
+	Run     func(ctx context.Context, env OpEnv) (note string, err error)
+	Preview []*runner.Cmd
+}
+
+// OpEnv is what an Op.Run function may use while the build UI owns the
+// terminal.
+type OpEnv struct {
+	// Run executes a command (logged, cancellable with Ctrl-C).
+	Run func(cmd runner.Cmd) (runner.Result, error)
+	// Print shows a line: kind is "ok", "info", "warn", "hint" or "detail".
+	Print func(kind, msg string)
+	// Status replaces the detail text of the running spinner.
+	Status func(detail string)
+	// Interactive is true when a spinner shows the elapsed time.
+	Interactive bool
+}
+
+// Commands returns the commands an op runs (for plans and --json).
+func (op Op) Commands() []*runner.Cmd {
+	if op.Cmd != nil {
+		return []*runner.Cmd{op.Cmd}
+	}
+	return op.Preview
 }
 
 // Plan is the packaging plan of a target.
@@ -185,6 +212,9 @@ type Context struct {
 	CurrentTarget string
 
 	androidEnv *AndroidEnv
+
+	notaryMu sync.Mutex
+	notary   map[string]NotarySubmission // by artifact path
 }
 
 // Flavor returns the configured flavor.
@@ -442,10 +472,16 @@ func installHint(h host.Host, pk map[string]string) string { return h.Install(pk
 // in the project (detection is heuristic, so this is never fatal).
 func flavorCheck(c *Context, p host.Platform) (Issue, bool) {
 	f := c.Flavor()
+	found := c.Project.Flavors(p)
 	if f == "" {
+		if p == host.Android && len(found) > 0 {
+			// Gradle builds every flavor and flutter then fails with "Gradle
+			// build failed to produce an .apk file" after a full build.
+			return fatal(i18n.F("android/app/build.gradle defines productFlavors (%s) but no flavor is set; flutter build would fail", "android/app/build.gradle 定义了 productFlavors（%s），但没有指定 flavor；flutter build 会失败", strings.Join(found, ", ")),
+				i18n.F("fpack build %s --flavor %s   # or build.flavor in fpack.yaml / FPACK_FLAVOR", "fpack build %s --flavor %s   # 或在 fpack.yaml 设置 build.flavor / FPACK_FLAVOR", c.CurrentTarget, found[0])), false
+		}
 		return Issue{}, true
 	}
-	found := c.Project.Flavors(p)
 	for _, x := range found {
 		if strings.EqualFold(x, f) {
 			return Issue{}, true

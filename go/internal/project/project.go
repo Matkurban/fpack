@@ -44,7 +44,9 @@ type Project struct {
 	LinuxBinary               string
 	LinuxAppID                string
 	WindowsBinary             string
-	LauncherIcon              string // image_path from flutter_launcher_icons (relative)
+	WindowsCompany            string   // CompanyName in windows/runner/Runner.rc (unless it is the reverse-DNS org flutter create writes)
+	DefineFiles               []string // candidate --dart-define-from-file files (config/, env/, …)
+	LauncherIcon              string   // image_path from flutter_launcher_icons (relative)
 }
 
 // Dep is a pubspec dependency.
@@ -196,8 +198,34 @@ func Load(root string) (*Project, error) {
 	p.LinuxBinary = firstMatch(linuxCM, `set\(BINARY_NAME\s+"([^"]+)"\)`)
 	p.LinuxAppID = firstMatch(linuxCM, `set\(APPLICATION_ID\s+"([^"]+)"\)`)
 	p.WindowsBinary = firstMatch(readFile(filepath.Join(root, "windows", "CMakeLists.txt")), `set\(BINARY_NAME\s+"([^"]+)"\)`)
+	if c := firstMatch(readFile(filepath.Join(root, "windows", "runner", "Runner.rc")), `VALUE "CompanyName", "([^"]*)"`); c != "" && !orgLike.MatchString(c) {
+		p.WindowsCompany = c
+	}
+	p.DefineFiles = defineFiles(root)
 	p.LauncherIcon = p.launcherIcon()
 	return p, nil
+}
+
+// orgLike matches the reverse-DNS org flutter create puts into CompanyName
+// (e.g. "com.example").
+var orgLike = regexp.MustCompile(`^[a-z0-9_]+(\.[A-Za-z0-9_\-]+)+$`)
+
+// defineFiles lists likely --dart-define-from-file files.
+func defineFiles(root string) []string {
+	var out []string
+	for _, dir := range []string{"config", "configs", "env", "envs", "environments", "dart_defines", "defines"} {
+		entries, err := os.ReadDir(filepath.Join(root, dir))
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			n := e.Name()
+			if !e.IsDir() && (strings.HasSuffix(n, ".json") || strings.HasSuffix(n, ".env")) {
+				out = append(out, dir+"/"+n)
+			}
+		}
+	}
+	return out
 }
 
 func valueOr(v any, d any) any {

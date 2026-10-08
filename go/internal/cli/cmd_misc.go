@@ -365,6 +365,17 @@ func runInit(e *Env, p *parsed) int {
 
 	split := "false"
 	keystore, alias := "", "upload"
+	flavor := ""
+	if fl := proj.AndroidFlavors; proj.Platforms[host.Android] && len(fl) > 0 {
+		// Without a flavor flutter cannot build a project with productFlavors.
+		for {
+			flavor = pr.ask(i18n.F("Default flavor (%s)", "默认 flavor（%s）", strings.Join(fl, " / ")), fl[0])
+			if contains(fl, flavor) || !interactive {
+				break
+			}
+			u.Warn(i18n.F("unknown flavor %q", "未知 flavor %q", flavor))
+		}
+	}
 	if proj.Platforms[host.Android] {
 		split = pr.ask(i18n.S("Android APK split per ABI? false = one universal APK, true = per ABI, both", "Android APK 是否按 ABI 拆分？false = 单个通用包，true = 按 ABI，both = 两者都要"), "false")
 		if _, err := config.ParseABIMode(split); err != nil {
@@ -408,7 +419,7 @@ func runInit(e *Env, p *parsed) int {
 
 	content := renderInitYAML(initValues{
 		Targets: tlist, Display: display, Split: split, Keystore: keystore, Alias: alias,
-		ExportMethod: exportMethod, OutDir: outDir, DevIDs: devIDs, KeychainSeen: keychainSeen, InstallerIDs: installerIDs, Proj: proj,
+		ExportMethod: exportMethod, Flavor: flavor, OutDir: outDir, DevIDs: devIDs, KeychainSeen: keychainSeen, InstallerIDs: installerIDs, Proj: proj,
 	})
 	var check config.Config
 	if err := config.Parse([]byte(content), &check); err != nil {

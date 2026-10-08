@@ -29,15 +29,21 @@ func (c *Context) Description() string {
 	return c.Project.Name
 }
 
-// Publisher is app.publisher (may be empty).
-func (c *Context) Publisher() string { return c.Config.App.Publisher }
+// Publisher is app.publisher, else the CompanyName of the Windows runner
+// (may be empty).
+func (c *Context) Publisher() string {
+	if p := c.Config.App.Publisher; p != "" {
+		return p
+	}
+	return c.Project.WindowsCompany
+}
 
 // Maintainer is "Name <email>" for deb/rpm.
 func (c *Context) Maintainer() string {
 	if m := c.Config.App.Maintainer; m != "" {
 		return m
 	}
-	if p := c.Config.App.Publisher; p != "" {
+	if p := c.Publisher(); p != "" {
 		if strings.Contains(p, "<") {
 			return p
 		}
@@ -51,7 +57,7 @@ func (c *Context) Copyright() string {
 	if s := c.Config.App.Copyright; s != "" {
 		return s
 	}
-	who := c.Config.App.Publisher
+	who := c.Publisher()
 	if who == "" {
 		who = c.DisplayName()
 	}
