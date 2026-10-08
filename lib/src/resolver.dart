@@ -139,9 +139,17 @@ class CoreResolver {
     try {
       final data = jsonDecode(await stamp.readAsString()) as Map;
       final st = f.statSync();
-      return data['version'] == version &&
-          data['size'] == st.size &&
-          data['mtime'] == st.modified.millisecondsSinceEpoch;
+      if (data['version'] != version ||
+          data['size'] != st.size ||
+          data['mtime'] != st.modified.millisecondsSinceEpoch) {
+        return false;
+      }
+      // A reinstalled package may bundle a different binary under the same
+      // version (e.g. a rebuilt archive): follow the manifest when present.
+      final bundled = _manifestSha();
+      // (Compared with the manifest seen at install time, so a core built
+      // with Go because the bundled one could not run stays valid.)
+      return bundled == null || bundled == data['manifest'];
     } catch (_) {
       return false;
     }
@@ -156,6 +164,7 @@ class CoreResolver {
         'sha256': sha,
         'size': st.size,
         'mtime': st.modified.millisecondsSinceEpoch,
+        'manifest': _manifestSha(),
       }),
     );
   }
@@ -207,6 +216,19 @@ class CoreResolver {
   }
 
   // ---------------------------------------------------------------- bundled
+
+  /// SHA-256 of the bundled binary for this host according to the
+  /// manifest, or null when there is no usable manifest/binary.
+  String? _manifestSha() {
+    try {
+      if (!File(bundledPath).existsSync()) return null;
+      final m = jsonDecode(File(manifestPath).readAsStringSync()) as Map;
+      if (m['version'] != version) return null;
+      return ((m['binaries'] as Map?)?[host.id] as Map?)?['sha256'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<ResolvedCore?> _fromBundled() async {
     final bin = File(bundledPath);

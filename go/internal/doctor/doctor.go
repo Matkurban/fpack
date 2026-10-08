@@ -273,7 +273,15 @@ func platformInfo(pl host.Platform, in Input) []Line {
 			v, _ := t.Probe(p, "--version")
 			out = append(out, Line{OK, "CocoaPods " + strings.TrimSpace(lastLine(v)), ""})
 		}
-		ids, _ := targets.CodesignIdentities(t)
+		all, _ := targets.AllIdentities(t)
+		var ids, revoked []string
+		for _, id := range all {
+			if id.Problem == "" {
+				ids = append(ids, id.Name)
+			} else {
+				revoked = append(revoked, id.Name+" ("+id.Problem+")")
+			}
+		}
 		if pl == host.IOS {
 			var dist, dev int
 			for _, id := range ids {
@@ -285,6 +293,10 @@ func platformInfo(pl host.Platform, in Input) []Line {
 			}
 			if dist+dev > 0 {
 				out = append(out, Line{OK, i18n.F("signing certificates: %d distribution, %d development", "签名证书：%d 个发布证书，%d 个开发证书", dist, dev), ""})
+			}
+			if len(revoked) > 0 {
+				out = append(out, Line{Info, i18n.F("%d revoked/invalid certificate(s) in the keychain are ignored: %s", "钥匙串中有 %d 个已吊销/无效的证书（已忽略）：%s", len(revoked), strings.Join(revoked, "; ")),
+					i18n.S("you can delete them in Keychain Access → My Certificates", "可在「钥匙串访问 → 我的证书」中删除")})
 			}
 			if in.Ctx != nil {
 				ios := in.Ctx.Config.IOS

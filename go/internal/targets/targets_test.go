@@ -626,3 +626,81 @@ func TestPlatformRulesForEveryTarget(t *testing.T) {
 		}
 	}
 }
+
+// Real output from a Mac with duplicate and revoked identities but no
+// Developer ID certificate (SHA-1s shortened to fakes).
+const macIdentitiesNoDevID = `  1) 1111111111111111111111111111111111111111 "Apple Development: Alex Example (AAAAAAAAA1)"
+  2) 2222222222222222222222222222222222222222 "Apple Development: Jane Appleseed (BBBBBBBBB2)"
+  3) 3333333333333333333333333333333333333333 "Apple Development: Other Developer (CCCCCCCCC3)" (CSSMERR_TP_CERT_REVOKED)
+  4) 4444444444444444444444444444444444444444 "Apple Distribution: Other Developer (OTHERTEAM1)"
+  5) 5555555555555555555555555555555555555555 "Apple Distribution: Other Developer (OTHERTEAM1)"
+  6) 6666666666666666666666666666666666666666 "Apple Development: Former Developer (DDDDDDDDD4)" (CSSMERR_TP_CERT_REVOKED)
+  7) 7777777777777777777777777777777777777777 "Apple Distribution: Former Developer (REVOKED001)" (CSSMERR_TP_CERT_REVOKED)
+     7 valid identities found
+`
+
+func TestParseIdentitiesDedupesAndFlagsRevoked(t *testing.T) {
+	ids := ParseIdentities(macIdentitiesNoDevID)
+	if len(ids) != 6 {
+		t.Fatalf("%+v", ids)
+	}
+	if ids[2].Name != "Apple Development: Other Developer (CCCCCCCCC3)" || ids[2].Problem != "CSSMERR_TP_CERT_REVOKED" {
+		t.Fatalf("%+v", ids[2])
+	}
+	if ids[3].Name != "Apple Distribution: Other Developer (OTHERTEAM1)" || ids[3].Problem != "" {
+		t.Fatalf("%+v", ids[3])
+	}
+	if got := identitySummary([]string{"Apple Development: a", "Apple Development: b", "Apple Distribution: c"}); got != "Apple Development ×2, Apple Distribution ×1" {
+		t.Fatal(got)
+	}
+}
+
+func TestMacSigningNoDeveloperIDCertificate(t *testing.T) {
+	c := newCtx(t, "darwin", "", "dmg:\n  sign-certificate: \""+devID+"\"\n  notary-profile: XueHua\n")
+	c.Tools.(*fakeTools).probes["security find-identity -v -p codesigning"] = macIdentitiesNoDevID
+	issues := (&DMG{}).Preflight(c)
+	if len(issues) != 1 || !issues[0].Fatal {
+		t.Fatalf("%+v", issues)
+	}
+	msg := issues[0].Msg
+	for _, want := range []string{"no \"Developer ID Application\" certificate", devID, "Apple Development ×2, Apple Distribution ×1", "pubspec.yaml dmg:"} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("message lacks %q:\n%s", want, msg)
+		}
+	}
+	if strings.Contains(msg, "Former") || !strings.Contains(issues[0].Fix, "--no-sign") || !strings.Contains(issues[0].Fix, ".p12") {
+		t.Fatalf("%+v", issues[0])
+	}
+	// --no-sign: no signing preflight at all
+	c = newCtx(t, "darwin", "macos:\n  sign:\n    enabled: false\n", "dmg:\n  sign-certificate: \""+devID+"\"\n")
+	c.Tools.(*fakeTools).probes["security find-identity -v -p codesigning"] = macIdentitiesNoDevID
+	if issues := macSigningPreflight(c); len(issues) != 0 {
+		t.Fatalf("%+v", issues)
+	}
+}
+
+func TestIPADistributionCertificateForOtherTeamOnly(t *testing.T) {
+	c := newCtx(t, "darwin", "", "")
+	c.Tools.(*fakeTools).probes["security find-identity -v -p codesigning"] = macIdentitiesNoDevID
+	var w *Issue
+	for _, is := range (&IPA{}).Preflight(c) {
+		if strings.Contains(is.Msg, "for team") {
+			is := is
+			w = &is
+		}
+	}
+	if w == nil || w.Fatal || !strings.Contains(w.Msg, "ABCDE12345") || !strings.Contains(w.Msg, "OTHERTEAM1") || strings.Contains(w.Msg, "REVOKED001") {
+		t.Fatalf("%+v", w)
+	}
+	// development export doesn't need a distribution certificate
+	c = newCtx(t, "darwin", "ios:\n  export_method: development\n", "")
+	c.Tools.(*fakeTools).probes["security find-identity -v -p codesigning"] = macIdentitiesNoDevID
+	for _, is := range (&IPA{}).Preflight(c) {
+		if strings.Contains(is.Msg, "for team") {
+			t.Fatalf("%+v", is)
+		}
+	}
+	if got := distributionTeams([]string{"Apple Distribution: X (AAAAAAAAAA)", "iPhone Distribution: Y (BBBBBBBBBB)", "Apple Development: Z (CCCCCCCCCC)", "Apple Distribution: X (AAAAAAAAAA)"}); !reflect.DeepEqual(got, []string{"AAAAAAAAAA", "BBBBBBBBBB"}) {
+		t.Fatal(got)
+	}
+}

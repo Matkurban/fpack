@@ -138,21 +138,82 @@ func (m MacSigning) IdentityLabel() string {
 	return "Developer ID Application"
 }
 
-var identityLine = regexp.MustCompile(`^\s*\d+\)\s+([0-9A-F]{40})\s+"(.+)"`)
+var identityLine = regexp.MustCompile(`^\s*\d+\)\s+([0-9A-F]{40})\s+"([^"]+)"\s*(\(([A-Z_]+)\))?`)
 
-// CodesignIdentities lists valid code signing identities (name strings).
-func CodesignIdentities(t Tools) ([]string, bool) {
+// Identity is a code signing identity from the keychain.
+type Identity struct {
+	Name    string
+	Problem string // e.g. CSSMERR_TP_CERT_REVOKED; "" = usable
+}
+
+// ParseIdentities parses `security find-identity -v -p codesigning`.
+// Duplicates (the same certificate in several keychains) are merged; an
+// identity is usable if any copy is.
+func ParseIdentities(out string) []Identity {
+	var list []Identity
+	idx := map[string]int{}
+	for _, l := range strings.Split(out, "\n") {
+		m := identityLine.FindStringSubmatch(l)
+		if m == nil {
+			continue
+		}
+		id := Identity{Name: m[2], Problem: m[4]}
+		if i, ok := idx[id.Name]; ok {
+			if id.Problem == "" {
+				list[i].Problem = ""
+			}
+			continue
+		}
+		idx[id.Name] = len(list)
+		list = append(list, id)
+	}
+	return list
+}
+
+// AllIdentities lists code signing identities including revoked ones.
+func AllIdentities(t Tools) ([]Identity, bool) {
 	out, ok := t.Probe("security", "find-identity", "-v", "-p", "codesigning")
 	if !ok && out == "" {
 		return nil, false
 	}
+	return ParseIdentities(out), true
+}
+
+// CodesignIdentities lists usable (not revoked/expired) identity names.
+func CodesignIdentities(t Tools) ([]string, bool) {
+	all, ok := AllIdentities(t)
 	var ids []string
-	for _, l := range strings.Split(out, "\n") {
-		if m := identityLine.FindStringSubmatch(l); m != nil {
-			ids = append(ids, m[2])
+	for _, id := range all {
+		if id.Problem == "" {
+			ids = append(ids, id.Name)
 		}
 	}
-	return ids, true
+	return ids, ok
+}
+
+// identitySummary describes identities by kind, e.g.
+// "Apple Development ×2, Apple Distribution ×1".
+func identitySummary(ids []string) string {
+	var order []string
+	n := map[string]int{}
+	for _, id := range ids {
+		kind := id
+		if i := strings.Index(id, ":"); i > 0 {
+			kind = id[:i]
+		}
+		if n[kind] == 0 {
+			order = append(order, kind)
+		}
+		n[kind]++
+	}
+	var parts []string
+	for _, k := range order {
+		parts = append(parts, fmt.Sprintf("%s ×%d", k, n[k]))
+	}
+	if len(parts) == 0 {
+		return i18n.S("none", "无")
+	}
+	return strings.Join(parts, ", ")
 }
 
 // macSigningPreflight validates (and auto-selects) the signing identity.
@@ -160,31 +221,54 @@ func macSigningPreflight(c *Context) []Issue {
 	if !c.Mac.Enabled {
 		return nil
 	}
-	ids, ok := CodesignIdentities(c.Tools)
+	all, ok := AllIdentities(c.Tools)
 	if !ok {
 		return []Issue{warn(i18n.S("could not list signing identities (security find-identity)", "无法列出签名证书（security find-identity）"), "")}
 	}
-	fix := i18n.S("Xcode → Settings → Accounts → Manage Certificates → + \"Developer ID Application\". Or disable: --no-sign / macos.sign.enabled: false",
-		"Xcode → 设置 → Accounts → Manage Certificates → + “Developer ID Application”。或关闭签名：--no-sign / macos.sign.enabled: false")
-	if c.Mac.Identity == "" {
-		for _, id := range ids {
-			if strings.HasPrefix(id, "Developer ID Application") {
-				c.Mac.Identity = id
-				return nil
+	var ids, devIDs []string
+	for _, id := range all {
+		if id.Problem != "" {
+			continue
+		}
+		ids = append(ids, id.Name)
+		if strings.HasPrefix(id.Name, "Developer ID Application") {
+			devIDs = append(devIDs, id.Name)
+		}
+	}
+	src := ""
+	if c.Mac.Source != "" {
+		src = i18n.F(" (from %s)", "（来自 %s）", c.Mac.Source)
+	}
+	if len(devIDs) == 0 {
+		// Revoked Developer ID certificates are worth calling out.
+		for _, id := range all {
+			if id.Problem != "" && (id.Name == c.Mac.Identity || (c.Mac.Identity == "" && strings.HasPrefix(id.Name, "Developer ID Application"))) {
+				return []Issue{fatal(i18n.F("signing identity %q is not usable: %s", "签名证书 %q 不可用：%s", id.Name, id.Problem),
+					i18n.S("create a new Developer ID Application certificate (Xcode → Settings → Accounts → Manage Certificates), or build unsigned: --no-sign",
+						"新建 Developer ID Application 证书（Xcode → 设置 → Accounts → Manage Certificates），或构建未签名包：--no-sign"))}
 			}
 		}
-		return []Issue{fatal(i18n.S("macOS signing is enabled but no \"Developer ID Application\" certificate is in the keychain", "已启用 macOS 签名，但钥匙串中没有 “Developer ID Application” 证书"), fix)}
+		want := c.Mac.Identity
+		if want == "" {
+			want = "Developer ID Application"
+		}
+		return []Issue{fatal(
+			i18n.F("macOS signing is enabled%s but this Mac has no \"Developer ID Application\" certificate (wanted %q; keychain has: %s). Developer ID is required to distribute outside the App Store; Apple Development/Distribution certificates can't be used for that.",
+				"已启用 macOS 签名%s，但这台 Mac 上没有 “Developer ID Application” 证书（需要 %q；钥匙串中有：%s）。在 App Store 之外分发必须使用 Developer ID，Apple Development/Distribution 证书不能用于此用途。", src, want, identitySummary(ids)),
+			i18n.S("install the certificate WITH its private key: export it as .p12 from the Mac where it was created (Keychain Access → My Certificates → Export) and double-click it here; or create one in Xcode → Settings → Accounts → Manage Certificates → + → Developer ID Application (Account Holder only).\nTo build now without signing: --no-sign",
+				"安装证书及其私钥：在创建该证书的 Mac 上从「钥匙串访问 → 我的证书」导出 .p12，再在本机双击导入；或在 Xcode → 设置 → Accounts → Manage Certificates → + → Developer ID Application 新建（仅账户持有人）。\n先不签名构建：--no-sign"))}
+	}
+	if c.Mac.Identity == "" {
+		c.Mac.Identity = devIDs[0]
+		return nil
 	}
 	for _, id := range ids {
 		if id == c.Mac.Identity || strings.Contains(id, c.Mac.Identity) {
 			return nil
 		}
 	}
-	avail := strings.Join(ids, "\n  ")
-	if avail == "" {
-		avail = i18n.S("(none)", "（无）")
-	}
-	return []Issue{fatal(i18n.F("signing identity %q not found in the keychain. Available:\n  %s", "钥匙串中找不到签名证书 %q。可用证书：\n  %s", c.Mac.Identity, avail), fix)}
+	return []Issue{fatal(i18n.F("signing identity %q%s not found in the keychain. Developer ID certificates available:\n  %s", "钥匙串中找不到签名证书 %q%s。可用的 Developer ID 证书：\n  %s", c.Mac.Identity, src, strings.Join(devIDs, "\n  ")),
+		i18n.S("use one of them with --sign-identity \"…\" (or macos.sign.identity), or build unsigned: --no-sign", "用 --sign-identity \"…\"（或 macos.sign.identity）指定其中一个，或构建未签名包：--no-sign"))}
 }
 
 func xcodePreflight(c *Context, dir string) []Issue {
@@ -320,7 +404,7 @@ func (*IPA) Preflight(c *Context) []Issue {
 		out = append(out, warn(i18n.S("no DEVELOPMENT_TEAM set in ios/Runner.xcodeproj – signing will probably fail", "ios/Runner.xcodeproj 中没有设置 DEVELOPMENT_TEAM —— 签名很可能失败"),
 			i18n.S("open ios/Runner.xcworkspace → Runner → Signing & Capabilities → Team, or build unsigned: fpack build ipa --no-codesign", "打开 ios/Runner.xcworkspace → Runner → Signing & Capabilities → 选择 Team；或构建未签名包：fpack build ipa --no-codesign")))
 	}
-	if ids, ok := CodesignIdentities(c.Tools); ok && !c.DryRun {
+	if ids, ok := CodesignIdentities(c.Tools); ok {
 		dist, dev := false, false
 		for _, id := range ids {
 			if strings.HasPrefix(id, "Apple Distribution") || strings.HasPrefix(id, "iPhone Distribution") {
@@ -339,6 +423,12 @@ func (*IPA) Preflight(c *Context) []Issue {
 		case needsDist && !dist:
 			out = append(out, warn(i18n.F("export method %q needs an \"Apple Distribution\" certificate, only development certificates found", "导出方式 %q 需要 “Apple Distribution” 证书，但只找到开发证书", exportMethodLabel(m)),
 				i18n.S("create one in Xcode → Settings → Accounts → Manage Certificates, or use: --export-method development", "在 Xcode → 设置 → Accounts → Manage Certificates 中创建，或使用：--export-method development")))
+		case needsDist && c.Project.IOSTeam != "":
+			// The (XXXXXXXXXX) suffix of a distribution certificate is its team.
+			if teams := distributionTeams(ids); !contains(teams, c.Project.IOSTeam) {
+				out = append(out, warn(i18n.F("export method %q needs an \"Apple Distribution\" certificate for team %s, but the keychain only has distribution certificates for: %s (Xcode may still use cloud-managed signing if your account has Admin/Account Holder access)", "导出方式 %q 需要团队 %s 的 “Apple Distribution” 证书，但钥匙串中只有以下团队的发布证书：%s（如果账号有 Admin/账户持有人权限，Xcode 可能仍会使用云端管理的签名）", exportMethodLabel(m), c.Project.IOSTeam, strings.Join(teams, ", ")),
+					i18n.F("install the team's distribution certificate (.p12) or create one in Xcode → Settings → Accounts → %s → Manage Certificates; or use --export-method development / --no-codesign", "安装该团队的发布证书（.p12），或在 Xcode → 设置 → Accounts → %s → Manage Certificates 中创建；也可以使用 --export-method development / --no-codesign", c.Project.IOSTeam)))
+			}
 		}
 	}
 	return out
@@ -623,4 +713,29 @@ func (*DMG) Package(c *Context, in Inputs) (*Plan, error) {
 		pl.Notes = append(pl.Notes, i18n.F("signing settings from %s", "签名配置来源：%s", c.Mac.Source))
 	}
 	return pl, nil
+}
+
+var teamSuffix = regexp.MustCompile(`\(([A-Z0-9]{10})\)$`)
+
+// distributionTeams returns the team IDs of distribution certificates.
+func distributionTeams(ids []string) []string {
+	var teams []string
+	for _, id := range ids {
+		if !strings.HasPrefix(id, "Apple Distribution") && !strings.HasPrefix(id, "iPhone Distribution") {
+			continue
+		}
+		if m := teamSuffix.FindStringSubmatch(id); m != nil && !contains(teams, m[1]) {
+			teams = append(teams, m[1])
+		}
+	}
+	return teams
+}
+
+func contains(list []string, s string) bool {
+	for _, x := range list {
+		if x == s {
+			return true
+		}
+	}
+	return false
 }

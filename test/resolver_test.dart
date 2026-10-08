@@ -76,6 +76,16 @@ void main() {
     },
   );
 
+  test('a rebuilt bundled binary (same version) replaces the cache', () async {
+    bundle(fakeCore('0.1.0'));
+    expect((await resolver().resolve()).source, CoreSource.bundled);
+    expect((await resolver().resolve()).source, CoreSource.cache);
+    bundle('${fakeCore('0.1.0')}# rebuilt\n');
+    final again = await resolver().resolve();
+    expect(again.source, CoreSource.bundled);
+    expect(File(again.path).readAsStringSync(), contains('# rebuilt'));
+  });
+
   test('a modified cache entry is not trusted', () async {
     bundle(fakeCore('0.1.0'));
     final core = await resolver().resolve();
