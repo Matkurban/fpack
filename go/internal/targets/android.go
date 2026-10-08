@@ -132,9 +132,12 @@ func androidPreflight(c *Context) []Issue {
 		if kt := c.Android().Keytool(c.Tools); kt != "" {
 			out = append(out, verifyKeystore(c, kt)...)
 		}
-	case !s.Enabled && c.Project.AndroidReleaseDebugSigned && !c.Project.AndroidKeyProperties && c.Mode() == "release":
+	case debugSigningExpected(c):
 		out = append(out, warn(i18n.F("release builds are signed with the DEBUG key (%s). Fine for testing; Google Play will reject it.", "release 包将使用 DEBUG 密钥签名（%s）。测试可以，但 Google Play 会拒绝。", c.Project.AndroidGradleFile),
 			i18n.S("set android.signing in fpack.yaml or FPACK_ANDROID_KEYSTORE / _PASSWORD / _KEY_ALIAS (see README → Android signing)", "在 fpack.yaml 设置 android.signing，或设置 FPACK_ANDROID_KEYSTORE / _PASSWORD / _KEY_ALIAS 环境变量（见 README → Android 签名）")))
+	}
+	if is, ok := flavorCheck(c, host.Android); !ok {
+		out = append(out, is)
 	}
 	env := c.Android()
 	if env.SDK == "" {
@@ -149,6 +152,12 @@ func androidPreflight(c *Context) []Issue {
 		out = append(out, warn(i18n.F("Java %d is too old for current Android Gradle Plugin (needs 17+)", "Java %d 版本过低，当前 Android Gradle 插件需要 17+", env.JavaVersion), "flutter config --jdk-dir <JDK 17/21>"))
 	}
 	return out
+}
+
+// debugSigningExpected reports whether the project's release build type uses
+// the debug signing config and fpack injects nothing.
+func debugSigningExpected(c *Context) bool {
+	return !c.Signing.Enabled && c.Project.AndroidReleaseDebugSigned && !c.Project.AndroidKeyProperties && c.Mode() == "release"
 }
 
 func verifyKeystore(c *Context, keytool string) []Issue {
@@ -307,14 +316,16 @@ func (t *APK) Package(c *Context, in Inputs) (*Plan, error) {
 	if first != "" {
 		if signer := c.Android().Apksigner(); signer != "" {
 			pl.Ops = append(pl.Ops, Op{Desc: i18n.S("verify APK signature", "校验 APK 签名"), Cmd: &runner.Cmd{Name: signer, Args: []string{"verify", "--print-certs", first}, Capture: true},
-				Optional: true, Check: signerCheck(`(?m)certificate DN: (.+)$`)})
+				Optional: true, Check: signerCheck(c, `(?m)certificate DN: (.+)$`)})
 		}
 	}
 	return pl, nil
 }
 
 // signerCheck turns apksigner/keytool output into a note, flagging debug keys.
-func signerCheck(pattern string) func(runner.Result) (string, error) {
+func signerCheck(c *Context, pattern string) func(runner.Result) (string, error) {
+	injected := c.Signing.Enabled
+	expected := debugSigningExpected(c) || c.Mode() != "release"
 	re := regexp.MustCompile(pattern)
 	return func(r runner.Result) (string, error) {
 		m := re.FindStringSubmatch(r.Output)
@@ -323,6 +334,12 @@ func signerCheck(pattern string) func(runner.Result) (string, error) {
 		}
 		dn := strings.TrimSpace(m[1])
 		if strings.Contains(dn, "CN=Android Debug") {
+			if injected {
+				return "WARN:" + i18n.S("signing was configured but the output is signed with the DEBUG key – the Gradle signingConfigs may override injected signing", "已配置签名，但产物仍使用 DEBUG 密钥签名 —— Gradle 的 signingConfigs 可能覆盖了注入的签名"), nil
+			}
+			if expected {
+				return i18n.S("signed with the Android debug key", "使用 Android debug 密钥签名"), nil
+			}
 			return "WARN:" + i18n.S("signed with the Android DEBUG key – not accepted by Google Play", "使用 Android DEBUG 密钥签名 —— Google Play 不接受"), nil
 		}
 		return i18n.F("signed by %s", "签名者：%s", dn), nil
@@ -382,14 +399,14 @@ func (*AAB) Locate(c *Context, predicted bool, since time.Time) (Inputs, error) 
 }
 
 func (*AAB) Package(c *Context, in Inputs) (*Plan, error) {
-	dst, err := c.ArtifactPath(host.Android, "universal", "", ".aab")
+	dst, err := c.ArtifactPath(host.Android, "", "", ".aab")
 	if err != nil {
 		return nil, err
 	}
-	pl := &Plan{Ops: []Op{copyOp(c, in["aab"], dst)}, Artifacts: []Artifact{{Path: dst, Kind: "AAB", Arch: "universal"}}}
+	pl := &Plan{Ops: []Op{copyOp(c, in["aab"], dst)}, Artifacts: []Artifact{{Path: dst, Kind: "AAB"}}}
 	if kt := c.Android().Keytool(c.Tools); kt != "" {
 		pl.Ops = append(pl.Ops, Op{Desc: i18n.S("verify AAB signature", "校验 AAB 签名"), Cmd: &runner.Cmd{Name: kt, Args: []string{"-printcert", "-jarfile", dst}, Capture: true},
-			Optional: true, Check: signerCheck(`(?m)Owner: (.+)$`)})
+			Optional: true, Check: signerCheck(c, `(?m)Owner: (.+)$`)})
 	}
 	return pl, nil
 }

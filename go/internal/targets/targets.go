@@ -408,3 +408,25 @@ func sortedKeys(m map[string]string) []string {
 
 // installHint returns an install command for a tool on this host.
 func installHint(h host.Host, pk map[string]string) string { return h.Install(pk) }
+
+// flavorCheck warns when --flavor is not among the flavors/schemes detected
+// in the project (detection is heuristic, so this is never fatal).
+func flavorCheck(c *Context, p host.Platform) (Issue, bool) {
+	f := c.Flavor()
+	if f == "" {
+		return Issue{}, true
+	}
+	found := c.Project.Flavors(p)
+	for _, x := range found {
+		if strings.EqualFold(x, f) {
+			return Issue{}, true
+		}
+	}
+	where := map[host.Platform]string{host.Android: "android/app/build.gradle(.kts) productFlavors", host.IOS: "ios/Runner.xcodeproj schemes", host.MacOS: "macos/Runner.xcodeproj schemes"}[p]
+	list := strings.Join(found, ", ")
+	if list == "" {
+		list = i18n.S("none", "无")
+	}
+	return warn(i18n.F("flavor %q not found in %s (found: %s)", "在 %[2]s 中找不到 flavor %[1]q（已找到：%[3]s）", f, where, list),
+		i18n.S("check the spelling, or see https://docs.flutter.dev/deployment/flavors", "请检查拼写，或参考 https://docs.flutter.dev/deployment/flavors")), false
+}

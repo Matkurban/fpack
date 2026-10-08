@@ -183,6 +183,9 @@ func macSigningPreflight(c *Context) []Issue {
 
 func xcodePreflight(c *Context, dir string) []Issue {
 	var out []Issue
+	if is, ok := flavorCheck(c, host.Platform(dir)); !ok {
+		out = append(out, is)
+	}
 	if c.Tools.Find("xcodebuild") == "" {
 		out = append(out, fatal(i18n.S("Xcode is not installed (xcodebuild not found)", "未安装 Xcode（找不到 xcodebuild）"),
 			i18n.S("install Xcode from the App Store, then: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer && sudo xcodebuild -runFirstLaunch", "从 App Store 安装 Xcode，然后执行：sudo xcode-select -s /Applications/Xcode.app/Contents/Developer && sudo xcodebuild -runFirstLaunch")))

@@ -26,7 +26,9 @@ func (f *fakeTools) Probe(n string, a ...string) (string, bool) {
 	k := strings.TrimSpace(n + " " + strings.Join(a, " "))
 	return f.probes[k], !f.fail[k]
 }
-func (f *fakeTools) ProbeEnv(_ []string, n string, a ...string) (string, bool) { return f.Probe(n, a...) }
+func (f *fakeTools) ProbeEnv(_ []string, n string, a ...string) (string, bool) {
+	return f.Probe(n, a...)
+}
 
 const devID = "Developer ID Application: XueHua Tech (ABCDE12345)"
 
@@ -230,7 +232,7 @@ func TestAndroidSigningInjectionAndRedaction(t *testing.T) {
 	if len(issues) == 0 || !issues[0].Fatal || !strings.Contains(issues[0].Msg, "upload.jks") {
 		t.Fatalf("%+v", issues)
 	}
-	if got := names(plan(t, &AAB{}, c)); got[0] != "xue_hua_im-1.0.0+1-android-universal.aab" {
+	if got := names(plan(t, &AAB{}, c)); got[0] != "xue_hua_im-1.0.0+1-android.aab" {
 		t.Fatal(got)
 	}
 }
@@ -259,13 +261,25 @@ func TestAndroidDebugSigningWarning(t *testing.T) {
 }
 
 func TestSignerCheck(t *testing.T) {
-	chk := signerCheck(`(?m)certificate DN: (.+)$`)
-	note, _ := chk(runnerResult("Signer #1 certificate DN: C=US, O=Android, CN=Android Debug\n"))
-	if !strings.HasPrefix(note, "WARN:") {
+	debug := runnerResult("Signer #1 certificate DN: C=US, O=Android, CN=Android Debug\n")
+	c := newCtx(t, "linux", "", "")
+	// Project signs release with the debug key and fpack injects nothing:
+	// preflight already warned, so the post-build check is only a note.
+	chk := signerCheck(c, `(?m)certificate DN: (.+)$`)
+	if note, _ := chk(debug); strings.HasPrefix(note, "WARN:") || !strings.Contains(note, "debug") {
 		t.Fatal(note)
 	}
-	note, _ = chk(runnerResult("Signer #1 certificate DN: CN=XueHua, O=XueHua\n"))
-	if !strings.Contains(note, "CN=XueHua") {
+	if note, _ := chk(runnerResult("Signer #1 certificate DN: CN=XueHua, O=XueHua\n")); !strings.Contains(note, "CN=XueHua") {
+		t.Fatal(note)
+	}
+	// Unexpected debug signature -> warning.
+	c.Project.AndroidReleaseDebugSigned = false
+	if note, _ := signerCheck(c, `(?m)certificate DN: (.+)$`)(debug); !strings.HasPrefix(note, "WARN:") {
+		t.Fatal(note)
+	}
+	// Injected signing but still debug -> specific warning.
+	c.Signing.Enabled = true
+	if note, _ := signerCheck(c, `(?m)certificate DN: (.+)$`)(debug); !strings.HasPrefix(note, "WARN:") || !strings.Contains(note, "signingConfigs") {
 		t.Fatal(note)
 	}
 }

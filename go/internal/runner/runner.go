@@ -203,6 +203,9 @@ func Run(ctx context.Context, c Cmd, o Options) (Result, error) {
 		io.Copy(io.Discard, pr)
 	}()
 
+	track(cmd)
+	defer untrack(cmd)
+
 	waitCh := make(chan error, 1)
 	go func() { waitCh <- cmd.Wait() }()
 
@@ -307,4 +310,21 @@ func Output(timeout time.Duration, name string, args ...string) (string, bool) {
 	cmd := exec.CommandContext(ctx, name, args...)
 	out, err := cmd.CombinedOutput()
 	return strings.TrimSpace(string(out)), err == nil
+}
+
+var (
+	activeMu sync.Mutex
+	active   = map[*exec.Cmd]struct{}{}
+)
+
+func track(c *exec.Cmd)   { activeMu.Lock(); active[c] = struct{}{}; activeMu.Unlock() }
+func untrack(c *exec.Cmd) { activeMu.Lock(); delete(active, c); activeMu.Unlock() }
+
+// KillAll force-kills every running child process tree (second Ctrl-C).
+func KillAll() {
+	activeMu.Lock()
+	defer activeMu.Unlock()
+	for c := range active {
+		killTree(c)
+	}
 }

@@ -360,6 +360,13 @@ func appimagetool(c *Context) string {
 	}
 	return c.Tools.Find("appimagetool")
 }
+
+func appimagetoolOrName(c *Context) string {
+	if p := appimagetool(c); p != "" {
+		return p
+	}
+	return "appimagetool"
+}
 func (*AppImage) Preflight(c *Context) []Issue {
 	out := linuxPreflight(c)
 	if appimagetool(c) == "" {
@@ -402,7 +409,7 @@ func (*AppImage) Package(c *Context, in Inputs) (*Plan, error) {
 			}
 			return os.WriteFile(filepath.Join(appdir, pkg+".desktop"), []byte(c.desktopEntry(bin, pkg)), 0o644)
 		}},
-		{Desc: i18n.S("build AppImage", "构建 AppImage"), Cmd: &runner.Cmd{Name: appimagetool(c), Args: []string{"--no-appstream", appdir, tmp}, Env: []string{"ARCH=" + arch, "APPIMAGE_EXTRACT_AND_RUN=1"}}},
+		{Desc: i18n.S("build AppImage", "构建 AppImage"), Cmd: &runner.Cmd{Name: appimagetoolOrName(c), Args: []string{"--no-appstream", appdir, tmp}, Env: []string{"ARCH=" + arch, "APPIMAGE_EXTRACT_AND_RUN=1"}}},
 		moveOp(c, tmp, dst),
 	}, Artifacts: []Artifact{{Path: dst, Kind: "AppImage", Arch: linuxArch(c)}}}, nil
 }

@@ -151,7 +151,7 @@ func (*WinExe) Package(c *Context, in Inputs) (*Plan, error) {
 		args = append(args, "/D"+k+"="+defines[k])
 	}
 	args = append(args, script)
-	ops = append(ops, Op{Desc: i18n.S("compile installer (ISCC)", "编译安装程序（ISCC）"), Cmd: &runner.Cmd{Name: iscc(c), Args: args}},
+	ops = append(ops, Op{Desc: i18n.S("compile installer (ISCC)", "编译安装程序（ISCC）"), Cmd: &runner.Cmd{Name: orName(iscc(c), "ISCC.exe"), Args: args}},
 		moveOp(c, filepath.Join(stage, base+".exe"), dst))
 	return &Plan{Ops: ops, Artifacts: []Artifact{{Path: dst, Kind: "Windows installer (Inno Setup)", Arch: winArch(c), Variant: "setup"}}}, nil
 }
@@ -245,4 +245,11 @@ func (*Msix) Package(c *Context, in Inputs) (*Plan, error) {
 		{Desc: i18n.S("create MSIX (msix package)", "创建 MSIX（msix 包）"), Cmd: &runner.Cmd{Name: c.SDK.Dart, Args: args, Dir: c.Project.Root}},
 		moveOp(c, filepath.Join(stage, base+".msix"), dst),
 	}, Artifacts: []Artifact{{Path: dst, Kind: "MSIX", Arch: winArch(c)}}}, nil
+}
+
+func orName(p, name string) string {
+	if p == "" {
+		return name
+	}
+	return p
 }
