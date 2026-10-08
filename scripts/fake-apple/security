@@ -1,0 +1,9 @@
+#!/bin/sh
+# Fake `security find-identity` listing a Developer ID identity (E2E only);
+# every other call goes to the real tool.
+if [ "$1" = find-identity ]; then
+  echo "  1) 0123456789ABCDEF0123456789ABCDEF01234567 \"Developer ID Application: fpack E2E (FPACKE2E01)\""
+  echo "     1 valid identities found"
+  exit 0
+fi
+exec /usr/bin/security "$@"

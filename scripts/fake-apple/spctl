@@ -1,0 +1,5 @@
+#!/bin/sh
+# Fake Gatekeeper assessment (E2E only: the fake ticket is not real).
+if [ -n "$FAKE_NOTARY_LOG" ]; then echo "spctl $*" >> "$FAKE_NOTARY_LOG"; fi
+echo "$*: accepted"
+echo "source=Notarized Developer ID"

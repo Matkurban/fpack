@@ -219,7 +219,7 @@ func WriteChecksumsAlg(dir, alg string) (string, map[string]string, error) {
 	var names []string
 	for _, e := range entries {
 		n := e.Name()
-		if !e.Type().IsRegular() || n == "SHA256SUMS" || n == "SHA512SUMS" || strings.HasPrefix(n, ".") || strings.HasSuffix(n, ".partial") {
+		if !e.Type().IsRegular() || n == "SHA256SUMS" || n == "SHA512SUMS" || strings.HasPrefix(n, ".") || strings.HasSuffix(n, ".partial") || isReport(n) {
 			continue
 		}
 		s, err := HashFile(filepath.Join(dir, n), alg)
@@ -236,6 +236,12 @@ func WriteChecksumsAlg(dir, alg string) (string, map[string]string, error) {
 	}
 	p := filepath.Join(dir, file)
 	return p, sums, os.WriteFile(p, []byte(b.String()), 0o644)
+}
+
+// isReport reports files fpack writes next to the artifacts that change
+// after the build (notarization records, Apple's logs): not checksummed.
+func isReport(n string) bool {
+	return n == "NOTARIZATION.md" || n == "notarization.json" || (strings.HasPrefix(n, "notary-log-") && strings.HasSuffix(n, ".json"))
 }
 
 // CopyFile copies a regular file preserving its mode.

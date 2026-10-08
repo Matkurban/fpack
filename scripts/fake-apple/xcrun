@@ -1,0 +1,55 @@
+#!/bin/sh
+# Fake `xcrun notarytool` / `xcrun stapler` for fpack's tests and the E2E
+# workflow: exercises the notarization flow without Apple credentials.
+# Every other xcrun call goes to the real /usr/bin/xcrun.
+#   FAKE_NOTARY_STATUS       result of `notarytool wait` (Accepted | Invalid)
+#   FAKE_NOTARY_INFO_STATUS  result of `notarytool info` (default: FAKE_NOTARY_STATUS)
+#   FAKE_NOTARY_DELAY        seconds `notarytool wait` takes (default 2)
+#   FAKE_NOTARY_LOG          file receiving one line per call
+log() { if [ -n "$FAKE_NOTARY_LOG" ]; then echo "$*" >> "$FAKE_NOTARY_LOG"; fi; }
+case "$1" in
+notarytool)
+  sub=$2
+  shift 2
+  log "notarytool $sub $*"
+  id=${FAKE_NOTARY_ID:-2efe2717-52ef-43a5-96dc-0797e4ca1041}
+  status=${FAKE_NOTARY_STATUS:-Accepted}
+  case "$sub" in
+  submit)
+    [ -f "$1" ] || { echo "Error: file not found: $1" >&2; exit 1; }
+    echo "Conducting pre-submission checks for $(basename "$1") and initiating connection to the Apple notary service..."
+    printf '{"id":"%s","message":"Successfully uploaded file","path":"%s"}\n' "$id" "$1"
+    ;;
+  wait)
+    sleep "${FAKE_NOTARY_DELAY:-2}"
+    printf '{"id":"%s","status":"%s","message":"Processing complete"}\n' "$1" "$status"
+    ;;
+  info)
+    printf '{"id":"%s","status":"%s","message":"Processing complete","createdDate":"2026-10-09T00:00:00.000Z"}\n' "$1" "${FAKE_NOTARY_INFO_STATUS:-$status}"
+    ;;
+  log)
+    out=""
+    for a in "$@"; do out=$a; done
+    cat > "$out" <<'JSON'
+{"status":"Invalid","statusSummary":"Archive contains critical validation errors","issues":[{"severity":"error","path":"upload/App.app/Contents/MacOS/App","message":"The executable does not have the hardened runtime enabled.","architecture":"arm64"}]}
+JSON
+    ;;
+  *)
+    echo "fake notarytool: unsupported subcommand $sub" >&2
+    exit 2
+    ;;
+  esac
+  ;;
+stapler)
+  log "stapler $*"
+  echo "Processing: $3"
+  echo "The $2 and validate action worked!"
+  ;;
+--find)
+  if [ "$2" = notarytool ]; then echo /usr/bin/notarytool; exit 0; fi
+  exec /usr/bin/xcrun "$@"
+  ;;
+*)
+  exec /usr/bin/xcrun "$@"
+  ;;
+esac

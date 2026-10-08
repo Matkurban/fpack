@@ -45,6 +45,7 @@ var buildFlags = []flagSpec{
 	{names: []string{"--installer-identity"}, kind: kString, metavar: "ID", en: "macOS: .pkg signing identity (Developer ID Installer)", zh: "macOS：.pkg 签名证书（Developer ID Installer）"},
 	{names: []string{"--notarize"}, kind: kBool, en: "macOS: notarize + staple the zip/DMG/pkg", zh: "macOS：公证并装订 zip/DMG/pkg"},
 	{names: []string{"--no-notarize"}, kind: kBool, en: "macOS: skip notarization (faster local builds)", zh: "macOS：跳过公证（本地构建更快）"},
+	{names: []string{"--notarize-no-wait"}, kind: kBool, en: "macOS: submit for notarization and finish without waiting (later: fpack notarize finish)", zh: "macOS：提交公证后不等待结果直接结束（之后：fpack notarize finish）"},
 	{names: []string{"--notary-profile"}, kind: kString, metavar: "NAME", en: "macOS: notarytool keychain profile", zh: "macOS：notarytool 钥匙串配置名"},
 	{names: []string{"--dmg-tool"}, kind: kString, metavar: "T", en: "macOS: auto | hdiutil | create-dmg", zh: "macOS：auto | hdiutil | create-dmg"},
 	{names: []string{"--base-href"}, kind: kString, metavar: "PATH", en: "web: base href, e.g. /app/", zh: "web：base href，例如 /app/"},
@@ -166,6 +167,9 @@ func applyBuildFlags(p *parsed) (func(*config.Config) error, error) {
 		}
 		if p.b("no-notarize") {
 			c.MacOS.Sign.Notarize = &f
+		}
+		if p.b("notarize-no-wait") {
+			c.MacOS.Notarize.Wait = &f
 		}
 		if p.b("wasm") {
 			c.Web.Wasm = &t

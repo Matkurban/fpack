@@ -72,7 +72,8 @@ func TestPkgSignedNotarizedWithResources(t *testing.T) {
 		"--identifier com.xuehua.im.pkg --version 1.0.0 --install-location /Applications/XueHua",
 		"--resources " + filepath.Join(stage, "resources") + " --sign 'Developer ID Installer: XueHua' --timestamp " + tmp,
 		"pkgutil --check-signature " + tmp,
-		"xcrun notarytool submit " + tmp + " --keychain-profile XueHua --wait",
+		"xcrun notarytool submit " + tmp + " --keychain-profile XueHua --output-format json",
+		"xcrun notarytool wait '<submission-id>' --keychain-profile XueHua",
 		"xcrun stapler staple " + tmp,
 		"spctl --assess --type install --verbose=2 " + tmp,
 	} {

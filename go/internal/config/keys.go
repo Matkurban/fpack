@@ -88,6 +88,7 @@ var Sections = []Section{
 	{"ios", d("iOS: ipa. Setting any of team_id … export_options makes fpack generate ExportOptions.plist.", "iOS：ipa。设置 team_id … export_options 中任意一项时，fpack 会自动生成 ExportOptions.plist。")},
 	{"macos", d("macOS: macos (.app zip), dmg, pkg.", "macOS：macos（.app zip）、dmg、pkg。")},
 	{"macos.sign", d("Developer ID signing and notarization (only from this file, FPACK_MACOS_* and flags).", "Developer ID 签名与公证（只来自本文件、FPACK_MACOS_* 和命令行参数）。")},
+	{"macos.notarize", d("How fpack waits for Apple's notary service. Every submission is recorded in <output>/NOTARIZATION.md and notarization.json with copy-paste commands.", "如何等待 Apple 公证服务。每次提交都会记录到 <输出目录>/NOTARIZATION.md 和 notarization.json，其中有可直接复制的查询命令。")},
 	{"macos.dmg", d("Disk image layout. Window/icon layout needs create-dmg (brew install create-dmg).", "DMG 磁盘镜像。窗口/图标布局需要 create-dmg（brew install create-dmg）。")},
 	{"macos.pkg", d("Installer package (pkgbuild + productbuild).", "安装包（pkgbuild + productbuild）。")},
 	{"windows", d("Windows: windows (zip), exe (Inno Setup), msix.", "Windows：windows（zip）、exe（Inno Setup）、msix。")},
@@ -118,7 +119,7 @@ var Keys = []Key{
 		d("Human-readable app name: installer title, Start menu, .desktop Name=.", "给人看的应用名：安装程序标题、开始菜单、.desktop 的 Name=。")),
 	k("app.description", KString, d("pubspec description", "pubspec 的 description"), "deb, rpm, appimage, msix", "A fast and secure messenger",
 		d("Short description: deb Description, rpm Summary, .desktop Comment=, msix description.", "简短描述：deb 的 Description、rpm 的 Summary、.desktop 的 Comment=、msix 描述。")),
-	k("app.publisher", KString, none, "exe, msix, deb, rpm", "XueHua Tech",
+	k("app.publisher", KString, d("CompanyName in windows/runner/Runner.rc", "windows/runner/Runner.rc 中的 CompanyName"), "exe, msix, deb, rpm", "XueHua Tech",
 		d("Company / author: Windows installer publisher, msix publisher display name, deb Maintainer fallback, rpm Vendor.", "公司 / 作者：Windows 安装程序发布者、msix 发布者显示名、deb Maintainer 的后备值、rpm Vendor。")),
 	k("app.identifier", KString, d("Linux APPLICATION_ID, Android applicationId or iOS bundle id", "Linux APPLICATION_ID、Android applicationId 或 iOS bundle id"), "exe, msix, pkg, appimage", "com.xuehua.im",
 		d("Reverse-DNS app id: Inno Setup AppId seed, msix identity name, pkg identifier fallback.", "反向域名格式的应用 ID：Inno Setup AppId 的种子、msix identity name、pkg identifier 的后备值。")),
@@ -270,6 +271,12 @@ var Keys = []Key{
 		d("API issuer UUID (omit for individual keys).", "API Issuer UUID（个人密钥可省略）。"), env("FPACK_NOTARY_API_ISSUER")),
 	k("macos.sign.installer_identity", KString, none, "pkg", "\"Developer ID Installer: Your Name (TEAMID)\"",
 		d("Signs the .pkg; a separate certificate from the app's \"Developer ID Application\". Unset = unsigned pkg.", "签名 .pkg 的证书，与 App 的 “Developer ID Application” 不同。不设置则 pkg 不签名。"), env("FPACK_MACOS_INSTALLER_IDENTITY"), flag("--installer-identity")),
+
+	// ---- macos.notarize ----
+	k("macos.notarize.wait", KBool, d("true", "true"), signApp, "false",
+		d("true: stay attached until Apple answers (shows elapsed time; Ctrl-C stops waiting, the submission continues at Apple). false: submit, write NOTARIZATION.md / notarization.json and finish with status \"submitted\"; later run `fpack notarize finish` to staple.",
+			"true：一直等待 Apple 返回结果（显示已等待时间；按 Ctrl-C 只是停止等待，Apple 端会继续处理）。false：提交后写入 NOTARIZATION.md / notarization.json 并结束，状态为 “submitted”；之后运行 `fpack notarize finish` 装订。"),
+		env("FPACK_NOTARIZE_WAIT"), flag("--notarize-no-wait")),
 
 	// ---- macos.dmg ----
 	k("macos.dmg.tool", KEnum, d("auto", "auto"), "dmg", "create-dmg",

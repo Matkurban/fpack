@@ -137,10 +137,11 @@ type IOS struct {
 
 // MacOS options.
 type MacOS struct {
-	Sign      MacSign `yaml:"sign"`
-	DMG       DMG     `yaml:"dmg"`
-	Pkg       Pkg     `yaml:"pkg"`
-	ExtraArgs List    `yaml:"extra_args"`
+	Sign      MacSign  `yaml:"sign"`
+	Notarize  Notarize `yaml:"notarize"`
+	DMG       DMG      `yaml:"dmg"`
+	Pkg       Pkg      `yaml:"pkg"`
+	ExtraArgs List     `yaml:"extra_args"`
 }
 
 // MacSign configures Developer ID signing + notarization of the .app/.dmg/.pkg.
@@ -160,6 +161,16 @@ type MacSign struct {
 	// InstallerIdentity signs the .pkg: "Developer ID Installer: Name (TEAMID)".
 	InstallerIdentity string `yaml:"installer_identity"`
 }
+
+// Notarize controls how fpack waits for Apple's notary service.
+type Notarize struct {
+	// Wait keeps fpack attached until Apple answers (default true); false
+	// submits, records the submission and finishes ("submitted").
+	Wait *bool `yaml:"wait"`
+}
+
+// NotarizeWait reports whether fpack waits for notarization results.
+func (c *Config) NotarizeWait() bool { return c.MacOS.Notarize.Wait == nil || *c.MacOS.Notarize.Wait }
 
 // DMG options.
 type DMG struct {

@@ -113,8 +113,8 @@ func plan(t *testing.T, tg Target, c *Context) *Plan {
 func cmds(p *Plan) []string {
 	var out []string
 	for _, o := range p.Ops {
-		if o.Cmd != nil {
-			out = append(out, o.Cmd.String())
+		for _, c := range o.Commands() {
+			out = append(out, c.String())
 		}
 	}
 	return out
@@ -398,7 +398,8 @@ func TestMacSigningFromConfig(t *testing.T) {
 		"codesign --verify --deep --strict --verbose=2 " + staged,
 		"hdiutil create -volname XueHua -srcfolder " + filepath.Dir(staged) + " -ov -fs HFS+ -format UDZO " + tmp,
 		"codesign --force --timestamp --sign " + q(devID) + " " + tmp,
-		"xcrun notarytool submit " + tmp + " --keychain-profile XueHua --wait --output-format json",
+		"xcrun notarytool submit " + tmp + " --keychain-profile XueHua --output-format json",
+		"xcrun notarytool wait '<submission-id>' --keychain-profile XueHua --output-format json",
 		"xcrun stapler staple " + tmp,
 		"spctl --assess --type open --context context:primary-signature --verbose=2 " + tmp,
 	}
@@ -437,7 +438,8 @@ func TestMacZipSignedAndNotarized(t *testing.T) {
 		"codesign --force --options runtime --timestamp --entitlements " + filepath.Join(c.Project.Root, "macos/Runner/Release.entitlements") + " --sign '" + devID + "' " + staged,
 		"codesign --verify --deep --strict --verbose=2 " + staged,
 		"ditto -c -k --sequesterRsrc --keepParent " + staged + " " + zip,
-		"xcrun notarytool submit " + zip + " --keychain-profile XueHua --wait --output-format json",
+		"xcrun notarytool submit " + zip + " --keychain-profile XueHua --output-format json",
+		"xcrun notarytool wait '<submission-id>' --keychain-profile XueHua --output-format json",
 		"xcrun stapler staple " + staged,
 		"ditto -c -k --sequesterRsrc --keepParent " + staged + " " + zip,
 	}
@@ -546,14 +548,6 @@ func TestParseNotary(t *testing.T) {
 	r, ok := ParseNotary("Conducting pre-submission checks...\n{\"id\":\"abc-123\",\"status\":\"Invalid\",\"message\":\"Processing complete\"}\n")
 	if !ok || r.Status != "Invalid" || r.ID != "abc-123" {
 		t.Fatalf("%+v", r)
-	}
-	_, err := notaryCheck("--keychain-profile XueHua")(runnerResultOut(`{"id":"abc-123","status":"Invalid","message":"Processing complete"}`))
-	if err == nil || !strings.Contains(err.Error(), "xcrun notarytool log abc-123 --keychain-profile XueHua") {
-		t.Fatalf("%v", err)
-	}
-	note, err := notaryCheck("--keychain-profile XueHua")(runnerResultOut(`{"id":"x","status":"Accepted","message":"ok"}`))
-	if err != nil || note == "" {
-		t.Fatal(note, err)
 	}
 }
 

@@ -57,6 +57,16 @@ type ArtifactResult struct {
 	Size   int64  `json:"size,omitempty"`
 	SHA256 string `json:"sha256,omitempty"`
 	SHA512 string `json:"sha512,omitempty"`
+	// Notarization is set for macOS artifacts sent to Apple's notary service.
+	Notarization *Notarization `json:"notarization,omitempty"`
+}
+
+// Notarization summarizes a notary submission (details in NOTARIZATION.md).
+type Notarization struct {
+	State  string `json:"state"` // submitted | accepted | stapled | invalid
+	ID     string `json:"id"`
+	Status string `json:"status"` // Apple's status (or Submitted)
+	Record string `json:"record"` // path of NOTARIZATION.md
 }
 
 // TargetResult is the outcome of one target.
@@ -268,20 +278,20 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 		if req.DryRun {
 			for _, key := range tr.steps {
 				for _, op := range steps[key].step.Prepare {
-					if op.Cmd != nil {
-						tr.Commands = append(tr.Commands, op.Cmd.String())
+					for _, cm := range op.Commands() {
+						tr.Commands = append(tr.Commands, cm.String())
 					}
 				}
 				tr.Commands = append(tr.Commands, flutterCmd(c, steps[key].step).String())
 				for _, op := range steps[key].step.After {
-					if op.Cmd != nil {
-						tr.Commands = append(tr.Commands, op.Cmd.String())
+					for _, cm := range op.Commands() {
+						tr.Commands = append(tr.Commands, cm.String())
 					}
 				}
 			}
 			for _, op := range p.Ops {
-				if op.Cmd != nil {
-					tr.Commands = append(tr.Commands, op.Cmd.String())
+				for _, cm := range op.Commands() {
+					tr.Commands = append(tr.Commands, cm.String())
 				}
 			}
 		}
@@ -713,8 +723,14 @@ func packageTarget(ctx context.Context, c *targets.Context, u *ui.UI, tr *Target
 			u.Fail(tr.Target + ": " + tr.Error)
 			return
 		}
-		tr.Artifacts = append(tr.Artifacts, ArtifactResult{Path: a.Path, File: filepath.Base(a.Path), Kind: a.Kind, Arch: a.Arch, Size: st.Size()})
-		u.Success(fmt.Sprintf("%s  %s", u.Bold(c.Rel(a.Path)), u.Dim(ui.Size(st.Size()))))
+		ar := ArtifactResult{Path: a.Path, File: filepath.Base(a.Path), Kind: a.Kind, Arch: a.Arch, Size: st.Size()}
+		extra := ""
+		if ns, ok := c.NotaryFor(a.Path); ok {
+			ar.Notarization = &Notarization{State: ns.State(), ID: ns.ID, Status: ns.Status, Record: filepath.Join(c.OutDir, targets.NotaryMDFile)}
+			extra = "  " + u.Dim(i18n.F("notarization: %s", "公证：%s", ns.State()))
+		}
+		tr.Artifacts = append(tr.Artifacts, ar)
+		u.Success(fmt.Sprintf("%s  %s%s", u.Bold(c.Rel(a.Path)), u.Dim(ui.Size(st.Size())), extra))
 	}
 	for _, w := range tr.Warnings {
 		u.Warn(firstLineOf(w))
@@ -777,6 +793,34 @@ func runOps(ctx context.Context, c *targets.Context, u *ui.UI, ops []targets.Op,
 			}
 			continue
 		}
+		if op.Run != nil {
+			sp := u.StartSpinner(op.Desc)
+			var last runner.Result
+			env := OpEnvFor(ctx, c, u, sp, logPath, verbose, &last)
+			note, err := op.Run(ctx, env)
+			sp.Stop()
+			if note != "" {
+				*notes = append(*notes, note)
+			}
+			if err != nil {
+				if errors.Is(err, runner.ErrInterrupted) || ctx.Err() != nil {
+					return &opFailure{interrupted: true, err: i18n.S("interrupted", "已中断")}
+				}
+				if op.Optional {
+					*warns = append(*warns, op.Desc+": "+err.Error())
+					continue
+				}
+				f := &opFailure{err: op.Desc + ": " + err.Error(), excerpt: hints.Excerpt(last.Tail, 20), cmd: true, hint: op.Hint}
+				if h, ok := hints.Match([]string{err.Error()}); ok {
+					f.hint = h.Text()
+				}
+				return f
+			}
+			if verbose || !u.Interactive() {
+				u.Detail("✓ " + op.Desc)
+			}
+			continue
+		}
 		if op.Cmd == nil {
 			continue
 		}
@@ -829,6 +873,50 @@ func runOps(ctx context.Context, c *targets.Context, u *ui.UI, ops []targets.Op,
 		}
 	}
 	return nil
+}
+
+// OpEnvFor gives Op.Run functions access to the runner and the UI. The
+// spinner may be nil (no animation).
+func OpEnvFor(ctx context.Context, c *targets.Context, u *ui.UI, sp *ui.Spinner, logPath string, verbose bool, last *runner.Result) targets.OpEnv {
+	return targets.OpEnv{
+		Interactive: u.Interactive() && !verbose,
+		Run: func(cm runner.Cmd) (runner.Result, error) {
+			if cm.Dir == "" && c.Project != nil {
+				cm.Dir = c.Project.Root
+			}
+			opts := runner.Options{LogPath: logPath}
+			if sp != nil {
+				opts.OnLine = func(l string) { sp.Update(l) }
+			}
+			if verbose {
+				opts.Stream = u.Writer()
+			}
+			res, err := runner.Run(ctx, cm, opts)
+			if last != nil {
+				*last = res
+			}
+			return res, err
+		},
+		Status: func(d string) {
+			if sp != nil {
+				sp.Update(d)
+			}
+		},
+		Print: func(kind, msg string) {
+			switch kind {
+			case "ok":
+				u.Success(msg)
+			case "warn":
+				u.Warn(msg)
+			case "hint":
+				u.Hint(msg)
+			case "detail":
+				u.Detail(msg)
+			default:
+				u.Info(msg)
+			}
+		},
+	}
 }
 
 // failStep marks every target of a step as failed by a prepare/after op.

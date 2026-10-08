@@ -13,7 +13,6 @@ import (
 	"github.com/Matkurban/fpack/go/internal/host"
 	"github.com/Matkurban/fpack/go/internal/i18n"
 	"github.com/Matkurban/fpack/go/internal/project"
-	"github.com/Matkurban/fpack/go/internal/runner"
 )
 
 // ------------------------------------------------------------ mac signing --
@@ -322,56 +321,11 @@ func hintIdentity() string {
 	return i18n.S("check the identity with: security find-identity -v -p codesigning (keychain must be unlocked)", "用 security find-identity -v -p codesigning 检查证书（钥匙串需处于解锁状态）")
 }
 
-// notarizeOps submits a file to Apple, waits, and staples the ticket.
-func notarizeOps(c *Context, file string) []Op {
-	auth, secrets, _ := c.Mac.NotaryAuth()
-	hint := i18n.S("check the notarization credentials (macos.sign.notary_*)", "请检查公证凭证（macos.sign.notary_*）")
-	if c.Mac.Profile != "" || (c.Mac.APIKey == "" && c.Mac.AppleID == "") {
-		profile := auth[1]
-		hint = i18n.F("create the profile once: xcrun notarytool store-credentials %s --apple-id <apple-id> --team-id <team-id>", "先创建凭证：xcrun notarytool store-credentials %s --apple-id <Apple ID> --team-id <团队ID>", profile)
-	}
-	return []Op{
-		{Desc: i18n.F("notarize with %s (uploads to Apple and waits, usually 1–10 min)", "使用 %s 公证（上传到 Apple 并等待，通常 1–10 分钟）", c.Mac.NotaryLabel()),
-			Cmd:   &runner.Cmd{Name: "xcrun", Args: append(append([]string{"notarytool", "submit", file}, auth...), "--wait", "--output-format", "json"), Capture: true, Secret: secrets},
-			Check: notaryCheck(strings.Join(redactAuth(auth), " ")),
-			Hint:  hint},
-		{Desc: i18n.S("staple notarization ticket", "装订公证票据"), Cmd: cmd("xcrun", "stapler", "staple", file)},
-		{Desc: i18n.S("Gatekeeper assessment", "Gatekeeper 校验"), Cmd: cmd("spctl", "--assess", "--type", "open", "--context", "context:primary-signature", "--verbose=2", file), Optional: true},
-	}
-}
-
-// redactAuth hides the app-specific password in messages.
-func redactAuth(a []string) []string {
-	out := append([]string(nil), a...)
-	for i := range out {
-		if i > 0 && out[i-1] == "--password" {
-			out[i] = "<app-specific-password>"
-		}
-	}
-	return out
-}
-
 // NotaryResult is notarytool's JSON output.
 type NotaryResult struct {
 	ID      string `json:"id"`
 	Status  string `json:"status"`
 	Message string `json:"message"`
-}
-
-func notaryCheck(profile string) func(runner.Result) (string, error) {
-	return func(r runner.Result) (string, error) {
-		res, ok := ParseNotary(r.Output)
-		if !ok {
-			if r.ExitCode != 0 {
-				return "", fmt.Errorf("notarytool failed (exit %d)", r.ExitCode)
-			}
-			return "", nil
-		}
-		if res.Status != "Accepted" {
-			return "", fmt.Errorf("%s", i18n.F("notarization status %q (%s). Details: xcrun notarytool log %s %s", "公证状态 %q（%s）。查看详情：xcrun notarytool log %s %s", res.Status, res.Message, res.ID, profile))
-		}
-		return i18n.S("notarized ✓", "已公证 ✓"), nil
-	}
 }
 
 // ParseNotary extracts the last JSON object from notarytool output.
@@ -680,13 +634,21 @@ func (*MacApp) Package(c *Context, in Inputs) (*Plan, error) {
 	case c.Mac.Enabled && c.Mac.Notarize:
 		// Apple notarizes the zip, but the ticket is stapled to the .app,
 		// so the app is zipped again afterwards.
-		pl.Ops = append(pl.Ops, notarizeOps(c, tmp)[0],
-			Op{Desc: i18n.S("staple ticket to the app", "将票据装订到 App"), Cmd: cmd("xcrun", "stapler", "staple", src)},
-			Op{Desc: i18n.S("re-zip stapled app", "重新压缩已装订的 App"), Fn: func() error { return os.Remove(tmp) }},
-			zip)
-		kind = "macOS app (zip, signed, notarized)"
+		pl.Ops = append(pl.Ops, notarizeOp(c, "macos", tmp, dst, filepath.Base(src)))
+		if c.Config.NotarizeWait() {
+			pl.Ops = append(pl.Ops,
+				Op{Desc: i18n.S("staple ticket to the app", "将票据装订到 App"), Cmd: cmd("xcrun", "stapler", "staple", src)},
+				Op{Desc: i18n.S("re-zip stapled app", "重新压缩已装订的 App"), Fn: func() error { return os.Remove(tmp) }},
+				zip)
+			kind = "macOS app (zip, signed, notarized)"
+		} else {
+			kind = "macOS app (zip, signed, notarization submitted)"
+		}
 	}
 	pl.Ops = append(pl.Ops, moveOp(c, tmp, dst))
+	if c.Mac.Enabled && c.Mac.Notarize {
+		pl.Ops = append(pl.Ops, notaryDoneOp(c, dst, c.Config.NotarizeWait()))
+	}
 	pl.Artifacts = []Artifact{{Path: dst, Kind: kind, Arch: "universal"}}
 	return pl, nil
 }
@@ -842,10 +804,20 @@ func (*DMG) Package(c *Context, in Inputs) (*Plan, error) {
 		kind = "DMG (signed)"
 	}
 	if c.Mac.Notarize {
-		pl.Ops = append(pl.Ops, notarizeOps(c, tmp)...)
-		kind = "DMG (signed, notarized)"
+		pl.Ops = append(pl.Ops, notarizeOp(c, "dmg", tmp, dst, ""))
+		if c.Config.NotarizeWait() {
+			pl.Ops = append(pl.Ops,
+				Op{Desc: i18n.S("staple notarization ticket", "装订公证票据"), Cmd: cmd("xcrun", "stapler", "staple", tmp)},
+				Op{Desc: i18n.S("Gatekeeper assessment", "Gatekeeper 校验"), Cmd: cmd("spctl", "--assess", "--type", "open", "--context", "context:primary-signature", "--verbose=2", tmp), Optional: true})
+			kind = "DMG (signed, notarized)"
+		} else {
+			kind = "DMG (signed, notarization submitted)"
+		}
 	}
 	pl.Ops = append(pl.Ops, moveOp(c, tmp, dst))
+	if c.Mac.Notarize {
+		pl.Ops = append(pl.Ops, notaryDoneOp(c, dst, c.Config.NotarizeWait()))
+	}
 	pl.Artifacts = []Artifact{{Path: dst, Kind: kind, Arch: "universal"}}
 	if c.Mac.TurnedOff {
 		pl.Notes = append(pl.Notes, i18n.S("unsigned DMG (--no-sign): Gatekeeper will warn users; drop --no-sign once a Developer ID certificate is installed", "未签名 DMG（--no-sign）：用户打开时 Gatekeeper 会警告；安装 Developer ID 证书后去掉 --no-sign 即可"))

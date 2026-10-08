@@ -1,0 +1,13 @@
+#!/bin/sh
+# Fake codesign for the E2E notarization test: signs ad hoc instead of with
+# the (fake) Developer ID identity, so bundles stay valid; --verify is real.
+if [ -n "$FAKE_NOTARY_LOG" ]; then echo "codesign $*" >> "$FAKE_NOTARY_LOG"; fi
+case " $* " in
+*" --verify "*) exec /usr/bin/codesign "$@" ;;
+esac
+last=""
+for a in "$@"; do last=$a; done
+case "$last" in
+*.app) exec /usr/bin/codesign --force --deep --sign - "$last" ;;
+*) exit 0 ;;
+esac

@@ -38,7 +38,7 @@ type command struct {
 }
 
 func commands() []*command {
-	return []*command{buildCommand(), doctorCommand(), listCommand(), initCommand(), schemaCommand(), cleanCommand(), versionCommand()}
+	return []*command{buildCommand(), doctorCommand(), listCommand(), initCommand(), schemaCommand(), notarizeCommand(), cleanCommand(), versionCommand()}
 }
 
 func findCommand(name string) *command {

@@ -200,7 +200,11 @@ func finish(c *targets.Context, u *ui.UI, s *Summary, start time.Time, checksums
 				if i > 0 {
 					name, st, d = "", "", ""
 				}
-				rows = append(rows, []string{name, st, c.Rel(a.Path), ui.Size(a.Size), d})
+				file := c.Rel(a.Path)
+				if a.Notarization != nil && a.Notarization.State == "submitted" {
+					file += u.Yellow("  " + i18n.S("(notarization submitted)", "（已提交公证）"))
+				}
+				rows = append(rows, []string{name, st, file, ui.Size(a.Size), d})
 			}
 			continue
 		}
@@ -211,6 +215,20 @@ func finish(c *targets.Context, u *ui.UI, s *Summary, start time.Time, checksums
 		rows = append(rows, []string{t.Target, status, u.Dim(ui.Truncate(firstLineOf(reason), 64)), "", dur})
 	}
 	u.Table([]string{i18n.S("TARGET", "目标"), i18n.S("STATUS", "状态"), i18n.S("FILE", "文件"), i18n.S("SIZE", "大小"), i18n.S("TIME", "耗时")}, rows)
+	pending, record := 0, ""
+	for _, t := range s.Targets {
+		for _, a := range t.Artifacts {
+			if a.Notarization != nil && a.Notarization.State == "submitted" {
+				pending++
+				record = a.Notarization.Record
+			}
+		}
+	}
+	if pending > 0 {
+		u.Blank()
+		u.Warn(i18n.F("%d notarization submission(s) not finished yet (Apple keeps processing): details and commands in %s", "%d 个公证提交尚未完成（Apple 会继续处理）：详情与命令见 %s", pending, c.Rel(record)))
+		u.Hint(i18n.S("fpack notarize status   # check\nfpack notarize finish   # wait, staple, update SHA256SUMS", "fpack notarize status   # 查询\nfpack notarize finish   # 等待、装订、更新 SHA256SUMS"))
+	}
 
 	// Details for anything that did not succeed. Targets failing for the
 	// same reason (macos + dmg without a Developer ID, …) share one entry.
@@ -298,12 +316,17 @@ func finish(c *targets.Context, u *ui.UI, s *Summary, start time.Time, checksums
 
 func printOps(u *ui.UI, ops []targets.Op) {
 	for _, op := range ops {
-		if op.Cmd != nil {
+		if cmds := op.Commands(); len(cmds) > 0 {
 			opt := ""
 			if op.Optional {
 				opt = u.Dim(i18n.S("  (optional)", "  （可选）"))
 			}
-			u.Info("$ " + op.Cmd.String() + opt)
+			if op.Run != nil {
+				u.Info(u.Dim("· " + op.Desc))
+			}
+			for _, cm := range cmds {
+				u.Info("$ " + cm.String() + opt)
+			}
 		} else {
 			u.Info(u.Dim("· " + op.Desc))
 		}

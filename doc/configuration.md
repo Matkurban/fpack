@@ -74,7 +74,7 @@ VS Code（Red Hat YAML 插件）、IntelliJ/Android Studio 会据此提供键补
 | `app.name` | string | `pubspec 的 name` | 全部 |  | 产物文件名前缀（output.name 中的 {app}）。 示例：`xue_hua_im` |
 | `app.display_name` | string | `macOS 的 PRODUCT_NAME，否则为 pubspec 的 name` | exe, msix, pkg, deb, rpm, appimage, linux |  | 给人看的应用名：安装程序标题、开始菜单、.desktop 的 Name=。 示例：`雪花IM` |
 | `app.description` | string | `pubspec 的 description` | deb, rpm, appimage, msix |  | 简短描述：deb 的 Description、rpm 的 Summary、.desktop 的 Comment=、msix 描述。 示例：`A fast and secure messenger` |
-| `app.publisher` | string | — | exe, msix, deb, rpm |  | 公司 / 作者：Windows 安装程序发布者、msix 发布者显示名、deb Maintainer 的后备值、rpm Vendor。 示例：`XueHua Tech` |
+| `app.publisher` | string | `windows/runner/Runner.rc 中的 CompanyName` | exe, msix, deb, rpm |  | 公司 / 作者：Windows 安装程序发布者、msix 发布者显示名、deb Maintainer 的后备值、rpm Vendor。 示例：`XueHua Tech` |
 | `app.identifier` | string | `Linux APPLICATION_ID、Android applicationId 或 iOS bundle id` | exe, msix, pkg, appimage |  | 反向域名格式的应用 ID：Inno Setup AppId 的种子、msix identity name、pkg identifier 的后备值。 示例：`com.xuehua.im` |
 | `app.homepage` | url | — | exe, deb, rpm |  | 官网：Inno Setup 发布者网址、deb 的 Homepage、rpm 的 URL。 示例：`https://xuehua.example.com` |
 | `app.support_url` | url | `app.homepage` | exe |  | 技术支持链接（Windows“应用和功能”中显示）。 示例：`https://xuehua.example.com/support` |
@@ -207,6 +207,14 @@ Developer ID 签名与公证（只来自本文件、FPACK_MACOS_* 和命令行�
 | `macos.sign.notary_api_key_id` | string | — | macos, dmg, pkg | `FPACK_NOTARY_API_KEY_ID` | API 密钥 ID。 示例：`ABC123DEF4` |
 | `macos.sign.notary_api_issuer` | string | — | macos, dmg, pkg | `FPACK_NOTARY_API_ISSUER` | API Issuer UUID（个人密钥可省略）。 示例：`69a6de7e-…` |
 | `macos.sign.installer_identity` | string | — | pkg | `FPACK_MACOS_INSTALLER_IDENTITY`<br>`--installer-identity` | 签名 .pkg 的证书，与 App 的 “Developer ID Application” 不同。不设置则 pkg 不签名。 示例：`"Developer ID Installer: Your Name (TEAMID)"` |
+
+#### `macos.notarize`
+
+如何等待 Apple 公证服务。每次提交都会记录到 <输出目录>/NOTARIZATION.md 和 notarization.json，其中有可直接复制的查询命令。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `macos.notarize.wait` | bool | `true` | macos, dmg, pkg | `FPACK_NOTARIZE_WAIT`<br>`--notarize-no-wait` | true：一直等待 Apple 返回结果（显示已等待时间；按 Ctrl-C 只是停止等待，Apple 端会继续处理）。false：提交后写入 NOTARIZATION.md / notarization.json 并结束，状态为 “submitted”；之后运行 `fpack notarize finish` 装订。 示例：`false` |
 
 #### `macos.dmg`
 
@@ -466,6 +474,7 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 | `FPACK_NOTARY_API_KEY_ID` | `macos.sign.notary_api_key_id` | string | API 密钥 ID。 |
 | `FPACK_NOTARY_API_ISSUER` | `macos.sign.notary_api_issuer` | string | API Issuer UUID（个人密钥可省略）。 |
 | `FPACK_MACOS_INSTALLER_IDENTITY` | `macos.sign.installer_identity` | string | 签名 .pkg 的证书，与 App 的 “Developer ID Application” 不同。不设置则 pkg 不签名。 |
+| `FPACK_NOTARIZE_WAIT` | `macos.notarize.wait` | bool | true：一直等待 Apple 返回结果（显示已等待时间；按 Ctrl-C 只是停止等待，Apple 端会继续处理）。false：提交后写入 NOTARIZATION.md / notarization.json 并结束，状态为 “submitted”；之后运行 `fpack notarize finish` 装订。 |
 | `FPACK_DMG_TOOL` | `macos.dmg.tool` | `auto` \\| `hdiutil` \\| `create-dmg` | auto：装了 create-dmg（或设置了布局键）时用 create-dmg，否则用 hdiutil。 |
 | `FPACK_WINDOWS_CERTIFICATE` | `windows.sign.certificate` | path | 代码签名证书（.pfx）。设置它（或 thumbprint）后会签名应用 .exe、安装程序和 MSIX。 |
 | `FPACK_WINDOWS_CERTIFICATE_PASSWORD` | `windows.sign.password` | string | 证书密码。 |

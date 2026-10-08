@@ -241,11 +241,11 @@
           "type": "string"
         },
         "publisher": {
-          "description": "Company / author: Windows installer publisher, msix publisher display name, deb Maintainer fallback, rpm Vendor. Targets: exe, msix, deb, rpm.",
+          "description": "Company / author: Windows installer publisher, msix publisher display name, deb Maintainer fallback, rpm Vendor. Default: CompanyName in windows/runner/Runner.rc. Targets: exe, msix, deb, rpm.",
           "examples": [
             "XueHua Tech"
           ],
-          "markdownDescription": "**Company / author: Windows installer publisher, msix publisher display name, deb Maintainer fallback, rpm Vendor.**  \n公司 / 作者：Windows 安装程序发布者、msix 发布者显示名、deb Maintainer 的后备值、rpm Vendor。\n\nTargets / 目标: exe, msix, deb, rpm",
+          "markdownDescription": "**Company / author: Windows installer publisher, msix publisher display name, deb Maintainer fallback, rpm Vendor.**  \n公司 / 作者：Windows 安装程序发布者、msix 发布者显示名、deb Maintainer 的后备值、rpm Vendor。\n\nDefault / 默认: `windows/runner/Runner.rc 中的 CompanyName`\n\nTargets / 目标: exe, msix, deb, rpm",
           "type": "string"
         },
         "support_url": {
@@ -1746,6 +1746,25 @@
             ]
           ],
           "markdownDescription": "**Extra arguments for flutter build macos.**  \n追加到 flutter build macos 的参数。\n\nTargets / 目标: macos, dmg, pkg"
+        },
+        "notarize": {
+          "additionalProperties": false,
+          "description": "How fpack waits for Apple's notary service. Every submission is recorded in \u003coutput\u003e/NOTARIZATION.md and notarization.json with copy-paste commands.",
+          "markdownDescription": "How fpack waits for Apple's notary service. Every submission is recorded in \u003coutput\u003e/NOTARIZATION.md and notarization.json with copy-paste commands.  \n如何等待 Apple 公证服务。每次提交都会记录到 \u003c输出目录\u003e/NOTARIZATION.md 和 notarization.json，其中有可直接复制的查询命令。",
+          "properties": {
+            "wait": {
+              "description": "true: stay attached until Apple answers (shows elapsed time; Ctrl-C stops waiting, the submission continues at Apple). false: submit, write NOTARIZATION.md / notarization.json and finish with status \"submitted\"; later run `fpack notarize finish` to staple. Default: true. Env: FPACK_NOTARIZE_WAIT. Targets: macos, dmg, pkg.",
+              "examples": [
+                false
+              ],
+              "markdownDescription": "**true: stay attached until Apple answers (shows elapsed time; Ctrl-C stops waiting, the submission continues at Apple). false: submit, write NOTARIZATION.md / notarization.json and finish with status \"submitted\"; later run `fpack notarize finish` to staple.**  \ntrue：一直等待 Apple 返回结果（显示已等待时间；按 Ctrl-C 只是停止等待，Apple 端会继续处理）。false：提交后写入 NOTARIZATION.md / notarization.json 并结束，状态为 “submitted”；之后运行 `fpack notarize finish` 装订。\n\nDefault / 默认: `true`\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_NOTARIZE_WAIT` · Flag: `--notarize-no-wait`",
+              "type": "boolean"
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
         },
         "pkg": {
           "additionalProperties": false,

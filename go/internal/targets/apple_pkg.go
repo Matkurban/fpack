@@ -310,13 +310,22 @@ func (*Pkg) Package(c *Context, in Inputs) (*Plan, error) {
 		pl.Ops = append(pl.Ops, Op{Desc: i18n.S("verify package signature", "校验安装包签名"), Cmd: cmd("pkgutil", "--check-signature", tmp)})
 		kind = "macOS installer (pkg, signed)"
 	}
-	if signed && c.Mac.Notarize {
-		n := notarizeOps(c, tmp)
-		pl.Ops = append(pl.Ops, n[0], n[1],
-			Op{Desc: i18n.S("Gatekeeper assessment", "Gatekeeper 校验"), Cmd: cmd("spctl", "--assess", "--type", "install", "--verbose=2", tmp), Optional: true})
-		kind = "macOS installer (pkg, signed, notarized)"
+	notarize := signed && c.Mac.Notarize
+	if notarize {
+		pl.Ops = append(pl.Ops, notarizeOp(c, "pkg", tmp, dst, ""))
+		if c.Config.NotarizeWait() {
+			pl.Ops = append(pl.Ops,
+				Op{Desc: i18n.S("staple notarization ticket", "装订公证票据"), Cmd: cmd("xcrun", "stapler", "staple", tmp)},
+				Op{Desc: i18n.S("Gatekeeper assessment", "Gatekeeper 校验"), Cmd: cmd("spctl", "--assess", "--type", "install", "--verbose=2", tmp), Optional: true})
+			kind = "macOS installer (pkg, signed, notarized)"
+		} else {
+			kind = "macOS installer (pkg, signed, notarization submitted)"
+		}
 	}
 	pl.Ops = append(pl.Ops, moveOp(c, tmp, dst))
+	if notarize {
+		pl.Ops = append(pl.Ops, notaryDoneOp(c, dst, c.Config.NotarizeWait()))
+	}
 	pl.Artifacts = []Artifact{{Path: dst, Kind: kind}}
 
 	switch {
