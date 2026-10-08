@@ -34,6 +34,7 @@
 - Real builds ignored `output.names` and the `pre_package` / `post_package` hooks (only `--dry-run` applied them).
 - `appimagetool` wrote the `.zsync` file (with `linux.appimage.update_information`) into the project root; it now runs in the staging directory and the `.zsync` lands next to the AppImage in the output directory (listed in the checksums).
 - The APK signature check verifies the configured schemes (v1 with `--min-sdk-version 21`, v4 with the `.idsig` file), so the summary note lists all of them.
+- A DMG left in the staging directory by a failed run (e.g. rejected by notarization) made the next `create-dmg` refuse ("Output file already exists"); the whole DMG stage is reset now.
 - The deb `copyright` file had a stray space after removing "©" from `app.copyright`.
 
 ## 1.0.0

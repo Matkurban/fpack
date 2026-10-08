@@ -748,7 +748,9 @@ func (*DMG) Package(c *Context, in Inputs) (*Plan, error) {
 	}
 
 	pl := &Plan{Ops: []Op{
-		resetDirOp(c, root),
+		// Reset the whole stage: a DMG left by an earlier failed run
+		// (e.g. rejected by notarization) would make create-dmg refuse.
+		resetDirOp(c, stage),
 		{Desc: i18n.S("copy app", "复制 App"), Cmd: cmd("ditto", app, staged)},
 	}}
 	if c.Mac.Enabled {

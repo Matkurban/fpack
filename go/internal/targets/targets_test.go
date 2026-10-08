@@ -751,3 +751,25 @@ func TestDebCopyright(t *testing.T) {
 		}
 	}
 }
+
+// A DMG left in the stage by an earlier failed run (e.g. a rejected
+// notarization) must be removed before create-dmg/hdiutil run again.
+func TestDMGResetsStage(t *testing.T) {
+	posixPaths(t)
+	c := newCtx(t, "darwin", "", "")
+	stale := filepath.Join(c.WorkDir, "stage", "dmg", "xue_hua_im-1.0.0+1-macos-universal.dmg")
+	if err := os.MkdirAll(filepath.Dir(stale), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(stale, []byte("old"), 0o644)
+	p := plan(t, &DMG{}, c)
+	if p.Ops[0].Fn == nil {
+		t.Fatalf("first op %q is not the stage reset", p.Ops[0].Desc)
+	}
+	if err := p.Ops[0].Fn(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Fatalf("stale DMG survived the stage reset (%s)", p.Ops[0].Desc)
+	}
+}
