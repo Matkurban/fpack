@@ -266,8 +266,10 @@ func (*APK) Locate(c *Context, predicted bool, since time.Time) (Inputs, error) 
 			in[key] = want
 			continue
 		}
-		if p := findNewest(want, since, nil); p != "" {
-			in[key] = p
+		// The exact path is deterministic for this flavor/mode/ABI. It may
+		// be older than this run when Gradle found the task up to date.
+		if exists(want) {
+			in[key] = want
 			continue
 		}
 		// Fallback for naming changes across Flutter versions.
@@ -384,8 +386,10 @@ func (*AAB) Locate(c *Context, predicted bool, since time.Time) (Inputs, error) 
 	if predicted {
 		return Inputs{"aab": want}, nil
 	}
-	if p := findNewest(want, since, nil); p != "" {
-		return Inputs{"aab": p}, nil
+	// Gradle leaves an up-to-date bundle untouched, so the exact path is
+	// accepted regardless of its age (flutter just succeeded).
+	if exists(want) {
+		return Inputs{"aab": want}, nil
 	}
 	fl := strings.ToLower(c.Flavor())
 	p := findNewest(filepath.Join(c.Project.Root, "build", "app", "outputs", "bundle", "*", "*.aab"), since, func(n string) bool {

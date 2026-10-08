@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache-dependency-path: go/go.sum
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: versions match
+        shell: bash
+        run: scripts/check_versions.sh
+
+      - name: go vet + test
+        working-directory: go
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: dart analyze + test
+        run: |
+          dart pub get
+          dart format --output=none --set-exit-if-changed lib bin test
+          dart analyze --fatal-infos
+          dart test
+
+      - name: cross-compile all binaries
+        if: runner.os == 'Linux'
+        shell: bash
+        run: scripts/build_binaries.sh
+
+  # End-to-end: activate from path and package a real Flutter app.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache-dependency-path: go/go.sum
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: system packages
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libgtk-3-dev rpm
+      - name: activate fpack from path
+        run: |
+          scripts/build_binaries.sh linux/amd64
+          dart pub global activate --source path .
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+      - name: package a sample app
+        run: |
+          flutter create --platforms=android,linux,web /tmp/sample
+          cd /tmp/sample
+          fpack doctor
+          fpack build --all --dry-run
+          fpack build web linux deb rpm
+          ls -la dist/*/

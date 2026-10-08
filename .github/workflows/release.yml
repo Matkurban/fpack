@@ -1,0 +1,62 @@
+name: Release
+
+# Push a tag like v0.1.0 (must equal pubspec.yaml version, lib/src/version.dart
+# and go/internal/version/version.go).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write # pub.dev automated publishing (OIDC)
+
+jobs:
+  binaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache-dependency-path: go/go.sum
+      - name: check tag
+        run: scripts/check_versions.sh "${GITHUB_REF_NAME}"
+      - name: cross-compile
+        run: OUT=release scripts/build_binaries.sh
+      - name: self-contained archive (offline path install)
+        run: scripts/package_dist.sh "release/fpack-${GITHUB_REF_NAME}.tar.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prebuilt
+          path: prebuilt/
+      - name: GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true
+
+  # Optional: publish to pub.dev. Enable automated publishing for this repo
+  # on pub.dev (Admin → Automated publishing → GitHub Actions, tag pattern v{{version}}).
+  # Whether the binaries are bundled is controlled by BUNDLE_BINARIES (see README:
+  # "pub.dev size tradeoff").
+  publish:
+    needs: binaries
+    if: ${{ vars.PUB_PUBLISH == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+      - uses: actions/download-artifact@v4
+        if: ${{ vars.BUNDLE_BINARIES == 'true' }}
+        with:
+          name: prebuilt
+          path: prebuilt/
+      - name: allow prebuilt/ in the package
+        if: ${{ vars.BUNDLE_BINARIES == 'true' }}
+        # A root .pubignore replaces .gitignore for pub, so repeat its rules
+        # minus prebuilt/.
+        run: |
+          grep -v '^prebuilt/\*$' .gitignore | grep -v '^!prebuilt/README.md$' > .pubignore
+          printf '.github/\n' >> .pubignore
+      - run: dart pub get
+      - run: dart pub publish --force
