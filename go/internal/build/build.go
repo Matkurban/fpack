@@ -78,6 +78,7 @@ type TargetResult struct {
 	Commands      []string         `json:"commands,omitempty"`
 
 	target    targets.Target
+	ifFails   []string // warnings shown only if the build fails (Issue.IfFails)
 	steps     []string
 	attempted bool
 	start     time.Time
@@ -191,6 +192,10 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 				w := issues[i].Msg
 				if issues[i].Fix != "" {
 					w += "\n" + i18n.S("fix: ", "解决：") + issues[i].Fix
+				}
+				if issues[i].IfFails && !c.DryRun {
+					tr.ifFails = append(tr.ifFails, w)
+					continue
 				}
 				tr.Warnings = append(tr.Warnings, w)
 			}
@@ -515,6 +520,11 @@ func runStep(ctx context.Context, c *targets.Context, u *ui.UI, st *stepState, l
 				tr.Hint = h.Text()
 			}
 			tr.duration = time.Since(tr.start)
+			// Possible causes found before the build (missing certificates, …).
+			for _, w := range tr.ifFails {
+				tr.Warnings = appendUnique(tr.Warnings, w)
+				u.Warn(strings.ReplaceAll(w, "\n", "\n    "))
+			}
 		}
 		printFailure(c, u, excerpt, h.Text(), hasHint, st.logPath)
 		return

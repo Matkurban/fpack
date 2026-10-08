@@ -701,7 +701,7 @@ func TestIPADistributionCertificateForOtherTeamOnly(t *testing.T) {
 			w = &is
 		}
 	}
-	if w == nil || w.Fatal || !strings.Contains(w.Msg, "ABCDE12345") || !strings.Contains(w.Msg, "OTHERTEAM1") || strings.Contains(w.Msg, "REVOKED001") {
+	if w == nil || w.Fatal || !w.IfFails || !strings.Contains(w.Msg, "ABCDE12345") || !strings.Contains(w.Msg, "OTHERTEAM1") || strings.Contains(w.Msg, "REVOKED001") {
 		t.Fatalf("%+v", w)
 	}
 	// development export doesn't need a distribution certificate

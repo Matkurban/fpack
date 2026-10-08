@@ -101,7 +101,14 @@ type Issue struct {
 	Fatal bool
 	Msg   string
 	Fix   string
+	// IfFails: a warning that only matters if the build then fails (e.g. a
+	// certificate missing locally that Xcode may still fetch through
+	// cloud-managed signing). Real builds show it only on failure;
+	// dry runs and doctor show it up front.
+	IfFails bool
 }
+
+func warnIfFails(msg, fix string) Issue { return Issue{Msg: msg, Fix: fix, IfFails: true} }
 
 func fatal(msg, fix string) Issue { return Issue{Fatal: true, Msg: msg, Fix: fix} }
 func warn(msg, fix string) Issue  { return Issue{Msg: msg, Fix: fix} }

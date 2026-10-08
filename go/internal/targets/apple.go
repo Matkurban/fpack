@@ -429,15 +429,15 @@ func (*IPA) Preflight(c *Context) []Issue {
 		needsDist := ios.ExportOptionsPlist == "" && m != "development" && m != "debugging"
 		switch {
 		case !dist && !dev:
-			out = append(out, warn(i18n.S("no iOS signing certificate in the keychain (Xcode may still create one with automatic signing)", "钥匙串中没有 iOS 签名证书（开启自动签名时 Xcode 可能会自动创建）"),
+			out = append(out, warnIfFails(i18n.S("no iOS signing certificate in the keychain (Xcode may still create one with automatic signing)", "钥匙串中没有 iOS 签名证书（开启自动签名时 Xcode 可能会自动创建）"),
 				i18n.S("Xcode → Settings → Accounts → your team → Manage Certificates", "Xcode → 设置 → Accounts → 你的团队 → Manage Certificates")))
 		case needsDist && !dist:
-			out = append(out, warn(i18n.F("export method %q needs an \"Apple Distribution\" certificate, only development certificates found", "导出方式 %q 需要 “Apple Distribution” 证书，但只找到开发证书", exportMethodLabel(m)),
+			out = append(out, warnIfFails(i18n.F("export method %q needs an \"Apple Distribution\" certificate, only development certificates found", "导出方式 %q 需要 “Apple Distribution” 证书，但只找到开发证书", exportMethodLabel(m)),
 				i18n.S("create one in Xcode → Settings → Accounts → Manage Certificates, or use: --export-method development", "在 Xcode → 设置 → Accounts → Manage Certificates 中创建，或使用：--export-method development")))
 		case needsDist && c.Project.IOSTeam != "":
 			// The (XXXXXXXXXX) suffix of a distribution certificate is its team.
 			if teams := distributionTeams(ids); !contains(teams, c.Project.IOSTeam) {
-				out = append(out, warn(i18n.F("export method %q needs an \"Apple Distribution\" certificate for team %s, but the keychain only has distribution certificates for: %s (Xcode may still use cloud-managed signing if your account has Admin/Account Holder access)", "导出方式 %q 需要团队 %s 的 “Apple Distribution” 证书，但钥匙串中只有以下团队的发布证书：%s（如果账号有 Admin/账户持有人权限，Xcode 可能仍会使用云端管理的签名）", exportMethodLabel(m), c.Project.IOSTeam, strings.Join(teams, ", ")),
+				out = append(out, warnIfFails(i18n.F("export method %q needs an \"Apple Distribution\" certificate for team %s, but the keychain only has distribution certificates for: %s (Xcode may still use cloud-managed signing if your account has Admin/Account Holder access)", "导出方式 %q 需要团队 %s 的 “Apple Distribution” 证书，但钥匙串中只有以下团队的发布证书：%s（如果账号有 Admin/账户持有人权限，Xcode 可能仍会使用云端管理的签名）", exportMethodLabel(m), c.Project.IOSTeam, strings.Join(teams, ", ")),
 					i18n.F("install the team's distribution certificate (.p12) or create one in Xcode → Settings → Accounts → %s → Manage Certificates; or use --export-method development / --no-codesign", "安装该团队的发布证书（.p12），或在 Xcode → 设置 → Accounts → %s → Manage Certificates 中创建；也可以使用 --export-method development / --no-codesign", c.Project.IOSTeam)))
 			}
 		}
