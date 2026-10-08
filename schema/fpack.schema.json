@@ -1,0 +1,2712 @@
+{
+  "$id": "https://raw.githubusercontent.com/Matkurban/fpack/main/schema/fpack.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "fpack configuration – https://github.com/Matkurban/fpack/blob/main/doc/configuration.md",
+  "properties": {
+    "android": {
+      "additionalProperties": false,
+      "description": "Android: apk, aab.",
+      "markdownDescription": "Android: apk, aab.  \nAndroid：apk、aab。",
+      "properties": {
+        "abis": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Target ABIs (--target-platform). Default: armeabi-v7a, arm64-v8a, x86_64. Targets: apk, aab.",
+          "examples": [
+            [
+              "arm64-v8a",
+              "armeabi-v7a"
+            ]
+          ],
+          "markdownDescription": "**Target ABIs (--target-platform).**  \n目标 ABI（--target-platform）。\n\nDefault / 默认: `armeabi-v7a、arm64-v8a、x86_64`\n\nTargets / 目标: apk, aab · Flag: `--abis`"
+        },
+        "extra_args": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Extra arguments for flutter build apk/appbundle. Targets: apk, aab.",
+          "examples": [
+            [
+              "--android-skip-build-dependency-validation"
+            ]
+          ],
+          "markdownDescription": "**Extra arguments for flutter build apk/appbundle.**  \n追加到 flutter build apk/appbundle 的参数。\n\nTargets / 目标: apk, aab"
+        },
+        "project_args": {
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          },
+          "description": "Gradle project properties (flutter -P key=value), readable in build.gradle with project.findProperty (e.g. to toggle minify/R8). Targets: apk, aab.",
+          "examples": [
+            {
+              "minify": "true"
+            }
+          ],
+          "markdownDescription": "**Gradle project properties (flutter -P key=value), readable in build.gradle with project.findProperty (e.g. to toggle minify/R8).**  \nGradle 项目属性（flutter -P key=value），build.gradle 中可用 project.findProperty 读取（例如开关 minify/R8）。\n\nTargets / 目标: apk, aab",
+          "type": "object"
+        },
+        "signing": {
+          "additionalProperties": false,
+          "description": "Release signing, injected without editing Gradle files. Keep passwords in environment variables.",
+          "markdownDescription": "Release signing, injected without editing Gradle files. Keep passwords in environment variables.  \n发布签名：通过注入方式生效，不修改 Gradle 文件。密码请放在环境变量中。",
+          "properties": {
+            "key_alias": {
+              "description": "Key alias. Env: FPACK_ANDROID_KEY_ALIAS. Targets: apk, aab.",
+              "examples": [
+                "upload"
+              ],
+              "markdownDescription": "**Key alias.**  \nkey 别名。\n\nTargets / 目标: apk, aab · Env: `FPACK_ANDROID_KEY_ALIAS`",
+              "type": "string"
+            },
+            "key_password": {
+              "description": "Key password. Default: store_password. Env: FPACK_ANDROID_KEY_PASSWORD. Targets: apk, aab.",
+              "examples": [
+                "${KEY_PASSWORD}"
+              ],
+              "markdownDescription": "**Key password.**  \nkey 密码。\n\nDefault / 默认: `store_password`\n\nTargets / 目标: apk, aab · Env: `FPACK_ANDROID_KEY_PASSWORD`",
+              "type": "string"
+            },
+            "store_file": {
+              "description": "Keystore file (.jks/.keystore). FPACK_ANDROID_KEYSTORE_BASE64 can provide it in CI. Default: none (android/key.properties of the project is used). Env: FPACK_ANDROID_KEYSTORE. Targets: apk, aab.",
+              "examples": [
+                "~/keys/upload.jks"
+              ],
+              "markdownDescription": "**Keystore file (.jks/.keystore). FPACK_ANDROID_KEYSTORE_BASE64 can provide it in CI.**  \nkeystore 文件（.jks/.keystore）。CI 中可用 FPACK_ANDROID_KEYSTORE_BASE64 提供。\n\nDefault / 默认: `无（使用项目自己的 android/key.properties）`\n\nTargets / 目标: apk, aab · Env: `FPACK_ANDROID_KEYSTORE`",
+              "type": "string"
+            },
+            "store_password": {
+              "description": "Keystore password. Env: FPACK_ANDROID_KEYSTORE_PASSWORD. Targets: apk, aab.",
+              "examples": [
+                "${KEYSTORE_PASSWORD}"
+              ],
+              "markdownDescription": "**Keystore password.**  \nkeystore 密码。\n\nTargets / 目标: apk, aab · Env: `FPACK_ANDROID_KEYSTORE_PASSWORD`",
+              "type": "string"
+            },
+            "v1": {
+              "description": "APK signature scheme v1 (JAR signing, needed below Android 7). Setting any of v1-v4 makes fpack re-sign the APKs with apksigner using android.signing. Default: apksigner default (on when minSdk \u003c 24). Targets: apk.",
+              "examples": [
+                true
+              ],
+              "markdownDescription": "**APK signature scheme v1 (JAR signing, needed below Android 7). Setting any of v1-v4 makes fpack re-sign the APKs with apksigner using android.signing.**  \nAPK v1 签名（JAR 签名，Android 7 以下需要）。设置 v1-v4 任意一项时，fpack 会用 apksigner 和 android.signing 重新签名 APK。\n\nDefault / 默认: `apksigner 默认（minSdk \u003c 24 时开启）`\n\nTargets / 目标: apk",
+              "type": "boolean"
+            },
+            "v2": {
+              "description": "APK signature scheme v2 (Android 7+). Default: true. Targets: apk.",
+              "examples": [
+                true
+              ],
+              "markdownDescription": "**APK signature scheme v2 (Android 7+).**  \nAPK v2 签名（Android 7+）。\n\nDefault / 默认: `true`\n\nTargets / 目标: apk",
+              "type": "boolean"
+            },
+            "v3": {
+              "description": "APK signature scheme v3 (Android 9+, key rotation). Default: true. Targets: apk.",
+              "examples": [
+                true
+              ],
+              "markdownDescription": "**APK signature scheme v3 (Android 9+, key rotation).**  \nAPK v3 签名（Android 9+，支持密钥轮换）。\n\nDefault / 默认: `true`\n\nTargets / 目标: apk",
+              "type": "boolean"
+            },
+            "v4": {
+              "description": "APK signature scheme v4 (incremental install, Android 11+); writes \u003capk\u003e.idsig next to the APK. Default: false. Targets: apk.",
+              "examples": [
+                true
+              ],
+              "markdownDescription": "**APK signature scheme v4 (incremental install, Android 11+); writes \u003capk\u003e.idsig next to the APK.**  \nAPK v4 签名（增量安装，Android 11+）；会在 APK 旁生成 \u003capk\u003e.idsig。\n\nDefault / 默认: `false`\n\nTargets / 目标: apk",
+              "type": "boolean"
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "split_per_abi": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "enum": [
+                "true",
+                "false",
+                "both",
+                "universal",
+                "split"
+              ],
+              "type": "string"
+            }
+          ],
+          "description": "false = one universal APK, true = one APK per ABI, both = universal + per-ABI. Default: false. Env: FPACK_SPLIT_PER_ABI. Targets: apk.",
+          "examples": [
+            "both"
+          ],
+          "markdownDescription": "**false = one universal APK, true = one APK per ABI, both = universal + per-ABI.**  \nfalse：一个通用 APK；true：每个 ABI 一个 APK；both：两者都要。\n\nDefault / 默认: `false`\n\nTargets / 目标: apk · Env: `FPACK_SPLIT_PER_ABI` · Flag: `--split-per-abi`"
+        }
+      },
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "app": {
+      "additionalProperties": false,
+      "description": "Application metadata used by installers and packages.",
+      "markdownDescription": "Application metadata used by installers and packages.  \n应用信息：用于安装程序、软件包元数据。",
+      "properties": {
+        "copyright": {
+          "description": "Copyright line: Inno Setup AppCopyright and version info, deb copyright file. Default: © \u003cyear\u003e \u003cpublisher\u003e. Targets: exe, deb, rpm.",
+          "examples": [
+            "© 2026 XueHua Tech"
+          ],
+          "markdownDescription": "**Copyright line: Inno Setup AppCopyright and version info, deb copyright file.**  \n版权信息：Inno Setup 的 AppCopyright 与版本信息、deb 的 copyright 文件。\n\nDefault / 默认: `© \u003c年份\u003e \u003c发布者\u003e`\n\nTargets / 目标: exe, deb, rpm",
+          "type": "string"
+        },
+        "description": {
+          "description": "Short description: deb Description, rpm Summary, .desktop Comment=, msix description. Default: pubspec description. Targets: deb, rpm, appimage, msix.",
+          "examples": [
+            "A fast and secure messenger"
+          ],
+          "markdownDescription": "**Short description: deb Description, rpm Summary, .desktop Comment=, msix description.**  \n简短描述：deb 的 Description、rpm 的 Summary、.desktop 的 Comment=、msix 描述。\n\nDefault / 默认: `pubspec 的 description`\n\nTargets / 目标: deb, rpm, appimage, msix",
+          "type": "string"
+        },
+        "display_name": {
+          "description": "Human-readable app name: installer title, Start menu, .desktop Name=. Default: macOS PRODUCT_NAME, else pubspec name. Targets: exe, msix, pkg, deb, rpm, appimage, linux.",
+          "examples": [
+            "雪花IM"
+          ],
+          "markdownDescription": "**Human-readable app name: installer title, Start menu, .desktop Name=.**  \n给人看的应用名：安装程序标题、开始菜单、.desktop 的 Name=。\n\nDefault / 默认: `macOS 的 PRODUCT_NAME，否则为 pubspec 的 name`\n\nTargets / 目标: exe, msix, pkg, deb, rpm, appimage, linux",
+          "type": "string"
+        },
+        "homepage": {
+          "description": "Website: Inno Setup publisher URL, deb Homepage, rpm URL. Targets: exe, deb, rpm.",
+          "examples": [
+            "https://xuehua.example.com"
+          ],
+          "markdownDescription": "**Website: Inno Setup publisher URL, deb Homepage, rpm URL.**  \n官网：Inno Setup 发布者网址、deb 的 Homepage、rpm 的 URL。\n\nTargets / 目标: exe, deb, rpm",
+          "pattern": "^(https?://|\\$\\{)",
+          "type": "string"
+        },
+        "identifier": {
+          "description": "Reverse-DNS app id: Inno Setup AppId seed, msix identity name, pkg identifier fallback. Default: Linux APPLICATION_ID, Android applicationId or iOS bundle id. Targets: exe, msix, pkg, appimage.",
+          "examples": [
+            "com.xuehua.im"
+          ],
+          "markdownDescription": "**Reverse-DNS app id: Inno Setup AppId seed, msix identity name, pkg identifier fallback.**  \n反向域名格式的应用 ID：Inno Setup AppId 的种子、msix identity name、pkg identifier 的后备值。\n\nDefault / 默认: `Linux APPLICATION_ID、Android applicationId 或 iOS bundle id`\n\nTargets / 目标: exe, msix, pkg, appimage",
+          "type": "string"
+        },
+        "license": {
+          "description": "License (SPDX id): rpm License, deb copyright file. Default: Proprietary. Targets: rpm, deb.",
+          "examples": [
+            "MIT"
+          ],
+          "markdownDescription": "**License (SPDX id): rpm License, deb copyright file.**  \n许可证（SPDX 标识）：rpm 的 License、deb 的 copyright 文件。\n\nDefault / 默认: `Proprietary`\n\nTargets / 目标: rpm, deb",
+          "type": "string"
+        },
+        "maintainer": {
+          "description": "\"Name \u003cemail\u003e\" for deb Maintainer and rpm Packager. Default: app.publisher. Targets: deb, rpm.",
+          "examples": [
+            "XueHua Team \u003cdev@xuehua.example.com\u003e"
+          ],
+          "markdownDescription": "**\"Name \u003cemail\u003e\" for deb Maintainer and rpm Packager.**  \ndeb Maintainer 与 rpm Packager 字段，格式 “名字 \u003c邮箱\u003e”。\n\nDefault / 默认: `app.publisher`\n\nTargets / 目标: deb, rpm",
+          "type": "string"
+        },
+        "name": {
+          "description": "Base name of artifact files ({app} in output.name). Default: pubspec name. Targets: all.",
+          "examples": [
+            "xue_hua_im"
+          ],
+          "markdownDescription": "**Base name of artifact files ({app} in output.name).**  \n产物文件名前缀（output.name 中的 {app}）。\n\nDefault / 默认: `pubspec 的 name`\n\nTargets / 目标: all",
+          "type": "string"
+        },
+        "publisher": {
+          "description": "Company / author: Windows installer publisher, msix publisher display name, deb Maintainer fallback, rpm Vendor. Targets: exe, msix, deb, rpm.",
+          "examples": [
+            "XueHua Tech"
+          ],
+          "markdownDescription": "**Company / author: Windows installer publisher, msix publisher display name, deb Maintainer fallback, rpm Vendor.**  \n公司 / 作者：Windows 安装程序发布者、msix 发布者显示名、deb Maintainer 的后备值、rpm Vendor。\n\nTargets / 目标: exe, msix, deb, rpm",
+          "type": "string"
+        },
+        "support_url": {
+          "description": "Support link (Windows \"Apps \u0026 features\"). Default: app.homepage. Targets: exe.",
+          "examples": [
+            "https://xuehua.example.com/support"
+          ],
+          "markdownDescription": "**Support link (Windows \"Apps \u0026 features\").**  \n技术支持链接（Windows“应用和功能”中显示）。\n\nDefault / 默认: `app.homepage`\n\nTargets / 目标: exe",
+          "pattern": "^(https?://|\\$\\{)",
+          "type": "string"
+        }
+      },
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "build": {
+      "additionalProperties": false,
+      "description": "Options for every flutter build.",
+      "markdownDescription": "Options for every flutter build.  \n所有 flutter build 共用的选项。",
+      "properties": {
+        "build_name": {
+          "description": "Version name ({version}). Default: pubspec version before +. Env: FPACK_BUILD_NAME. Targets: all.",
+          "examples": [
+            "1.2.0"
+          ],
+          "markdownDescription": "**Version name ({version}).**  \n版本名（{version}）。\n\nDefault / 默认: `pubspec 版本号 + 之前的部分`\n\nTargets / 目标: all · Env: `FPACK_BUILD_NAME` · Flag: `--build-name`",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "build_number": {
+          "description": "Build number ({build}). Default: pubspec version after +. Env: FPACK_BUILD_NUMBER. Targets: all.",
+          "examples": [
+            42
+          ],
+          "markdownDescription": "**Build number ({build}).**  \n构建号（{build}）。\n\nDefault / 默认: `pubspec 版本号 + 之后的部分`\n\nTargets / 目标: all · Env: `FPACK_BUILD_NUMBER` · Flag: `--build-number`",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "dart_define": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "items": {
+                "pattern": "^[^=]+=.*$",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "--dart-define values (map or list of KEY=VALUE). Targets: all.",
+          "examples": [
+            {
+              "API_URL": "https://api.example.com"
+            }
+          ],
+          "markdownDescription": "**--dart-define values (map or list of KEY=VALUE).**  \n--dart-define 值（map 或 KEY=VALUE 列表）。\n\nTargets / 目标: all · Flag: `--dart-define`"
+        },
+        "dart_define_from_file": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "--dart-define-from-file files (.json or .env). Targets: all.",
+          "examples": [
+            [
+              "config/prod.json"
+            ]
+          ],
+          "markdownDescription": "**--dart-define-from-file files (.json or .env).**  \n--dart-define-from-file 文件（.json 或 .env）。\n\nTargets / 目标: all · Flag: `--dart-define-from-file`"
+        },
+        "extra_args": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Extra arguments for every flutter build (also: everything after -- on the command line). Targets: all.",
+          "examples": [
+            [
+              "--no-pub"
+            ]
+          ],
+          "markdownDescription": "**Extra arguments for every flutter build (also: everything after -- on the command line).**  \n追加到每个 flutter build 的参数（命令行 -- 之后的参数同理）。\n\nTargets / 目标: all"
+        },
+        "flavor": {
+          "description": "Flavor / Xcode scheme (--flavor); appears in file names as {flavor}. Env: FPACK_FLAVOR. Targets: apk, aab, ipa, macos, dmg, pkg.",
+          "examples": [
+            "prod"
+          ],
+          "markdownDescription": "**Flavor / Xcode scheme (--flavor); appears in file names as {flavor}.**  \nflavor / Xcode scheme（--flavor）；文件名中的 {flavor}。\n\nTargets / 目标: apk, aab, ipa, macos, dmg, pkg · Env: `FPACK_FLAVOR` · Flag: `--flavor`",
+          "type": "string"
+        },
+        "mode": {
+          "description": "Build mode. Default: release. Env: FPACK_MODE. Targets: all.",
+          "enum": [
+            "release",
+            "profile",
+            "debug"
+          ],
+          "examples": [
+            "release"
+          ],
+          "markdownDescription": "**Build mode.**  \n构建模式。\n\nDefault / 默认: `release`\n\nTargets / 目标: all · Env: `FPACK_MODE` · Flag: `--mode`",
+          "type": "string"
+        },
+        "obfuscate": {
+          "description": "Obfuscate Dart code; symbols go to split_debug_info (default \u003coutput\u003e/debug-info/\u003cplatform\u003e). Default: false. Env: FPACK_OBFUSCATE. Targets: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage.",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "**Obfuscate Dart code; symbols go to split_debug_info (default \u003coutput\u003e/debug-info/\u003cplatform\u003e).**  \n混淆 Dart 代码；符号文件保存到 split_debug_info（默认 \u003c输出目录\u003e/debug-info/\u003c平台\u003e）。\n\nDefault / 默认: `false`\n\nTargets / 目标: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage · Env: `FPACK_OBFUSCATE` · Flag: `--obfuscate`",
+          "type": "boolean"
+        },
+        "split_debug_info": {
+          "description": "Directory for Dart debug symbols (--split-debug-info). Default: \u003coutput\u003e/debug-info/\u003cplatform\u003e when obfuscating. Targets: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage.",
+          "examples": [
+            "build/symbols"
+          ],
+          "markdownDescription": "**Directory for Dart debug symbols (--split-debug-info).**  \nDart 调试符号目录（--split-debug-info）。\n\nDefault / 默认: `混淆时为 \u003c输出目录\u003e/debug-info/\u003c平台\u003e`\n\nTargets / 目标: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage · Flag: `--split-debug-info`",
+          "type": "string"
+        },
+        "target": {
+          "description": "Entry point (flutter -t). Default: lib/main.dart. Env: FPACK_ENTRY. Targets: all.",
+          "examples": [
+            "lib/main_prod.dart"
+          ],
+          "markdownDescription": "**Entry point (flutter -t).**  \n入口文件（flutter -t）。\n\nDefault / 默认: `lib/main.dart`\n\nTargets / 目标: all · Env: `FPACK_ENTRY` · Flag: `-t, --target`",
+          "type": "string"
+        },
+        "targets": {
+          "anyOf": [
+            {
+              "items": {
+                "enum": [
+                  "apk",
+                  "aab",
+                  "ipa",
+                  "macos",
+                  "dmg",
+                  "pkg",
+                  "windows",
+                  "exe",
+                  "msix",
+                  "linux",
+                  "deb",
+                  "rpm",
+                  "appimage",
+                  "web"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "enum": [
+                "apk",
+                "aab",
+                "ipa",
+                "macos",
+                "dmg",
+                "pkg",
+                "windows",
+                "exe",
+                "msix",
+                "linux",
+                "deb",
+                "rpm",
+                "appimage",
+                "web"
+              ],
+              "type": "string"
+            }
+          ],
+          "description": "Targets built by `fpack build` without arguments. Targets: —.",
+          "examples": [
+            [
+              "apk",
+              "aab",
+              "ipa",
+              "dmg"
+            ]
+          ],
+          "markdownDescription": "**Targets built by `fpack build` without arguments.**  \n执行 `fpack build` 且不带目标时构建的目标。\n\nTargets / 目标: —"
+        },
+        "tree_shake_icons": {
+          "description": "false = --no-tree-shake-icons (keep all icon font glyphs). Default: true. Targets: all.",
+          "examples": [
+            false
+          ],
+          "markdownDescription": "**false = --no-tree-shake-icons (keep all icon font glyphs).**  \nfalse 时传 --no-tree-shake-icons（保留全部图标字体字形）。\n\nDefault / 默认: `true`\n\nTargets / 目标: all",
+          "type": "boolean"
+        }
+      },
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "flutter": {
+      "additionalProperties": false,
+      "description": "Flutter SDK selection.",
+      "markdownDescription": "Flutter SDK selection.  \nFlutter SDK 选择。",
+      "properties": {
+        "sdk": {
+          "description": "Flutter SDK root to use. Default: FLUTTER_ROOT, fvm, PATH. Env: FPACK_FLUTTER. Targets: all.",
+          "examples": [
+            "~/fvm/versions/stable"
+          ],
+          "markdownDescription": "**Flutter SDK root to use.**  \n使用的 Flutter SDK 根目录。\n\nDefault / 默认: `FLUTTER_ROOT、fvm、PATH 中的 flutter`\n\nTargets / 目标: all · Env: `FPACK_FLUTTER` · Flag: `--flutter`",
+          "type": "string"
+        }
+      },
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "hooks": {
+      "additionalProperties": false,
+      "description": "Shell commands run around the build (working directory: project root).",
+      "markdownDescription": "Shell commands run around the build (working directory: project root).  \n构建前后执行的 shell 命令（工作目录：项目根目录）。",
+      "properties": {
+        "post_build": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Commands run once after all targets; FPACK_ARTIFACTS lists the produced files (one per line), FPACK_SUCCESS is true/false. Targets: all.",
+          "examples": [
+            [
+              "./scripts/upload.sh"
+            ]
+          ],
+          "markdownDescription": "**Commands run once after all targets; FPACK_ARTIFACTS lists the produced files (one per line), FPACK_SUCCESS is true/false.**  \n全部目标完成后执行一次；FPACK_ARTIFACTS 为产物列表（每行一个），FPACK_SUCCESS 为 true/false。\n\nTargets / 目标: all"
+        },
+        "post_package": {
+          "additionalProperties": false,
+          "description": "Per target, after its artifacts exist; FPACK_ARTIFACT (first file) and FPACK_ARTIFACTS are set. Targets: all.",
+          "examples": [
+            {
+              "dmg": [
+                "./scripts/upload_dmg.sh \"$FPACK_ARTIFACT\""
+              ]
+            }
+          ],
+          "markdownDescription": "**Per target, after its artifacts exist; FPACK_ARTIFACT (first file) and FPACK_ARTIFACTS are set.**  \n按目标在产物生成后执行；提供 FPACK_ARTIFACT（第一个产物）和 FPACK_ARTIFACTS。\n\nTargets / 目标: all",
+          "properties": {
+            "aab": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "apk": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "appimage": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "deb": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "dmg": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "exe": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "ipa": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "linux": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "macos": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "msix": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "pkg": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "rpm": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "web": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "windows": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "pre_build": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Commands run once before the first flutter build; a failure stops the build. Targets: all.",
+          "examples": [
+            [
+              "dart run build_runner build --delete-conflicting-outputs"
+            ]
+          ],
+          "markdownDescription": "**Commands run once before the first flutter build; a failure stops the build.**  \n第一次 flutter build 之前执行一次；失败则停止构建。\n\nTargets / 目标: all"
+        },
+        "pre_package": {
+          "additionalProperties": false,
+          "description": "Per target (target → commands), before its packaging steps; FPACK_TARGET is set. Targets: all.",
+          "examples": [
+            {
+              "apk": [
+                "./scripts/check_size.sh"
+              ]
+            }
+          ],
+          "markdownDescription": "**Per target (target → commands), before its packaging steps; FPACK_TARGET is set.**  \n按目标（目标 → 命令）在打包步骤之前执行；提供 FPACK_TARGET。\n\nTargets / 目标: all",
+          "properties": {
+            "aab": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "apk": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "appimage": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "deb": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "dmg": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "exe": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "ipa": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "linux": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "macos": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "msix": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "pkg": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "rpm": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "web": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "windows": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "ios": {
+      "additionalProperties": false,
+      "description": "iOS: ipa. Setting any of team_id … export_options makes fpack generate ExportOptions.plist.",
+      "markdownDescription": "iOS: ipa. Setting any of team_id … export_options makes fpack generate ExportOptions.plist.  \niOS：ipa。设置 team_id … export_options 中任意一项时，fpack 会自动生成 ExportOptions.plist。",
+      "properties": {
+        "codesign": {
+          "description": "false = unsigned IPA (Payload/ zip) for re-signing later. Default: true. Env: FPACK_IOS_CODESIGN. Targets: ipa.",
+          "examples": [
+            false
+          ],
+          "markdownDescription": "**false = unsigned IPA (Payload/ zip) for re-signing later.**  \nfalse：构建未签名 IPA（Payload/ 结构），用于之后重签名。\n\nDefault / 默认: `true`\n\nTargets / 目标: ipa · Env: `FPACK_IOS_CODESIGN` · Flag: `--no-codesign`",
+          "type": "boolean"
+        },
+        "destination": {
+          "description": "export = write the IPA locally, upload = send it to App Store Connect (ExportOptions destination). Default: export. Targets: ipa.",
+          "enum": [
+            "export",
+            "upload"
+          ],
+          "examples": [
+            "upload"
+          ],
+          "markdownDescription": "**export = write the IPA locally, upload = send it to App Store Connect (ExportOptions destination).**  \nexport 为本地导出 IPA，upload 为直接上传到 App Store Connect（ExportOptions 的 destination）。\n\nDefault / 默认: `export`\n\nTargets / 目标: ipa",
+          "type": "string"
+        },
+        "export_method": {
+          "description": "IPA export method. Default: app-store-connect. Env: FPACK_IOS_EXPORT_METHOD. Targets: ipa.",
+          "enum": [
+            "app-store-connect",
+            "app-store",
+            "release-testing",
+            "ad-hoc",
+            "development",
+            "debugging",
+            "enterprise"
+          ],
+          "examples": [
+            "ad-hoc"
+          ],
+          "markdownDescription": "**IPA export method.**  \nIPA 导出方式。\n\nDefault / 默认: `app-store-connect`\n\nTargets / 目标: ipa · Env: `FPACK_IOS_EXPORT_METHOD` · Flag: `--export-method`",
+          "type": "string"
+        },
+        "export_options": {
+          "description": "Any other ExportOptions.plist keys (added as-is). Targets: ipa.",
+          "examples": [
+            {
+              "iCloudContainerEnvironment": "Production"
+            }
+          ],
+          "markdownDescription": "**Any other ExportOptions.plist keys (added as-is).**  \n其他任意 ExportOptions.plist 键（原样写入）。\n\nTargets / 目标: ipa",
+          "type": "object"
+        },
+        "export_options_plist": {
+          "description": "Your own ExportOptions.plist; wins over every generated option below. Env: FPACK_IOS_EXPORT_OPTIONS_PLIST. Targets: ipa.",
+          "examples": [
+            "ios/ExportOptions.plist"
+          ],
+          "markdownDescription": "**Your own ExportOptions.plist; wins over every generated option below.**  \n自己的 ExportOptions.plist；优先于下面所有生成选项。\n\nTargets / 目标: ipa · Env: `FPACK_IOS_EXPORT_OPTIONS_PLIST` · Flag: `--export-options-plist`",
+          "type": "string"
+        },
+        "extra_args": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Extra arguments for flutter build ipa. Targets: ipa.",
+          "examples": [
+            [
+              "--no-tree-shake-icons"
+            ]
+          ],
+          "markdownDescription": "**Extra arguments for flutter build ipa.**  \n追加到 flutter build ipa 的参数。\n\nTargets / 目标: ipa"
+        },
+        "manage_app_version_and_build_number": {
+          "description": "manageAppVersionAndBuildNumber: let App Store Connect bump the build number. Default: true. Targets: ipa.",
+          "examples": [
+            false
+          ],
+          "markdownDescription": "**manageAppVersionAndBuildNumber: let App Store Connect bump the build number.**  \nmanageAppVersionAndBuildNumber：是否由 App Store Connect 自动管理版本号/构建号。\n\nDefault / 默认: `true`\n\nTargets / 目标: ipa",
+          "type": "boolean"
+        },
+        "provisioning_profiles": {
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          },
+          "description": "provisioningProfiles: bundle id → profile name or UUID (include extensions). Targets: ipa.",
+          "examples": [
+            {
+              "com.xuehua.im": "XueHua AdHoc"
+            }
+          ],
+          "markdownDescription": "**provisioningProfiles: bundle id → profile name or UUID (include extensions).**  \nprovisioningProfiles：bundle id → 描述文件名称或 UUID（扩展也要列出）。\n\nTargets / 目标: ipa",
+          "type": "object"
+        },
+        "signing_certificate": {
+          "description": "signingCertificate (manual signing), e.g. \"Apple Distribution\". Targets: ipa.",
+          "examples": [
+            "Apple Distribution"
+          ],
+          "markdownDescription": "**signingCertificate (manual signing), e.g. \"Apple Distribution\".**  \nsigningCertificate（手动签名），例如 \"Apple Distribution\"。\n\nTargets / 目标: ipa",
+          "type": "string"
+        },
+        "signing_style": {
+          "description": "signingStyle: automatic or manual (manual needs provisioning_profiles). Default: automatic. Targets: ipa.",
+          "enum": [
+            "automatic",
+            "manual"
+          ],
+          "examples": [
+            "manual"
+          ],
+          "markdownDescription": "**signingStyle: automatic or manual (manual needs provisioning_profiles).**  \nsigningStyle：automatic 或 manual（manual 需要 provisioning_profiles）。\n\nDefault / 默认: `automatic`\n\nTargets / 目标: ipa",
+          "type": "string"
+        },
+        "strip_swift_symbols": {
+          "description": "stripSwiftSymbols. Default: true. Targets: ipa.",
+          "examples": [
+            false
+          ],
+          "markdownDescription": "**stripSwiftSymbols.**  \nstripSwiftSymbols。\n\nDefault / 默认: `true`\n\nTargets / 目标: ipa",
+          "type": "boolean"
+        },
+        "team_id": {
+          "description": "Apple team ID (teamID). Default: DEVELOPMENT_TEAM of the Xcode project. Targets: ipa.",
+          "examples": [
+            "ABCDE12345"
+          ],
+          "markdownDescription": "**Apple team ID (teamID).**  \nApple 团队 ID（teamID）。\n\nDefault / 默认: `Xcode 工程中的 DEVELOPMENT_TEAM`\n\nTargets / 目标: ipa",
+          "type": "string"
+        },
+        "thinning": {
+          "description": "thinning for ad-hoc/development/enterprise exports. Default: \u003cnone\u003e. Targets: ipa.",
+          "examples": [
+            "\u003cthin-for-all-variants\u003e"
+          ],
+          "markdownDescription": "**thinning for ad-hoc/development/enterprise exports.**  \nad-hoc/development/enterprise 导出时的瘦身（thinning）选项。\n\nDefault / 默认: `\u003cnone\u003e`\n\nTargets / 目标: ipa",
+          "type": "string"
+        },
+        "upload_symbols": {
+          "description": "uploadSymbols for App Store Connect. Default: true. Targets: ipa.",
+          "examples": [
+            false
+          ],
+          "markdownDescription": "**uploadSymbols for App Store Connect.**  \nuploadSymbols：是否上传符号表到 App Store Connect。\n\nDefault / 默认: `true`\n\nTargets / 目标: ipa",
+          "type": "boolean"
+        }
+      },
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "linux": {
+      "additionalProperties": false,
+      "description": "Linux: linux (tar.gz), deb, rpm, appimage.",
+      "markdownDescription": "Linux: linux (tar.gz), deb, rpm, appimage.  \nLinux：linux（tar.gz）、deb、rpm、appimage。",
+      "properties": {
+        "appimage": {
+          "additionalProperties": false,
+          "description": "AppImage.",
+          "markdownDescription": "AppImage.  \nAppImage。",
+          "properties": {
+            "extra_args": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Extra arguments for appimagetool. Targets: appimage.",
+              "examples": [
+                [
+                  "--comp",
+                  "zstd"
+                ]
+              ],
+              "markdownDescription": "**Extra arguments for appimagetool.**  \n追加到 appimagetool 的参数。\n\nTargets / 目标: appimage"
+            },
+            "update_information": {
+              "description": "Embedded update information (AppImageUpdate). Targets: appimage.",
+              "examples": [
+                "gh-releases-zsync|xuehua|im|latest|*x86_64.AppImage.zsync"
+              ],
+              "markdownDescription": "**Embedded update information (AppImageUpdate).**  \n内嵌更新信息（供 AppImageUpdate 使用）。\n\nTargets / 目标: appimage",
+              "type": "string"
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "appimagetool": {
+          "description": "Path to appimagetool. Default: appimagetool on PATH. Targets: appimage.",
+          "examples": [
+            "~/.local/bin/appimagetool"
+          ],
+          "markdownDescription": "**Path to appimagetool.**  \nappimagetool 路径。\n\nDefault / 默认: `PATH 中的 appimagetool`\n\nTargets / 目标: appimage",
+          "type": "string"
+        },
+        "categories": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "freedesktop.org menu categories (.desktop Categories=). Default: [Utility]. Targets: deb, rpm, appimage.",
+          "examples": [
+            [
+              "Network",
+              "InstantMessaging"
+            ]
+          ],
+          "markdownDescription": "**freedesktop.org menu categories (.desktop Categories=).**  \nfreedesktop.org 菜单分类（.desktop 的 Categories=）。\n\nDefault / 默认: `[Utility]`\n\nTargets / 目标: deb, rpm, appimage"
+        },
+        "deb": {
+          "additionalProperties": false,
+          "description": "Debian/Ubuntu package.",
+          "markdownDescription": "Debian/Ubuntu package.  \nDebian/Ubuntu 软件包。",
+          "properties": {
+            "conflicts": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Conflicts. Targets: deb.",
+              "examples": [
+                [
+                  "xuehua-im-beta"
+                ]
+              ],
+              "markdownDescription": "**Conflicts.**  \nConflicts（冲突）。\n\nTargets / 目标: deb"
+            },
+            "depends": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Depends. Default: [libgtk-3-0 | libgtk-3-0t64]. Targets: deb.",
+              "examples": [
+                [
+                  "libgtk-3-0",
+                  "libsecret-1-0"
+                ]
+              ],
+              "markdownDescription": "**Depends.**  \nDepends（依赖）。\n\nDefault / 默认: `[libgtk-3-0 | libgtk-3-0t64]`\n\nTargets / 目标: deb"
+            },
+            "postinst": {
+              "description": "Maintainer script run after installing. Targets: deb.",
+              "examples": [
+                "linux/packaging/postinst"
+              ],
+              "markdownDescription": "**Maintainer script run after installing.**  \n安装后执行的维护脚本。\n\nTargets / 目标: deb",
+              "type": "string"
+            },
+            "postrm": {
+              "description": "Maintainer script run after removal. Targets: deb.",
+              "examples": [
+                "linux/packaging/postrm"
+              ],
+              "markdownDescription": "**Maintainer script run after removal.**  \n卸载后执行的维护脚本。\n\nTargets / 目标: deb",
+              "type": "string"
+            },
+            "preinst": {
+              "description": "Maintainer script run before unpacking. Targets: deb.",
+              "examples": [
+                "linux/packaging/preinst"
+              ],
+              "markdownDescription": "**Maintainer script run before unpacking.**  \n解包前执行的维护脚本。\n\nTargets / 目标: deb",
+              "type": "string"
+            },
+            "prerm": {
+              "description": "Maintainer script run before removal. Targets: deb.",
+              "examples": [
+                "linux/packaging/prerm"
+              ],
+              "markdownDescription": "**Maintainer script run before removal.**  \n卸载前执行的维护脚本。\n\nTargets / 目标: deb",
+              "type": "string"
+            },
+            "priority": {
+              "description": "Priority. Default: optional. Targets: deb.",
+              "enum": [
+                "required",
+                "important",
+                "standard",
+                "optional",
+                "extra"
+              ],
+              "examples": [
+                "optional"
+              ],
+              "markdownDescription": "**Priority.**  \nPriority（优先级）。\n\nDefault / 默认: `optional`\n\nTargets / 目标: deb",
+              "type": "string"
+            },
+            "recommends": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Recommends. Targets: deb.",
+              "examples": [
+                [
+                  "gnome-keyring"
+                ]
+              ],
+              "markdownDescription": "**Recommends.**  \nRecommends（推荐）。\n\nTargets / 目标: deb"
+            },
+            "section": {
+              "description": "Section. Default: utils. Targets: deb.",
+              "examples": [
+                "net"
+              ],
+              "markdownDescription": "**Section.**  \nSection（分区）。\n\nDefault / 默认: `utils`\n\nTargets / 目标: deb",
+              "type": "string"
+            },
+            "suggests": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Suggests. Targets: deb.",
+              "examples": [
+                [
+                  "libnotify-bin"
+                ]
+              ],
+              "markdownDescription": "**Suggests.**  \nSuggests（建议）。\n\nTargets / 目标: deb"
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "extra_args": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Extra arguments for flutter build linux. Targets: linux, deb, rpm, appimage.",
+          "examples": [
+            [
+              "--no-tree-shake-icons"
+            ]
+          ],
+          "markdownDescription": "**Extra arguments for flutter build linux.**  \n追加到 flutter build linux 的参数。\n\nTargets / 目标: linux, deb, rpm, appimage"
+        },
+        "generic_name": {
+          "description": ".desktop GenericName=. Targets: deb, rpm, appimage.",
+          "examples": [
+            "Instant Messenger"
+          ],
+          "markdownDescription": "**.desktop GenericName=.**  \n.desktop 的 GenericName=。\n\nTargets / 目标: deb, rpm, appimage",
+          "type": "string"
+        },
+        "icon": {
+          "description": "PNG icon for menus and the AppImage. Default: flutter_launcher_icons image, else web/icons/Icon-512.png. Targets: deb, rpm, appimage.",
+          "examples": [
+            "assets/icon/icon.png"
+          ],
+          "markdownDescription": "**PNG icon for menus and the AppImage.**  \n菜单与 AppImage 使用的 PNG 图标。\n\nDefault / 默认: `flutter_launcher_icons 的图片，否则 web/icons/Icon-512.png`\n\nTargets / 目标: deb, rpm, appimage",
+          "type": "string"
+        },
+        "icon_sizes": {
+          "description": "hicolor icon sizes installed (resized from linux.icon; never upscaled). Default: [16, 32, 48, 64, 128, 256, 512]. Targets: deb, rpm.",
+          "examples": [
+            [
+              48,
+              128,
+              256
+            ]
+          ],
+          "items": {
+            "maximum": 1024,
+            "minimum": 16,
+            "type": "integer"
+          },
+          "markdownDescription": "**hicolor icon sizes installed (resized from linux.icon; never upscaled).**  \n安装到 hicolor 主题的图标尺寸（由 linux.icon 缩放，不放大）。\n\nDefault / 默认: `[16, 32, 48, 64, 128, 256, 512]`\n\nTargets / 目标: deb, rpm",
+          "type": "array"
+        },
+        "keywords": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": ".desktop Keywords= (search terms). Targets: deb, rpm, appimage.",
+          "examples": [
+            [
+              "chat",
+              "im",
+              "message"
+            ]
+          ],
+          "markdownDescription": "**.desktop Keywords= (search terms).**  \n.desktop 的 Keywords=（搜索关键词）。\n\nTargets / 目标: deb, rpm, appimage"
+        },
+        "metainfo": {
+          "description": "AppStream metainfo installed to /usr/share/metainfo (software centers). Targets: deb, rpm, appimage.",
+          "examples": [
+            "linux/packaging/com.xuehua.im.metainfo.xml"
+          ],
+          "markdownDescription": "**AppStream metainfo installed to /usr/share/metainfo (software centers).**  \nAppStream metainfo，安装到 /usr/share/metainfo（软件中心展示）。\n\nTargets / 目标: deb, rpm, appimage",
+          "type": "string"
+        },
+        "mime_types": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": ".desktop MimeType= (files / URL schemes the app opens). Targets: deb, rpm, appimage.",
+          "examples": [
+            [
+              "x-scheme-handler/xuehua"
+            ]
+          ],
+          "markdownDescription": "**.desktop MimeType= (files / URL schemes the app opens).**  \n.desktop 的 MimeType=（可打开的文件类型 / URL 协议）。\n\nTargets / 目标: deb, rpm, appimage"
+        },
+        "package_name": {
+          "description": "deb/rpm package name and command name in /usr/bin. Default: app name, lowercase with dashes. Targets: deb, rpm, appimage.",
+          "examples": [
+            "xuehua-im"
+          ],
+          "markdownDescription": "**deb/rpm package name and command name in /usr/bin.**  \ndeb/rpm 包名，以及 /usr/bin 中的命令名。\n\nDefault / 默认: `应用名转小写并用 - 连接`\n\nTargets / 目标: deb, rpm, appimage",
+          "type": "string"
+        },
+        "prefix": {
+          "description": "Directory the app bundle is installed into. Default: /opt/\u003cpackage_name\u003e. Targets: deb, rpm.",
+          "examples": [
+            "/usr/lib/xuehua-im"
+          ],
+          "markdownDescription": "**Directory the app bundle is installed into.**  \n应用文件的安装目录。\n\nDefault / 默认: `/opt/\u003cpackage_name\u003e`\n\nTargets / 目标: deb, rpm",
+          "type": "string"
+        },
+        "rpm": {
+          "additionalProperties": false,
+          "description": "Fedora/RHEL/openSUSE package.",
+          "markdownDescription": "Fedora/RHEL/openSUSE package.  \nFedora/RHEL/openSUSE 软件包。",
+          "properties": {
+            "group": {
+              "description": "Group. Default: Applications/Internet. Targets: rpm.",
+              "examples": [
+                "Applications/Communications"
+              ],
+              "markdownDescription": "**Group.**  \nGroup（分组）。\n\nDefault / 默认: `Applications/Internet`\n\nTargets / 目标: rpm",
+              "type": "string"
+            },
+            "license": {
+              "description": "License. Default: app.license. Targets: rpm.",
+              "examples": [
+                "MIT"
+              ],
+              "markdownDescription": "**License.**  \nLicense（许可证）。\n\nDefault / 默认: `app.license`\n\nTargets / 目标: rpm",
+              "type": "string"
+            },
+            "post": {
+              "description": "%post script. Targets: rpm.",
+              "examples": [
+                "linux/packaging/post.sh"
+              ],
+              "markdownDescription": "**%post script.**  \n%post 脚本。\n\nTargets / 目标: rpm",
+              "type": "string"
+            },
+            "postun": {
+              "description": "%postun script. Targets: rpm.",
+              "examples": [
+                "linux/packaging/postun.sh"
+              ],
+              "markdownDescription": "**%postun script.**  \n%postun 脚本。\n\nTargets / 目标: rpm",
+              "type": "string"
+            },
+            "pre": {
+              "description": "%pre script. Targets: rpm.",
+              "examples": [
+                "linux/packaging/pre.sh"
+              ],
+              "markdownDescription": "**%pre script.**  \n%pre 脚本。\n\nTargets / 目标: rpm",
+              "type": "string"
+            },
+            "preun": {
+              "description": "%preun script. Targets: rpm.",
+              "examples": [
+                "linux/packaging/preun.sh"
+              ],
+              "markdownDescription": "**%preun script.**  \n%preun 脚本。\n\nTargets / 目标: rpm",
+              "type": "string"
+            },
+            "requires": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Requires. Default: [gtk3]. Targets: rpm.",
+              "examples": [
+                [
+                  "gtk3",
+                  "libsecret"
+                ]
+              ],
+              "markdownDescription": "**Requires.**  \nRequires（依赖）。\n\nDefault / 默认: `[gtk3]`\n\nTargets / 目标: rpm"
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "startup_wm_class": {
+          "description": ".desktop StartupWMClass= (groups windows with the launcher). Default: binary name (APPLICATION_ID on GTK). Targets: deb, rpm, appimage.",
+          "examples": [
+            "xue_hua_im"
+          ],
+          "markdownDescription": "**.desktop StartupWMClass= (groups windows with the launcher).**  \n.desktop 的 StartupWMClass=（让窗口与启动器图标归为一组）。\n\nDefault / 默认: `可执行文件名`\n\nTargets / 目标: deb, rpm, appimage",
+          "type": "string"
+        }
+      },
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "macos": {
+      "additionalProperties": false,
+      "description": "macOS: macos (.app zip), dmg, pkg.",
+      "markdownDescription": "macOS: macos (.app zip), dmg, pkg.  \nmacOS：macos（.app zip）、dmg、pkg。",
+      "properties": {
+        "dmg": {
+          "additionalProperties": false,
+          "description": "Disk image layout. Window/icon layout needs create-dmg (brew install create-dmg).",
+          "markdownDescription": "Disk image layout. Window/icon layout needs create-dmg (brew install create-dmg).  \nDMG 磁盘镜像。窗口/图标布局需要 create-dmg（brew install create-dmg）。",
+          "properties": {
+            "app_position": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                {
+                  "pattern": "^\\d+\\s*[,x]\\s*\\d+$",
+                  "type": "string"
+                }
+              ],
+              "description": "Position of the app icon [x, y]. create-dmg. Default: [180, 190]. Targets: dmg.",
+              "examples": [
+                [
+                  180,
+                  190
+                ]
+              ],
+              "markdownDescription": "**Position of the app icon [x, y]. create-dmg.**  \nApp 图标位置 [x, y]。需要 create-dmg。\n\nDefault / 默认: `[180, 190]`\n\nTargets / 目标: dmg"
+            },
+            "applications_position": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                {
+                  "pattern": "^\\d+\\s*[,x]\\s*\\d+$",
+                  "type": "string"
+                }
+              ],
+              "description": "Position of the Applications link [x, y]. create-dmg. Default: [480, 190]. Targets: dmg.",
+              "examples": [
+                [
+                  480,
+                  190
+                ]
+              ],
+              "markdownDescription": "**Position of the Applications link [x, y]. create-dmg.**  \n“应用程序”快捷方式位置 [x, y]。需要 create-dmg。\n\nDefault / 默认: `[480, 190]`\n\nTargets / 目标: dmg"
+            },
+            "background": {
+              "description": "Window background image. create-dmg. Targets: dmg.",
+              "examples": [
+                "macos/dmg/background.png"
+              ],
+              "markdownDescription": "**Window background image. create-dmg.**  \n窗口背景图。需要 create-dmg。\n\nTargets / 目标: dmg",
+              "type": "string"
+            },
+            "filesystem": {
+              "description": "Filesystem of the image. Default: HFS+. Targets: dmg.",
+              "enum": [
+                "HFS+",
+                "APFS"
+              ],
+              "examples": [
+                "APFS"
+              ],
+              "markdownDescription": "**Filesystem of the image.**  \n镜像文件系统。\n\nDefault / 默认: `HFS+`\n\nTargets / 目标: dmg",
+              "type": "string"
+            },
+            "format": {
+              "description": "Image format: UDZO (zlib), UDBZ (bzip2), ULFO (lzfse, macOS 10.11+), ULMO (lzma, 10.15+), UDRO (read-only, uncompressed). Default: UDZO. Targets: dmg.",
+              "enum": [
+                "UDZO",
+                "UDBZ",
+                "ULFO",
+                "ULMO",
+                "UDRO"
+              ],
+              "examples": [
+                "ULFO"
+              ],
+              "markdownDescription": "**Image format: UDZO (zlib), UDBZ (bzip2), ULFO (lzfse, macOS 10.11+), ULMO (lzma, 10.15+), UDRO (read-only, uncompressed).**  \n镜像格式：UDZO（zlib）、UDBZ（bzip2）、ULFO（lzfse，macOS 10.11+）、ULMO（lzma，10.15+）、UDRO（只读不压缩）。\n\nDefault / 默认: `UDZO`\n\nTargets / 目标: dmg",
+              "type": "string"
+            },
+            "icon_size": {
+              "description": "Icon size in the window. create-dmg. Default: 128. Targets: dmg.",
+              "examples": [
+                128
+              ],
+              "markdownDescription": "**Icon size in the window. create-dmg.**  \n窗口中的图标大小。需要 create-dmg。\n\nDefault / 默认: `128`\n\nTargets / 目标: dmg",
+              "maximum": 512,
+              "minimum": 16,
+              "type": "integer"
+            },
+            "license": {
+              "description": "License agreement shown when the DMG is opened (.txt/.rtf). create-dmg. Targets: dmg.",
+              "examples": [
+                "LICENSE.txt"
+              ],
+              "markdownDescription": "**License agreement shown when the DMG is opened (.txt/.rtf). create-dmg.**  \n打开 DMG 时显示的许可协议（.txt/.rtf）。需要 create-dmg。\n\nTargets / 目标: dmg",
+              "type": "string"
+            },
+            "tool": {
+              "description": "auto = create-dmg when installed (or when layout keys are set), else hdiutil. Default: auto. Env: FPACK_DMG_TOOL. Targets: dmg.",
+              "enum": [
+                "auto",
+                "hdiutil",
+                "create-dmg"
+              ],
+              "examples": [
+                "create-dmg"
+              ],
+              "markdownDescription": "**auto = create-dmg when installed (or when layout keys are set), else hdiutil.**  \nauto：装了 create-dmg（或设置了布局键）时用 create-dmg，否则用 hdiutil。\n\nDefault / 默认: `auto`\n\nTargets / 目标: dmg · Env: `FPACK_DMG_TOOL` · Flag: `--dmg-tool`",
+              "type": "string"
+            },
+            "volume_icon": {
+              "description": "Volume icon (.icns). create-dmg. Targets: dmg.",
+              "examples": [
+                "macos/dmg/volume.icns"
+              ],
+              "markdownDescription": "**Volume icon (.icns). create-dmg.**  \n卷图标（.icns）。需要 create-dmg。\n\nTargets / 目标: dmg",
+              "type": "string"
+            },
+            "volume_name": {
+              "description": "Volume name shown when the DMG is mounted. Default: .app name. Targets: dmg.",
+              "examples": [
+                "雪花IM"
+              ],
+              "markdownDescription": "**Volume name shown when the DMG is mounted.**  \n挂载 DMG 后显示的卷名。\n\nDefault / 默认: `.app 名称`\n\nTargets / 目标: dmg",
+              "type": "string"
+            },
+            "window_position": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                {
+                  "pattern": "^\\d+\\s*[,x]\\s*\\d+$",
+                  "type": "string"
+                }
+              ],
+              "description": "Window position [x, y]. create-dmg. Default: [200, 120]. Targets: dmg.",
+              "examples": [
+                [
+                  200,
+                  120
+                ]
+              ],
+              "markdownDescription": "**Window position [x, y]. create-dmg.**  \n窗口位置 [x, y]。需要 create-dmg。\n\nDefault / 默认: `[200, 120]`\n\nTargets / 目标: dmg"
+            },
+            "window_size": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                {
+                  "pattern": "^\\d+\\s*[,x]\\s*\\d+$",
+                  "type": "string"
+                }
+              ],
+              "description": "Window size [width, height]. create-dmg. Default: [660, 400]. Targets: dmg.",
+              "examples": [
+                [
+                  660,
+                  400
+                ]
+              ],
+              "markdownDescription": "**Window size [width, height]. create-dmg.**  \n窗口大小 [宽, 高]。需要 create-dmg。\n\nDefault / 默认: `[660, 400]`\n\nTargets / 目标: dmg"
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "extra_args": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Extra arguments for flutter build macos. Targets: macos, dmg, pkg.",
+          "examples": [
+            [
+              "--no-tree-shake-icons"
+            ]
+          ],
+          "markdownDescription": "**Extra arguments for flutter build macos.**  \n追加到 flutter build macos 的参数。\n\nTargets / 目标: macos, dmg, pkg"
+        },
+        "pkg": {
+          "additionalProperties": false,
+          "description": "Installer package (pkgbuild + productbuild).",
+          "markdownDescription": "Installer package (pkgbuild + productbuild).  \n安装包（pkgbuild + productbuild）。",
+          "properties": {
+            "background": {
+              "description": "Background image (light and dark mode). Targets: pkg.",
+              "examples": [
+                "macos/installer/background.png"
+              ],
+              "markdownDescription": "**Background image (light and dark mode).**  \n背景图（浅色/深色模式都使用）。\n\nTargets / 目标: pkg",
+              "type": "string"
+            },
+            "conclusion": {
+              "description": "Conclusion page (.html/.rtf/.txt). Targets: pkg.",
+              "examples": [
+                "macos/installer/done.html"
+              ],
+              "markdownDescription": "**Conclusion page (.html/.rtf/.txt).**  \n完成页（.html/.rtf/.txt）。\n\nTargets / 目标: pkg",
+              "type": "string"
+            },
+            "identifier": {
+              "description": "Package identifier (pkgutil --pkgs). Default: macOS bundle id. Targets: pkg.",
+              "examples": [
+                "com.xuehua.im"
+              ],
+              "markdownDescription": "**Package identifier (pkgutil --pkgs).**  \n安装包标识（pkgutil --pkgs 中显示）。\n\nDefault / 默认: `macOS 工程的 bundle id`\n\nTargets / 目标: pkg",
+              "type": "string"
+            },
+            "install_location": {
+              "description": "Absolute directory the app is installed into. Default: /Applications. Targets: pkg.",
+              "examples": [
+                "/Applications"
+              ],
+              "markdownDescription": "**Absolute directory the app is installed into.**  \nApp 安装到的绝对路径目录。\n\nDefault / 默认: `/Applications`\n\nTargets / 目标: pkg",
+              "type": "string"
+            },
+            "license": {
+              "description": "License page the user must accept (.html/.rtf/.txt). Targets: pkg.",
+              "examples": [
+                "macos/installer/license.rtf"
+              ],
+              "markdownDescription": "**License page the user must accept (.html/.rtf/.txt).**  \n用户必须同意的许可页（.html/.rtf/.txt）。\n\nTargets / 目标: pkg",
+              "type": "string"
+            },
+            "min_os": {
+              "description": "Minimum macOS version; Installer refuses older systems. Default: MACOSX_DEPLOYMENT_TARGET of the project. Targets: pkg.",
+              "examples": [
+                10.15
+              ],
+              "markdownDescription": "**Minimum macOS version; Installer refuses older systems.**  \n最低 macOS 版本；低于此版本时安装器会拒绝安装。\n\nDefault / 默认: `工程的 MACOSX_DEPLOYMENT_TARGET`\n\nTargets / 目标: pkg",
+              "type": "string"
+            },
+            "postinstall": {
+              "description": "Script run after installing. Targets: pkg.",
+              "examples": [
+                "macos/installer/postinstall.sh"
+              ],
+              "markdownDescription": "**Script run after installing.**  \n安装后执行的脚本。\n\nTargets / 目标: pkg",
+              "type": "string"
+            },
+            "preinstall": {
+              "description": "Script run before installing (made executable automatically). Targets: pkg.",
+              "examples": [
+                "macos/installer/preinstall.sh"
+              ],
+              "markdownDescription": "**Script run before installing (made executable automatically).**  \n安装前执行的脚本（自动设为可执行）。\n\nTargets / 目标: pkg",
+              "type": "string"
+            },
+            "readme": {
+              "description": "Read-me page (.html/.rtf/.txt). Targets: pkg.",
+              "examples": [
+                "macos/installer/readme.html"
+              ],
+              "markdownDescription": "**Read-me page (.html/.rtf/.txt).**  \n“请先阅读”页（.html/.rtf/.txt）。\n\nTargets / 目标: pkg",
+              "type": "string"
+            },
+            "relocatable": {
+              "description": "true = Installer updates a moved copy of the app wherever it is; false = always install_location. Default: false. Targets: pkg.",
+              "examples": [
+                true
+              ],
+              "markdownDescription": "**true = Installer updates a moved copy of the app wherever it is; false = always install_location.**  \ntrue：App 被移动过时在原位置升级；false：总是安装到 install_location。\n\nDefault / 默认: `false`\n\nTargets / 目标: pkg",
+              "type": "boolean"
+            },
+            "require_restart": {
+              "description": "Ask the user to restart after installing. Default: false. Targets: pkg.",
+              "examples": [
+                true
+              ],
+              "markdownDescription": "**Ask the user to restart after installing.**  \n安装完成后要求重启。\n\nDefault / 默认: `false`\n\nTargets / 目标: pkg",
+              "type": "boolean"
+            },
+            "title": {
+              "description": "Installer window title. Default: .app name. Targets: pkg.",
+              "examples": [
+                "雪花IM"
+              ],
+              "markdownDescription": "**Installer window title.**  \n安装器窗口标题。\n\nDefault / 默认: `.app 名称`\n\nTargets / 目标: pkg",
+              "type": "string"
+            },
+            "version": {
+              "description": "Package version. Default: build name. Targets: pkg.",
+              "examples": [
+                "1.2.0"
+              ],
+              "markdownDescription": "**Package version.**  \n安装包版本。\n\nDefault / 默认: `版本名`\n\nTargets / 目标: pkg",
+              "type": "string"
+            },
+            "welcome": {
+              "description": "Welcome page (.html/.rtf/.txt). Targets: pkg.",
+              "examples": [
+                "macos/installer/welcome.html"
+              ],
+              "markdownDescription": "**Welcome page (.html/.rtf/.txt).**  \n欢迎页（.html/.rtf/.txt）。\n\nTargets / 目标: pkg",
+              "type": "string"
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "sign": {
+          "additionalProperties": false,
+          "description": "Developer ID signing and notarization (only from this file, FPACK_MACOS_* and flags).",
+          "markdownDescription": "Developer ID signing and notarization (only from this file, FPACK_MACOS_* and flags).  \nDeveloper ID 签名与公证（只来自本文件、FPACK_MACOS_* 和命令行参数）。",
+          "properties": {
+            "enabled": {
+              "description": "Re-sign the .app with Developer ID (and sign the DMG). true without identity picks the first \"Developer ID Application\" identity. false (--no-sign) also disables pkg signing and notarization. Default: true when identity is set. Env: FPACK_MACOS_SIGN. Targets: macos, dmg, pkg.",
+              "examples": [
+                true
+              ],
+              "markdownDescription": "**Re-sign the .app with Developer ID (and sign the DMG). true without identity picks the first \"Developer ID Application\" identity. false (--no-sign) also disables pkg signing and notarization.**  \n用 Developer ID 重新签名 .app（并签名 DMG）。为 true 但未设置 identity 时自动选用第一个 “Developer ID Application” 证书。false（--no-sign）同时关闭 pkg 签名与公证。\n\nDefault / 默认: `设置了 identity 时为 true`\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_MACOS_SIGN` · Flag: `--sign / --no-sign`",
+              "type": "boolean"
+            },
+            "entitlements": {
+              "description": "Entitlements used when re-signing the app. Default: macos/Runner/Release.entitlements. Targets: macos, dmg, pkg.",
+              "examples": [
+                "macos/Runner/Release.entitlements"
+              ],
+              "markdownDescription": "**Entitlements used when re-signing the app.**  \n重新签名 App 时使用的 entitlements。\n\nDefault / 默认: `macos/Runner/Release.entitlements`\n\nTargets / 目标: macos, dmg, pkg",
+              "type": "string"
+            },
+            "hardened_runtime": {
+              "description": "Sign with the hardened runtime (required for notarization). Default: true. Targets: macos, dmg, pkg.",
+              "examples": [
+                true
+              ],
+              "markdownDescription": "**Sign with the hardened runtime (required for notarization).**  \n使用 Hardened Runtime 签名（公证必需）。\n\nDefault / 默认: `true`\n\nTargets / 目标: macos, dmg, pkg",
+              "type": "boolean"
+            },
+            "identity": {
+              "description": "codesign identity for the app; setting it turns signing on. Env: FPACK_MACOS_SIGN_IDENTITY. Targets: macos, dmg, pkg.",
+              "examples": [
+                "Developer ID Application: Your Name (TEAMID)"
+              ],
+              "markdownDescription": "**codesign identity for the app; setting it turns signing on.**  \nApp 的 codesign 证书；设置后即启用签名。\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_MACOS_SIGN_IDENTITY` · Flag: `--sign-identity`",
+              "type": "string"
+            },
+            "installer_identity": {
+              "description": "Signs the .pkg; a separate certificate from the app's \"Developer ID Application\". Unset = unsigned pkg. Env: FPACK_MACOS_INSTALLER_IDENTITY. Targets: pkg.",
+              "examples": [
+                "Developer ID Installer: Your Name (TEAMID)"
+              ],
+              "markdownDescription": "**Signs the .pkg; a separate certificate from the app's \"Developer ID Application\". Unset = unsigned pkg.**  \n签名 .pkg 的证书，与 App 的 “Developer ID Application” 不同。不设置则 pkg 不签名。\n\nTargets / 目标: pkg · Env: `FPACK_MACOS_INSTALLER_IDENTITY` · Flag: `--installer-identity`",
+              "type": "string"
+            },
+            "notarize": {
+              "description": "Notarize and staple the zip, DMG and signed pkg (uploads to Apple). Default: true when a notary credential is set. Env: FPACK_MACOS_NOTARIZE. Targets: macos, dmg, pkg.",
+              "examples": [
+                true
+              ],
+              "markdownDescription": "**Notarize and staple the zip, DMG and signed pkg (uploads to Apple).**  \n公证并装订 zip、DMG 与已签名的 pkg（会上传到 Apple）。\n\nDefault / 默认: `设置了公证凭证时为 true`\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_MACOS_NOTARIZE` · Flag: `--notarize / --no-notarize`",
+              "type": "boolean"
+            },
+            "notary_api_issuer": {
+              "description": "API issuer UUID (omit for individual keys). Env: FPACK_NOTARY_API_ISSUER. Targets: macos, dmg, pkg.",
+              "examples": [
+                "69a6de7e-…"
+              ],
+              "markdownDescription": "**API issuer UUID (omit for individual keys).**  \nAPI Issuer UUID（个人密钥可省略）。\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_NOTARY_API_ISSUER`",
+              "type": "string"
+            },
+            "notary_api_key": {
+              "description": "App Store Connect API key (.p8) for notarization (CI friendly). Env: FPACK_NOTARY_API_KEY. Targets: macos, dmg, pkg.",
+              "examples": [
+                "~/keys/AuthKey_ABC123.p8"
+              ],
+              "markdownDescription": "**App Store Connect API key (.p8) for notarization (CI friendly).**  \n公证用 App Store Connect API 密钥（.p8，适合 CI）。\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_NOTARY_API_KEY`",
+              "type": "string"
+            },
+            "notary_api_key_id": {
+              "description": "API key ID. Env: FPACK_NOTARY_API_KEY_ID. Targets: macos, dmg, pkg.",
+              "examples": [
+                "ABC123DEF4"
+              ],
+              "markdownDescription": "**API key ID.**  \nAPI 密钥 ID。\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_NOTARY_API_KEY_ID`",
+              "type": "string"
+            },
+            "notary_apple_id": {
+              "description": "Apple ID for notarization (with notary_team_id + notary_password), instead of a profile. Env: FPACK_NOTARY_APPLE_ID. Targets: macos, dmg, pkg.",
+              "examples": [
+                "dev@example.com"
+              ],
+              "markdownDescription": "**Apple ID for notarization (with notary_team_id + notary_password), instead of a profile.**  \n公证用 Apple ID（配合 notary_team_id + notary_password），替代钥匙串配置。\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_NOTARY_APPLE_ID`",
+              "type": "string"
+            },
+            "notary_password": {
+              "description": "App-specific password for Apple ID notarization. Env: FPACK_NOTARY_PASSWORD. Targets: macos, dmg, pkg.",
+              "examples": [
+                "${NOTARY_PASSWORD}"
+              ],
+              "markdownDescription": "**App-specific password for Apple ID notarization.**  \nApple ID 公证用的 App 专用密码。\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_NOTARY_PASSWORD`",
+              "type": "string"
+            },
+            "notary_profile": {
+              "description": "Keychain profile from `xcrun notarytool store-credentials \u003cname\u003e` (recommended locally). Env: FPACK_MACOS_NOTARY_PROFILE. Targets: macos, dmg, pkg.",
+              "examples": [
+                "NotaryProfile"
+              ],
+              "markdownDescription": "**Keychain profile from `xcrun notarytool store-credentials \u003cname\u003e` (recommended locally).**  \n`xcrun notarytool store-credentials \u003c名字\u003e` 创建的钥匙串配置名（本地推荐）。\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_MACOS_NOTARY_PROFILE` · Flag: `--notary-profile`",
+              "type": "string"
+            },
+            "notary_team_id": {
+              "description": "Team ID for Apple ID notarization. Env: FPACK_NOTARY_TEAM_ID. Targets: macos, dmg, pkg.",
+              "examples": [
+                "ABCDE12345"
+              ],
+              "markdownDescription": "**Team ID for Apple ID notarization.**  \nApple ID 公证时的团队 ID。\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_NOTARY_TEAM_ID`",
+              "type": "string"
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "output": {
+      "additionalProperties": false,
+      "description": "Where artifacts go and how they are named.",
+      "markdownDescription": "Where artifacts go and how they are named.  \n产物输出目录与命名。",
+      "properties": {
+        "checksum_algorithm": {
+          "description": "Checksum algorithm (file SHA256SUMS or SHA512SUMS). Default: sha256. Targets: all.",
+          "enum": [
+            "sha256",
+            "sha512"
+          ],
+          "examples": [
+            "sha512"
+          ],
+          "markdownDescription": "**Checksum algorithm (file SHA256SUMS or SHA512SUMS).**  \n校验算法（文件名 SHA256SUMS 或 SHA512SUMS）。\n\nDefault / 默认: `sha256`\n\nTargets / 目标: all",
+          "type": "string"
+        },
+        "checksums": {
+          "description": "Write a checksum file next to the artifacts. Default: true. Targets: all.",
+          "examples": [
+            false
+          ],
+          "markdownDescription": "**Write a checksum file next to the artifacts.**  \n在产物旁写入校验和文件。\n\nDefault / 默认: `true`\n\nTargets / 目标: all",
+          "type": "boolean"
+        },
+        "dir": {
+          "description": "Artifact directory (relative to the project; placeholders allowed). Default: dist/{version}{+build}. Env: FPACK_OUTPUT_DIR. Targets: all.",
+          "examples": [
+            "dist/{version}{+build}"
+          ],
+          "markdownDescription": "**Artifact directory (relative to the project; placeholders allowed).**  \n产物目录（相对于项目，可用占位符）。\n\nDefault / 默认: `dist/{version}{+build}`\n\nTargets / 目标: all · Env: `FPACK_OUTPUT_DIR` · Flag: `-o, --output`",
+          "type": "string"
+        },
+        "name": {
+          "description": "File name template without extension. Placeholders: {app} {version} {build} {platform} {arch} {variant} {mode} {flavor} {target} {date}; {-x}/{+x} add the separator only when x is set. Default: {app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}. Targets: all.",
+          "examples": [
+            "{app}-{version}-{platform}{-arch}"
+          ],
+          "markdownDescription": "**File name template without extension. Placeholders: {app} {version} {build} {platform} {arch} {variant} {mode} {flavor} {target} {date}; {-x}/{+x} add the separator only when x is set.**  \n文件名模板（不含扩展名）。占位符：{app} {version} {build} {platform} {arch} {variant} {mode} {flavor} {target} {date}；{-x}/{+x} 表示 x 非空时才加分隔符。\n\nDefault / 默认: `{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}`\n\nTargets / 目标: all",
+          "type": "string"
+        },
+        "names": {
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          },
+          "description": "Per-target file name templates (target → template), overriding output.name. Targets: all.",
+          "examples": [
+            {
+              "exe": "{app}-setup-{version}",
+              "web": "{app}-web"
+            }
+          ],
+          "markdownDescription": "**Per-target file name templates (target → template), overriding output.name.**  \n按目标单独设置文件名模板（目标 → 模板），优先于 output.name。\n\nTargets / 目标: all",
+          "type": "object"
+        },
+        "overwrite": {
+          "description": "Replace existing artifacts instead of stopping. Default: false. Env: FPACK_OVERWRITE. Targets: all.",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "**Replace existing artifacts instead of stopping.**  \n已存在同名产物时覆盖，而不是停止。\n\nDefault / 默认: `false`\n\nTargets / 目标: all · Env: `FPACK_OVERWRITE` · Flag: `-f, --force`",
+          "type": "boolean"
+        }
+      },
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "web": {
+      "additionalProperties": false,
+      "description": "Web: web (zip).",
+      "markdownDescription": "Web: web (zip).  \nWeb：web（zip）。",
+      "properties": {
+        "base_href": {
+          "description": "\u003cbase href\u003e; must start and end with /. Default: index.html as is. Targets: web.",
+          "examples": [
+            "/app/"
+          ],
+          "markdownDescription": "**\u003cbase href\u003e; must start and end with /.**  \n\u003cbase href\u003e；必须以 / 开头和结尾。\n\nDefault / 默认: `保持 index.html 原样`\n\nTargets / 目标: web · Flag: `--base-href`",
+          "type": "string"
+        },
+        "csp": {
+          "description": "No dynamic code generation (Content-Security-Policy). Default: false. Targets: web.",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "**No dynamic code generation (Content-Security-Policy).**  \n不动态生成代码（满足 CSP 限制）。\n\nDefault / 默认: `false`\n\nTargets / 目标: web",
+          "type": "boolean"
+        },
+        "extra_args": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Extra arguments for flutter build web. Targets: web.",
+          "examples": [
+            [
+              "--dump-info"
+            ]
+          ],
+          "markdownDescription": "**Extra arguments for flutter build web.**  \n追加到 flutter build web 的参数。\n\nTargets / 目标: web"
+        },
+        "optimization_level": {
+          "description": "dart2js / dart2wasm optimization level 0-4 (-O). Default: 4. Targets: web.",
+          "examples": [
+            2
+          ],
+          "markdownDescription": "**dart2js / dart2wasm optimization level 0-4 (-O).**  \ndart2js / dart2wasm 优化级别 0-4（-O）。\n\nDefault / 默认: `4`\n\nTargets / 目标: web",
+          "maximum": 4,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_maps": {
+          "description": "Generate source maps. Default: false. Targets: web.",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "**Generate source maps.**  \n生成 source map。\n\nDefault / 默认: `false`\n\nTargets / 目标: web",
+          "type": "boolean"
+        },
+        "static_assets_url": {
+          "description": "Serve static assets from another domain (must end with /). Targets: web.",
+          "examples": [
+            "https://cdn.example.com/app/"
+          ],
+          "markdownDescription": "**Serve static assets from another domain (must end with /).**  \n从其他域名加载静态资源（必须以 / 结尾）。\n\nTargets / 目标: web",
+          "pattern": "^(https?://|\\$\\{)",
+          "type": "string"
+        },
+        "wasm": {
+          "description": "Compile to WebAssembly (with JS fallback). Default: false. Targets: web.",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "**Compile to WebAssembly (with JS fallback).**  \n编译为 WebAssembly（带 JS 回退）。\n\nDefault / 默认: `false`\n\nTargets / 目标: web · Flag: `--wasm`",
+          "type": "boolean"
+        },
+        "web_define": {
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          },
+          "description": "--web-define template variables for web/index.html. Targets: web.",
+          "examples": [
+            {
+              "API_URL": "https://api.example.com"
+            }
+          ],
+          "markdownDescription": "**--web-define template variables for web/index.html.**  \n--web-define：web/index.html 中的模板变量。\n\nTargets / 目标: web",
+          "type": "object"
+        },
+        "web_resources_cdn": {
+          "description": "false = bundle CanvasKit instead of loading it from the CDN. Default: true. Targets: web.",
+          "examples": [
+            false
+          ],
+          "markdownDescription": "**false = bundle CanvasKit instead of loading it from the CDN.**  \nfalse：打包 CanvasKit，不从 CDN 加载。\n\nDefault / 默认: `true`\n\nTargets / 目标: web",
+          "type": "boolean"
+        }
+      },
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "windows": {
+      "additionalProperties": false,
+      "description": "Windows: windows (zip), exe (Inno Setup), msix.",
+      "markdownDescription": "Windows: windows (zip), exe (Inno Setup), msix.  \nWindows：windows（zip）、exe（Inno Setup）、msix。",
+      "properties": {
+        "extra_args": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Extra arguments for flutter build windows. Targets: windows, exe, msix.",
+          "examples": [
+            [
+              "--no-tree-shake-icons"
+            ]
+          ],
+          "markdownDescription": "**Extra arguments for flutter build windows.**  \n追加到 flutter build windows 的参数。\n\nTargets / 目标: windows, exe, msix"
+        },
+        "inno_setup": {
+          "additionalProperties": false,
+          "description": "Inno Setup installer (.exe).",
+          "markdownDescription": "Inno Setup installer (.exe).  \nInno Setup 安装程序（.exe）。",
+          "properties": {
+            "app_id": {
+              "description": "AppId: keep it stable forever so upgrades replace the old install. Default: stable GUID derived from app.identifier. Targets: exe.",
+              "examples": [
+                "8D3B5E6A-1C2D-4E5F-8A9B-0C1D2E3F4A5B"
+              ],
+              "markdownDescription": "**AppId: keep it stable forever so upgrades replace the old install.**  \nAppId：请永远保持不变，升级时才能覆盖旧版本。\n\nDefault / 默认: `由 app.identifier 推导的固定 GUID`\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "compression": {
+              "description": "Compression (lzma2/max, lzma2/ultra64, zip, none …). Default: lzma2/max. Targets: exe.",
+              "examples": [
+                "lzma2/ultra64"
+              ],
+              "markdownDescription": "**Compression (lzma2/max, lzma2/ultra64, zip, none …).**  \n压缩方式（lzma2/max、lzma2/ultra64、zip、none 等）。\n\nDefault / 默认: `lzma2/max`\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "default_dir": {
+              "description": "Default install directory (Inno constants allowed). Default: {autopf}\\\u003cdisplay name\u003e. Targets: exe.",
+              "examples": [
+                "{autopf}\\XueHua"
+              ],
+              "markdownDescription": "**Default install directory (Inno constants allowed).**  \n默认安装目录（可用 Inno 常量）。\n\nDefault / 默认: `{autopf}\\\u003c显示名\u003e`\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "desktop_icon": {
+              "description": "Desktop shortcut task: none, unchecked (offered), checked (on by default). Default: unchecked. Targets: exe.",
+              "enum": [
+                "none",
+                "unchecked",
+                "checked"
+              ],
+              "examples": [
+                "checked"
+              ],
+              "markdownDescription": "**Desktop shortcut task: none, unchecked (offered), checked (on by default).**  \n桌面快捷方式：none 不提供，unchecked 提供但默认不勾选，checked 默认勾选。\n\nDefault / 默认: `unchecked`\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "group_name": {
+              "description": "Start menu folder. Default: display name. Targets: exe.",
+              "examples": [
+                "XueHua"
+              ],
+              "markdownDescription": "**Start menu folder.**  \n开始菜单文件夹。\n\nDefault / 默认: `显示名`\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "info_after": {
+              "description": "Information page after installing (.txt/.rtf). Targets: exe.",
+              "examples": [
+                "docs/after.txt"
+              ],
+              "markdownDescription": "**Information page after installing (.txt/.rtf).**  \n安装后信息页（.txt/.rtf）。\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "info_before": {
+              "description": "Information page before installing (.txt/.rtf). Targets: exe.",
+              "examples": [
+                "docs/before.txt"
+              ],
+              "markdownDescription": "**Information page before installing (.txt/.rtf).**  \n安装前信息页（.txt/.rtf）。\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "iscc": {
+              "description": "Path to ISCC.exe. Default: ISCC on PATH or in Program Files. Targets: exe.",
+              "examples": [
+                "C:/Program Files (x86)/Inno Setup 6/ISCC.exe"
+              ],
+              "markdownDescription": "**Path to ISCC.exe.**  \nISCC.exe 路径。\n\nDefault / 默认: `PATH 或 Program Files 中的 ISCC`\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "languages": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Installer languages; the first is the default, the user picks one if several. zh-CN/zh-TW need Inno Setup 6.5+ (fpack ships the files otherwise). Known: en zh-CN zh-TW ja ko de fr es it pt-BR pt ru uk tr pl nl cs ar he. Default: [en]. Targets: exe.",
+              "examples": [
+                [
+                  "zh-CN",
+                  "en"
+                ]
+              ],
+              "markdownDescription": "**Installer languages; the first is the default, the user picks one if several. zh-CN/zh-TW need Inno Setup 6.5+ (fpack ships the files otherwise). Known: en zh-CN zh-TW ja ko de fr es it pt-BR pt ru uk tr pl nl cs ar he.**  \n安装程序语言；第一个为默认，多个时让用户选择。zh-CN/zh-TW 需要 Inno Setup 6.5+（旧版本时 fpack 自带语言文件）。支持：en zh-CN zh-TW ja ko de fr es it pt-BR pt ru uk tr pl nl cs ar he。\n\nDefault / 默认: `[en]`\n\nTargets / 目标: exe"
+            },
+            "license_file": {
+              "description": "License page (.txt/.rtf). Targets: exe.",
+              "examples": [
+                "LICENSE.txt"
+              ],
+              "markdownDescription": "**License page (.txt/.rtf).**  \n许可协议页（.txt/.rtf）。\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "min_version": {
+              "description": "Minimum Windows version (MinVersion). Default: 10.0. Targets: exe.",
+              "examples": [
+                "10.0.17763"
+              ],
+              "markdownDescription": "**Minimum Windows version (MinVersion).**  \n最低 Windows 版本（MinVersion）。\n\nDefault / 默认: `10.0`\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "privileges": {
+              "description": "user = per-user install (no UAC), admin = all users (UAC), ask = let the user choose. Default: ask. Targets: exe.",
+              "enum": [
+                "user",
+                "admin",
+                "ask"
+              ],
+              "examples": [
+                "admin"
+              ],
+              "markdownDescription": "**user = per-user install (no UAC), admin = all users (UAC), ask = let the user choose.**  \nuser：仅当前用户（无需管理员）；admin：所有用户（需要 UAC）；ask：让用户选择。\n\nDefault / 默认: `ask`\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "publisher": {
+              "description": "AppPublisher. Default: app.publisher. Targets: exe.",
+              "examples": [
+                "XueHua Tech"
+              ],
+              "markdownDescription": "**AppPublisher.**  \nAppPublisher（发布者）。\n\nDefault / 默认: `app.publisher`\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "publisher_url": {
+              "description": "AppPublisherURL. Default: app.homepage. Targets: exe.",
+              "examples": [
+                "https://xuehua.example.com"
+              ],
+              "markdownDescription": "**AppPublisherURL.**  \nAppPublisherURL（发布者网址）。\n\nDefault / 默认: `app.homepage`\n\nTargets / 目标: exe",
+              "pattern": "^(https?://|\\$\\{)",
+              "type": "string"
+            },
+            "run_after_install": {
+              "description": "Offer \"Launch \u003capp\u003e\" on the last page. Default: true. Targets: exe.",
+              "examples": [
+                false
+              ],
+              "markdownDescription": "**Offer \"Launch \u003capp\u003e\" on the last page.**  \n最后一页提供“运行 \u003c应用\u003e”选项。\n\nDefault / 默认: `true`\n\nTargets / 目标: exe",
+              "type": "boolean"
+            },
+            "script": {
+              "description": "Your own .iss script; fpack passes /DAppName /DAppVersion /DAppPublisher /DAppExeName /DSourceDir /DAppId /DAppURL. Targets: exe.",
+              "examples": [
+                "windows/installer.iss"
+              ],
+              "markdownDescription": "**Your own .iss script; fpack passes /DAppName /DAppVersion /DAppPublisher /DAppExeName /DSourceDir /DAppId /DAppURL.**  \n自定义 .iss 脚本；fpack 会传入 /DAppName /DAppVersion /DAppPublisher /DAppExeName /DSourceDir /DAppId /DAppURL。\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "setup_icon": {
+              "description": "Installer icon (.ico). Default: windows/runner/resources/app_icon.ico. Targets: exe.",
+              "examples": [
+                "windows/installer/setup.ico"
+              ],
+              "markdownDescription": "**Installer icon (.ico).**  \n安装程序图标（.ico）。\n\nDefault / 默认: `windows/runner/resources/app_icon.ico`\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "support_url": {
+              "description": "AppSupportURL. Default: app.support_url. Targets: exe.",
+              "examples": [
+                "https://xuehua.example.com/support"
+              ],
+              "markdownDescription": "**AppSupportURL.**  \nAppSupportURL（支持网址）。\n\nDefault / 默认: `app.support_url`\n\nTargets / 目标: exe",
+              "pattern": "^(https?://|\\$\\{)",
+              "type": "string"
+            },
+            "updates_url": {
+              "description": "AppUpdatesURL. Targets: exe.",
+              "examples": [
+                "https://xuehua.example.com/download"
+              ],
+              "markdownDescription": "**AppUpdatesURL.**  \nAppUpdatesURL（更新网址）。\n\nTargets / 目标: exe",
+              "pattern": "^(https?://|\\$\\{)",
+              "type": "string"
+            },
+            "wizard_image": {
+              "description": "Large wizard image (.bmp/.png, 164×314 at 100%). Targets: exe.",
+              "examples": [
+                "windows/installer/wizard.bmp"
+              ],
+              "markdownDescription": "**Large wizard image (.bmp/.png, 164×314 at 100%).**  \n向导大图（.bmp/.png，100% 缩放下 164×314）。\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "wizard_small_image": {
+              "description": "Small wizard image (.bmp/.png, 55×55). Targets: exe.",
+              "examples": [
+                "windows/installer/wizard-small.bmp"
+              ],
+              "markdownDescription": "**Small wizard image (.bmp/.png, 55×55).**  \n向导小图（.bmp/.png，55×55）。\n\nTargets / 目标: exe",
+              "type": "string"
+            },
+            "wizard_style": {
+              "description": "Wizard style. Default: modern. Targets: exe.",
+              "enum": [
+                "modern",
+                "classic"
+              ],
+              "examples": [
+                "classic"
+              ],
+              "markdownDescription": "**Wizard style.**  \n向导样式。\n\nDefault / 默认: `modern`\n\nTargets / 目标: exe",
+              "type": "string"
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "msix": {
+          "additionalProperties": false,
+          "description": "MSIX package (needs the msix dev_dependency). These keys override pubspec msix_config.",
+          "markdownDescription": "MSIX package (needs the msix dev_dependency). These keys override pubspec msix_config.  \nMSIX 包（需要 msix 开发依赖）。这些键会覆盖 pubspec 中的 msix_config。",
+          "properties": {
+            "capabilities": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Capabilities. Targets: msix.",
+              "examples": [
+                [
+                  "internetClient",
+                  "microphone",
+                  "webcam"
+                ]
+              ],
+              "markdownDescription": "**Capabilities.**  \n能力声明（capabilities）。\n\nTargets / 目标: msix"
+            },
+            "certificate": {
+              "description": "Certificate (.pfx) for the MSIX. Default: windows.sign.certificate, else msix test certificate. Targets: msix.",
+              "examples": [
+                "C:/certs/codesign.pfx"
+              ],
+              "markdownDescription": "**Certificate (.pfx) for the MSIX.**  \n签名 MSIX 用的证书（.pfx）。\n\nDefault / 默认: `windows.sign.certificate，否则使用 msix 测试证书`\n\nTargets / 目标: msix",
+              "type": "string"
+            },
+            "certificate_password": {
+              "description": "Certificate password. Default: windows.sign.password. Targets: msix.",
+              "examples": [
+                "${WINDOWS_CERT_PASSWORD}"
+              ],
+              "markdownDescription": "**Certificate password.**  \n证书密码。\n\nDefault / 默认: `windows.sign.password`\n\nTargets / 目标: msix",
+              "type": "string"
+            },
+            "description": {
+              "description": "Package description. Default: app.description. Targets: msix.",
+              "examples": [
+                "A fast and secure messenger"
+              ],
+              "markdownDescription": "**Package description.**  \n包描述。\n\nDefault / 默认: `app.description`\n\nTargets / 目标: msix",
+              "type": "string"
+            },
+            "display_name": {
+              "description": "Display name. Default: app.display_name. Targets: msix.",
+              "examples": [
+                "雪花IM"
+              ],
+              "markdownDescription": "**Display name.**  \n显示名称。\n\nDefault / 默认: `app.display_name`\n\nTargets / 目标: msix",
+              "type": "string"
+            },
+            "execution_alias": {
+              "description": "Command-line alias. Targets: msix.",
+              "examples": [
+                "xuehua"
+              ],
+              "markdownDescription": "**Command-line alias.**  \n命令行别名。\n\nTargets / 目标: msix",
+              "type": "string"
+            },
+            "extra_args": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Extra arguments for dart run msix:create. Targets: msix.",
+              "examples": [
+                [
+                  "--trim-logo",
+                  "false"
+                ]
+              ],
+              "markdownDescription": "**Extra arguments for dart run msix:create.**  \n追加到 dart run msix:create 的参数。\n\nTargets / 目标: msix"
+            },
+            "file_extensions": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "File extensions the app opens. Targets: msix.",
+              "examples": [
+                [
+                  ".xhim"
+                ]
+              ],
+              "markdownDescription": "**File extensions the app opens.**  \n应用可打开的文件扩展名。\n\nTargets / 目标: msix"
+            },
+            "identity_name": {
+              "description": "Package identity name. Default: app.identifier. Targets: msix.",
+              "examples": [
+                "com.xuehua.im"
+              ],
+              "markdownDescription": "**Package identity name.**  \n包标识名称（Identity Name）。\n\nDefault / 默认: `app.identifier`\n\nTargets / 目标: msix",
+              "type": "string"
+            },
+            "languages": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Languages. Targets: msix.",
+              "examples": [
+                [
+                  "zh-cn",
+                  "en-us"
+                ]
+              ],
+              "markdownDescription": "**Languages.**  \n语言。\n\nTargets / 目标: msix"
+            },
+            "logo": {
+              "description": "Logo image (≥ 400×400 PNG). Default: msix default / app icon. Targets: msix.",
+              "examples": [
+                "windows/msix/logo.png"
+              ],
+              "markdownDescription": "**Logo image (≥ 400×400 PNG).**  \nLogo 图片（≥ 400×400 的 PNG）。\n\nDefault / 默认: `msix 默认 / 应用图标`\n\nTargets / 目标: msix",
+              "type": "string"
+            },
+            "os_min_version": {
+              "description": "Minimum Windows version. Default: 10.0.17763.0. Targets: msix.",
+              "examples": [
+                "10.0.19041.0"
+              ],
+              "markdownDescription": "**Minimum Windows version.**  \n最低 Windows 版本。\n\nDefault / 默认: `10.0.17763.0`\n\nTargets / 目标: msix",
+              "type": "string"
+            },
+            "protocol_activation": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "URL protocols that activate the app. Targets: msix.",
+              "examples": [
+                [
+                  "xuehua"
+                ]
+              ],
+              "markdownDescription": "**URL protocols that activate the app.**  \n可激活应用的 URL 协议。\n\nTargets / 目标: msix"
+            },
+            "publisher": {
+              "description": "Publisher (certificate subject); required for the Store. Default: from the certificate. Targets: msix.",
+              "examples": [
+                "CN=XueHua Tech, O=XueHua Tech, C=CN"
+              ],
+              "markdownDescription": "**Publisher (certificate subject); required for the Store.**  \n发布者（证书 Subject）；上架 Store 时必填。\n\nDefault / 默认: `取自证书`\n\nTargets / 目标: msix",
+              "type": "string"
+            },
+            "publisher_display_name": {
+              "description": "Publisher display name. Default: app.publisher. Targets: msix.",
+              "examples": [
+                "XueHua Tech"
+              ],
+              "markdownDescription": "**Publisher display name.**  \n发布者显示名称。\n\nDefault / 默认: `app.publisher`\n\nTargets / 目标: msix",
+              "type": "string"
+            },
+            "sign": {
+              "description": "Sign the MSIX (false requires publisher). Default: true. Targets: msix.",
+              "examples": [
+                false
+              ],
+              "markdownDescription": "**Sign the MSIX (false requires publisher).**  \n是否签名 MSIX（false 时必须设置 publisher）。\n\nDefault / 默认: `true`\n\nTargets / 目标: msix",
+              "type": "boolean"
+            },
+            "start_at_login": {
+              "description": "Start the app at login. Default: false. Targets: msix.",
+              "examples": [
+                true
+              ],
+              "markdownDescription": "**Start the app at login.**  \n登录时自动启动。\n\nDefault / 默认: `false`\n\nTargets / 目标: msix",
+              "type": "boolean"
+            },
+            "store": {
+              "description": "Build for the Microsoft Store (unsigned, Store signs it). Default: false. Targets: msix.",
+              "examples": [
+                true
+              ],
+              "markdownDescription": "**Build for the Microsoft Store (unsigned, Store signs it).**  \n为 Microsoft Store 构建（不签名，由 Store 签名）。\n\nDefault / 默认: `false`\n\nTargets / 目标: msix",
+              "type": "boolean"
+            },
+            "version": {
+              "description": "MSIX version (a.b.c.d). Default: build name as a.b.c.0. Targets: msix.",
+              "examples": [
+                "1.2.0.0"
+              ],
+              "markdownDescription": "**MSIX version (a.b.c.d).**  \nMSIX 版本（a.b.c.d）。\n\nDefault / 默认: `版本名补齐为 a.b.c.0`\n\nTargets / 目标: msix",
+              "type": "string"
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "sign": {
+          "additionalProperties": false,
+          "description": "Authenticode signing with signtool: the app .exe and the installer.",
+          "markdownDescription": "Authenticode signing with signtool: the app .exe and the installer.  \n使用 signtool 进行 Authenticode 签名：应用 .exe 与安装程序。",
+          "properties": {
+            "certificate": {
+              "description": "Code signing certificate (.pfx). Setting it (or thumbprint) signs the app .exe, the installer and the MSIX. Env: FPACK_WINDOWS_CERTIFICATE. Targets: windows, exe, msix.",
+              "examples": [
+                "C:/certs/codesign.pfx"
+              ],
+              "markdownDescription": "**Code signing certificate (.pfx). Setting it (or thumbprint) signs the app .exe, the installer and the MSIX.**  \n代码签名证书（.pfx）。设置它（或 thumbprint）后会签名应用 .exe、安装程序和 MSIX。\n\nTargets / 目标: windows, exe, msix · Env: `FPACK_WINDOWS_CERTIFICATE`",
+              "type": "string"
+            },
+            "description": {
+              "description": "Description shown in the UAC prompt (/d). Default: display name. Targets: windows, exe.",
+              "examples": [
+                "XueHua IM"
+              ],
+              "markdownDescription": "**Description shown in the UAC prompt (/d).**  \nUAC 弹窗中显示的描述（/d）。\n\nDefault / 默认: `显示名`\n\nTargets / 目标: windows, exe",
+              "type": "string"
+            },
+            "password": {
+              "description": "Certificate password. Env: FPACK_WINDOWS_CERTIFICATE_PASSWORD. Targets: windows, exe, msix.",
+              "examples": [
+                "${WINDOWS_CERT_PASSWORD}"
+              ],
+              "markdownDescription": "**Certificate password.**  \n证书密码。\n\nTargets / 目标: windows, exe, msix · Env: `FPACK_WINDOWS_CERTIFICATE_PASSWORD`",
+              "type": "string"
+            },
+            "signtool": {
+              "description": "Path to signtool.exe. Default: signtool on PATH or in the Windows SDK. Targets: windows, exe.",
+              "examples": [
+                "C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe"
+              ],
+              "markdownDescription": "**Path to signtool.exe.**  \nsigntool.exe 路径。\n\nDefault / 默认: `PATH 或 Windows SDK 中的 signtool`\n\nTargets / 目标: windows, exe",
+              "type": "string"
+            },
+            "thumbprint": {
+              "description": "SHA-1 thumbprint of a certificate in the Windows certificate store (instead of a .pfx). Env: FPACK_WINDOWS_CERT_THUMBPRINT. Targets: windows, exe.",
+              "examples": [
+                "1A2B3C…"
+              ],
+              "markdownDescription": "**SHA-1 thumbprint of a certificate in the Windows certificate store (instead of a .pfx).**  \nWindows 证书存储中证书的 SHA-1 指纹（替代 .pfx）。\n\nTargets / 目标: windows, exe · Env: `FPACK_WINDOWS_CERT_THUMBPRINT`",
+              "type": "string"
+            },
+            "timestamp_url": {
+              "description": "RFC 3161 timestamp server. Default: http://timestamp.digicert.com. Targets: windows, exe.",
+              "examples": [
+                "http://timestamp.sectigo.com"
+              ],
+              "markdownDescription": "**RFC 3161 timestamp server.**  \nRFC 3161 时间戳服务器。\n\nDefault / 默认: `http://timestamp.digicert.com`\n\nTargets / 目标: windows, exe",
+              "pattern": "^(https?://|\\$\\{)",
+              "type": "string"
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  },
+  "title": "fpack.yaml",
+  "type": "object"
+}

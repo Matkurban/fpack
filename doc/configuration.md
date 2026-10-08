@@ -1,6 +1,6 @@
 # fpack 配置参考
 
-本文列出 fpack 1.0.0 的**全部**配置方式：`fpack.yaml` 的每个键、每个 `FPACK_*` 环境变量、每个命令行参数，以及它们的类型、默认值、影响的目标和作用。
+本文列出 fpack 1.1.0 的**全部**配置方式：`fpack.yaml` 的每个键、每个 `FPACK_*` 环境变量、每个命令行参数，以及它们的类型、默认值、影响的目标和作用。
 
 - 所有配置都是可选的：不写 `fpack.yaml` 也能直接 `fpack build apk`。
 - `fpack init` 会在项目根目录生成一份带注释的 `fpack.yaml`（这是 fpack 唯一会写入项目的文件）。
@@ -52,130 +52,380 @@
 
 ## 2. fpack.yaml 键参考
 
-表头说明：**类型**中 `list` 表示既可以写 YAML 列表，也可以写单个字符串；**目标**指受影响的 `fpack build` 目标，「全部」表示所有目标。
+表头说明：**类型**中 `list` 表示既可以写 YAML 列表，也可以写单个字符串；**目标**指受影响的 `fpack build` 目标，「全部」表示所有目标。本节表格由 fpack 的键注册表自动生成（与 `fpack init` 模板、`fpack schema` 输出、配置校验使用同一份定义），所以永远与实际行为一致。
 
-### 2.1 `app` — 应用信息（安装包元数据）
+**编辑器补全**：`fpack init` 生成的文件第一行是
 
-| 键 | 类型 | 默认值 | 目标 | 说明 |
-| --- | --- | --- | --- | --- |
-| `app.name` | string | `pubspec.yaml` 的 `name` | 全部 | 产物文件名中的 `{app}` 部分，例如 `xue_hua_im-1.0.0+1-android.aab`。 |
-| `app.display_name` | string | `pubspec.yaml` 的 `name` | exe, deb, rpm, appimage, linux | 给人看的应用名：Windows 安装程序标题与开始菜单、Linux `.desktop` 文件的 `Name=`。 |
-| `app.description` | string | `pubspec.yaml` 的 `description` | deb, rpm, appimage, linux | 软件包描述（deb `Description:`、rpm `Summary`、`.desktop` 的 `Comment=`）。 |
-| `app.publisher` | string | 空 | exe, deb | Windows 安装程序的发布者；deb 未设置 `maintainer` 时用作维护者。 |
-| `app.identifier` | string | 依次取 Linux `APPLICATION_ID`、Android `applicationId`、iOS Bundle ID，都没有则 `com.example.<name>` | exe | 反向域名标识。未设置 `windows.inno_setup.app_id` 时，用它生成稳定的安装程序 GUID（升级安装时会识别为同一个应用）。 |
-| `app.homepage` | string | 空 | exe, deb | 主页 URL（Inno Setup `AppPublisherURL`、deb `Homepage:`）。 |
-| `app.maintainer` | string | `publisher`，再没有则 `<包名> maintainers <noreply@example.com>` | deb | deb 的 `Maintainer:`，格式 `名字 <邮箱>`。 |
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Matkurban/fpack/main/schema/fpack.schema.json
+```
 
-### 2.2 `flutter` — Flutter SDK
+VS Code（Red Hat YAML 插件）、IntelliJ/Android Studio 会据此提供键补全、悬停说明（中英文）、可选值提示和类型校验。也可以用 `fpack schema -o fpack.schema.json` 导出到本地。
 
-| 键 | 类型 | 默认值 | 目标 | 说明 |
-| --- | --- | --- | --- | --- |
-| `flutter.sdk` | path | 自动查找（见优先级规则） | 全部 | Flutter SDK 根目录（包含 `bin/flutter` 的目录）。一般不需要设置；项目使用 FVM 时会自动使用 FVM 的版本。 |
+**校验**：加载配置时会检查未知键（并提示「你是不是想写 …」）、类型错误（会指出行号和键名，例如 `line 3: android.signing.v1: expected true or false, got "maybe"`）、可选值、取值范围（如 `web.optimization_level` 0–4、`web.base_href` 必须以 `/` 开头和结尾、`windows.inno_setup.app_id` 必须是 GUID）、组合错误（如 Apple ID 公证缺少 team id）；构建前还会检查当前目标用到的文件路径是否存在。
 
-### 2.3 `build` — 所有 flutter build 共用的参数
+<!-- BEGIN GENERATED KEYS -->
+### 2.1 `app`
 
-| 键 | 类型 | 默认值 | 目标 | 说明 |
-| --- | --- | --- | --- | --- |
-| `build.targets` | list | 无 | — | 执行 `fpack build` 且不带目标时要构建的目标，例如 `[apk, aab, ipa, dmg]`。命令行给了目标或 `--all` 时忽略。 |
-| `build.mode` | `release` \| `profile` \| `debug` | `release` | 全部 | 构建模式。非 release 时文件名会带上 `-profile` / `-debug`。 |
-| `build.flavor` | string | 无 | apk, aab, ipa, macos, dmg（Flutter 支持 flavor 的平台） | 对应 `flutter build --flavor`：Android productFlavor / Xcode scheme。文件名中出现 `-<flavor>`。 |
-| `build.target` | path | `lib/main.dart` | 全部 | 入口文件（`flutter build -t`），例如 `lib/main_prod.dart`。 |
-| `build.dart_define` | map 或 `KEY=VALUE` 列表 | 无 | 全部 | 编译期常量（`--dart-define`）。写成 map：`{ API_URL: https://… }`，或列表：`[API_URL=https://…]`。 |
-| `build.dart_define_from_file` | list | 无 | 全部 | JSON / `.env` 文件（`--dart-define-from-file`），可多个。 |
-| `build.build_name` | string | `pubspec.yaml` 版本号的 `+` 之前部分 | 全部 | 覆盖版本名（`--build-name`），影响文件名中的 `{version}`。 |
-| `build.build_number` | string/数字 | `pubspec.yaml` 版本号的 `+` 之后部分 | 全部 | 覆盖构建号（`--build-number`），影响文件名中的 `{build}`。 |
-| `build.obfuscate` | bool | `false` | apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage | 混淆 Dart 代码（`--obfuscate`）。需要符号目录，未设置 `split_debug_info` 时自动使用 `<输出目录>/debug-info/<平台>`。web 不支持（会给出提示）。 |
-| `build.split_debug_info` | path | `<输出目录>/debug-info` | 同上 | 调试符号保存位置；每个平台一个子目录。崩溃符号化需要它，请和产物一起归档。 |
-| `build.extra_args` | list | 无 | 全部 | 原样追加到每一个 `flutter build` 命令末尾的参数。 |
+应用信息：用于安装程序、软件包元数据。
 
-### 2.4 `output` — 产物位置与命名
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `app.name` | string | `pubspec 的 name` | 全部 |  | 产物文件名前缀（output.name 中的 {app}）。 示例：`xue_hua_im` |
+| `app.display_name` | string | `macOS 的 PRODUCT_NAME，否则为 pubspec 的 name` | exe, msix, pkg, deb, rpm, appimage, linux |  | 给人看的应用名：安装程序标题、开始菜单、.desktop 的 Name=。 示例：`雪花IM` |
+| `app.description` | string | `pubspec 的 description` | deb, rpm, appimage, msix |  | 简短描述：deb 的 Description、rpm 的 Summary、.desktop 的 Comment=、msix 描述。 示例：`A fast and secure messenger` |
+| `app.publisher` | string | — | exe, msix, deb, rpm |  | 公司 / 作者：Windows 安装程序发布者、msix 发布者显示名、deb Maintainer 的后备值、rpm Vendor。 示例：`XueHua Tech` |
+| `app.identifier` | string | `Linux APPLICATION_ID、Android applicationId 或 iOS bundle id` | exe, msix, pkg, appimage |  | 反向域名格式的应用 ID：Inno Setup AppId 的种子、msix identity name、pkg identifier 的后备值。 示例：`com.xuehua.im` |
+| `app.homepage` | url | — | exe, deb, rpm |  | 官网：Inno Setup 发布者网址、deb 的 Homepage、rpm 的 URL。 示例：`https://xuehua.example.com` |
+| `app.support_url` | url | `app.homepage` | exe |  | 技术支持链接（Windows“应用和功能”中显示）。 示例：`https://xuehua.example.com/support` |
+| `app.maintainer` | string | `app.publisher` | deb, rpm |  | deb Maintainer 与 rpm Packager 字段，格式 “名字 <邮箱>”。 示例：`XueHua Team <dev@xuehua.example.com>` |
+| `app.copyright` | string | `© <年份> <发布者>` | exe, deb, rpm |  | 版权信息：Inno Setup 的 AppCopyright 与版本信息、deb 的 copyright 文件。 示例：`© 2026 XueHua Tech` |
+| `app.license` | string | `Proprietary` | rpm, deb |  | 许可证（SPDX 标识）：rpm 的 License、deb 的 copyright 文件。 示例：`MIT` |
 
-| 键 | 类型 | 默认值 | 目标 | 说明 |
-| --- | --- | --- | --- | --- |
-| `output.dir` | 模板 | `dist/{version}{+build}` | 全部 | 产物目录，支持[文件名模板](#5-文件名模板)中的占位符，例如 `dist/{version}`。相对于项目根目录。 |
-| `output.name` | 模板 | `{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}` | 全部 | 产物文件名（不含扩展名）。 |
-| `output.overwrite` | bool | `false` | 全部 | 产物已存在时是否覆盖。默认会跳过并提示（退出码 3），避免误覆盖已发布的文件。等同 `--force`。 |
-| `output.checksums` | bool | `true` | 全部 | 在输出目录写入 `SHA256SUMS`（`sha256sum -c` 格式）。 |
+### 2.2 `flutter`
 
-### 2.5 `android`
+Flutter SDK 选择。
 
-| 键 | 类型 | 默认值 | 目标 | 说明 |
-| --- | --- | --- | --- | --- |
-| `android.split_per_abi` | `false` \| `true` \| `both` | `false` | apk | `false`：一个通用 APK；`true`：每个 ABI 一个 APK；`both`：两者都要（会执行两次 flutter build）。也接受 `universal`/`split`/`all` 等写法。 |
-| `android.abis` | list | `[armeabi-v7a, arm64-v8a, x86_64]` | apk, aab | 要包含的 ABI（`--target-platform`），可选值：`armeabi-v7a`、`arm64-v8a`、`x86_64`。 |
-| `android.signing.store_file` | path | 无 | apk, aab | release keystore（.jks / .keystore）。**设置后 fpack 会注入签名**；不设置则使用项目自己的 `key.properties` 配置（或 Flutter 默认的 debug 签名，此时会警告）。 |
-| `android.signing.store_password` | string | 无 | apk, aab | keystore 密码。请用 `${FPACK_ANDROID_KEYSTORE_PASSWORD}` 引用环境变量，不要把密码写进文件。设置了 `store_file` 时必填。 |
-| `android.signing.key_alias` | string | 无 | apk, aab | key 别名。设置了 `store_file` 时必填。 |
-| `android.signing.key_password` | string | 同 `store_password` | apk, aab | key 密码。 |
-| `android.extra_args` | list | 无 | apk, aab | 只追加到 Android 的 flutter build 命令。 |
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `flutter.sdk` | path | `FLUTTER_ROOT、fvm、PATH 中的 flutter` | 全部 | `FPACK_FLUTTER`<br>`--flutter` | 使用的 Flutter SDK 根目录。 示例：`~/fvm/versions/stable` |
 
-签名注入方式：通过 Android Gradle 插件标准的 `android.injected.signing.*` 属性（`ORG_GRADLE_PROJECT_*` 环境变量）传入，不修改 Gradle 文件；密码不会出现在命令行、日志或 `--dry-run` 输出中。构建前用 `keytool` 校验密码和别名，构建后用 `apksigner` / `keytool -printcert` 校验产物并显示签名者。
+### 2.3 `build`
 
-### 2.6 `ios`
+所有 flutter build 共用的选项。
 
-| 键 | 类型 | 默认值 | 目标 | 说明 |
-| --- | --- | --- | --- | --- |
-| `ios.export_method` | `app-store-connect` \| `app-store` \| `release-testing` \| `ad-hoc` \| `development` \| `debugging` \| `enterprise` | Flutter 默认（App Store Connect） | ipa | IPA 导出方式（`--export-method`）。`ad-hoc`/`release-testing` 用于测试设备分发，`development` 只需要开发证书。导出方式会写入产物类型说明。 |
-| `ios.export_options_plist` | path | 无 | ipa | 自定义 `ExportOptions.plist`（`--export-options-plist`），**优先于** `export_method`。 |
-| `ios.codesign` | bool | `true` | ipa | `false` 时构建未签名 IPA（`--no-codesign`，产物名带 `-unsigned`），用于之后重签名。 |
-| `ios.extra_args` | list | 无 | ipa | 只追加到 `flutter build ipa`。 |
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `build.targets` | list（或单个字符串） | — | — |  | 执行 `fpack build` 且不带目标时构建的目标。 示例：`[apk, aab, ipa, dmg]` |
+| `build.mode` | `release` \\| `profile` \\| `debug` | `release` | 全部 | `FPACK_MODE`<br>`--mode` | 构建模式。 示例：`release` |
+| `build.flavor` | string | — | apk, aab, ipa, macos, dmg, pkg | `FPACK_FLAVOR`<br>`--flavor` | flavor / Xcode scheme（--flavor）；文件名中的 {flavor}。 示例：`prod` |
+| `build.target` | path | `lib/main.dart` | 全部 | `FPACK_ENTRY`<br>`-t, --target` | 入口文件（flutter -t）。 示例：`lib/main_prod.dart` |
+| `build.dart_define` | map 或 `KEY=VALUE` 列表 | — | 全部 | `--dart-define` | --dart-define 值（map 或 KEY=VALUE 列表）。 示例：`{API_URL: https://api.example.com}` |
+| `build.dart_define_from_file` | list（或单个字符串） | — | 全部 | `--dart-define-from-file` | --dart-define-from-file 文件（.json 或 .env）。 示例：`[config/prod.json]` |
+| `build.build_name` | string/number | `pubspec 版本号 + 之前的部分` | 全部 | `FPACK_BUILD_NAME`<br>`--build-name` | 版本名（{version}）。 示例：`1.2.0` |
+| `build.build_number` | string/number | `pubspec 版本号 + 之后的部分` | 全部 | `FPACK_BUILD_NUMBER`<br>`--build-number` | 构建号（{build}）。 示例：`42` |
+| `build.obfuscate` | bool | `false` | apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage | `FPACK_OBFUSCATE`<br>`--obfuscate` | 混淆 Dart 代码；符号文件保存到 split_debug_info（默认 <输出目录>/debug-info/<平台>）。 示例：`true` |
+| `build.split_debug_info` | string | `混淆时为 <输出目录>/debug-info/<平台>` | apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage | `--split-debug-info` | Dart 调试符号目录（--split-debug-info）。 示例：`build/symbols` |
+| `build.tree_shake_icons` | bool | `true` | 全部 |  | false 时传 --no-tree-shake-icons（保留全部图标字体字形）。 示例：`false` |
+| `build.extra_args` | list（或单个字符串） | — | 全部 |  | 追加到每个 flutter build 的参数（命令行 -- 之后的参数同理）。 示例：`[--no-pub]` |
 
-### 2.7 `macos`
+### 2.4 `output`
 
-| 键 | 类型 | 默认值 | 目标 | 说明 |
-| --- | --- | --- | --- | --- |
-| `macos.sign.enabled` | bool | 设置了 `identity` 时为 `true`，否则 `false` | macos, dmg, pkg | 是否用 Developer ID 重新签名 .app（Hardened Runtime + entitlements）和 DMG。为 `true` 但没有 `identity` 时，自动使用钥匙串中第一个 “Developer ID Application” 证书。为 `false`（或 `--no-sign`）时 .app 保留 Xcode 工程自己的签名，DMG 和 pkg 不签名，同时关闭公证。 |
-| `macos.sign.identity` | string | 无 | macos, dmg, pkg | codesign 证书全名，例如 `Developer ID Application: Your Name (TEAMID)`。**设置后即启用签名**。证书不存在、已吊销或钥匙串中没有 Developer ID 时，构建前就会报错并说明如何导入 .p12。`fpack init` 会在注释中列出本机钥匙串里的 Developer ID 证书。 |
-| `macos.sign.entitlements` | path | `macos/Runner/Release.entitlements`（非 release 模式用 `DebugProfile.entitlements`） | macos, dmg, pkg | 重新签名 .app 时使用的 entitlements 文件。 |
-| `macos.sign.notarize` | bool | 设置了 `notary_profile` 时为 `true`，否则 `false` | macos, dmg, pkg | 是否提交 Apple 公证（`xcrun notarytool submit --wait`）并装订（`stapler staple`），zip、DMG 与已签名的 pkg 都会公证。会把文件上传到 Apple。需要签名；本地测试可用 `--no-notarize`。 |
-| `macos.sign.notary_profile` | string | 无（开启公证但未设置时为 `NotaryProfile`） | macos, dmg, pkg | `xcrun notarytool store-credentials <名字>` 创建的钥匙串配置名。**设置后即启用公证**（前提是已启用签名）。 |
-| `macos.sign.installer_identity` | string | 无 | pkg | 签名 .pkg 的证书全名，例如 `Developer ID Installer: Your Name (TEAMID)`。这是与 “Developer ID Application” **不同的另一张证书**（Xcode → Settings → Accounts → Manage Certificates → + → Developer ID Installer，仅账户持有人可创建）。未设置时 pkg 不签名（也不会公证），产物说明中会提示；`--no-sign` 时同样不签名。找不到证书时构建前报错并列出钥匙串中可用的安装包证书。 |
-| `macos.dmg.tool` | `auto` \| `hdiutil` \| `create-dmg` | `auto` | dmg | 制作 DMG 的工具。`auto`：装了 [create-dmg](https://github.com/create-dmg/create-dmg) 就用它（窗口布局更好看），否则用系统自带的 `hdiutil`。 |
-| `macos.dmg.volume_name` | string | .app 名称（如 `XueHua`） | dmg | 挂载 DMG 后显示的卷名。 |
-| `macos.dmg.background` | path | 无 | dmg | DMG 窗口背景图，仅 `create-dmg` 支持。 |
-| `macos.pkg.identifier` | string | macOS 工程的 bundle id（`macos/Runner/Configs/AppInfo.xcconfig` 的 `PRODUCT_BUNDLE_IDENTIFIER`） | pkg | 安装包标识（`pkgbuild --identifier`），安装后可用 `pkgutil --pkgs` 看到。 |
-| `macos.pkg.install_location` | 绝对路径 | `/Applications` | pkg | App 安装到的目录。组件包不可重定位：升级时总是覆盖这个目录中的版本。 |
-| `macos.pkg.title` | string | .app 名称 | pkg | 安装器窗口标题。 |
-| `macos.pkg.welcome` | path（.html/.rtf/.txt） | 无 | pkg | 安装器的「欢迎」页。 |
-| `macos.pkg.readme` | path（.html/.rtf/.txt） | 无 | pkg | 「请先阅读」页。 |
-| `macos.pkg.license` | path（.html/.rtf/.txt） | 无 | pkg | 「许可」页，用户需要同意后才能安装。 |
-| `macos.pkg.conclusion` | path（.html/.rtf/.txt） | 无 | pkg | 安装完成页。 |
-| `macos.pkg.background` | path（png/jpg/tiff/gif/pdf） | 无 | pkg | 安装器窗口背景图（浅色/深色模式都使用）。 |
-| `macos.extra_args` | list | 无 | macos, dmg, pkg | 只追加到 `flutter build macos`。 |
+产物输出目录与命名。
 
-**pkg 安装包**（`fpack build pkg`，产物 `<app>-<版本>+<构建号>-macos.pkg`）：复制 .app →（配置了 `identity` 时）Developer ID 重新签名 → `pkgbuild --root … --component-plist …`（安装到 `install_location`，不可重定位）→ `productbuild --distribution …`（支持 arm64 + x86_64，不提示 Rosetta；`installer_identity` 存在时 `--sign … --timestamp`）→ `pkgutil --check-signature` → （签名且开启公证时）`notarytool submit --wait` → `stapler staple` → `spctl --assess --type install`。同一次运行中 `macos`、`dmg`、`pkg` 共享一次 `flutter build macos`。
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `output.dir` | string | `dist/{version}{+build}` | 全部 | `FPACK_OUTPUT_DIR`<br>`-o, --output` | 产物目录（相对于项目，可用占位符）。 示例：`"dist/{version}{+build}"` |
+| `output.name` | string | `{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}` | 全部 |  | 文件名模板（不含扩展名）。占位符：{app} {version} {build} {platform} {arch} {variant} {mode} {flavor} {target} {date}；{-x}/{+x} 表示 x 非空时才加分隔符。 示例：`"{app}-{version}-{platform}{-arch}"` |
+| `output.names` | map | — | 全部 |  | 按目标单独设置文件名模板（目标 → 模板），优先于 output.name。 示例：`{exe: "{app}-setup-{version}", web: "{app}-web"}` |
+| `output.overwrite` | bool | `false` | 全部 | `FPACK_OVERWRITE`<br>`-f, --force` | 已存在同名产物时覆盖，而不是停止。 示例：`true` |
+| `output.checksums` | bool | `true` | 全部 |  | 在产物旁写入校验和文件。 示例：`false` |
+| `output.checksum_algorithm` | `sha256` \\| `sha512` | `sha256` | 全部 |  | 校验算法（文件名 SHA256SUMS 或 SHA512SUMS）。 示例：`sha512` |
+
+### 2.5 `hooks`
+
+构建前后执行的 shell 命令（工作目录：项目根目录）。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `hooks.pre_build` | list（或单个字符串） | — | 全部 |  | 第一次 flutter build 之前执行一次；失败则停止构建。 示例：`[dart run build_runner build --delete-conflicting-outputs]` |
+| `hooks.post_build` | list（或单个字符串） | — | 全部 |  | 全部目标完成后执行一次；FPACK_ARTIFACTS 为产物列表（每行一个），FPACK_SUCCESS 为 true/false。 示例：`[./scripts/upload.sh]` |
+| `hooks.pre_package` | map：目标 → 命令列表 | — | 全部 |  | 按目标（目标 → 命令）在打包步骤之前执行；提供 FPACK_TARGET。 示例：`{apk: [./scripts/check_size.sh]}` |
+| `hooks.post_package` | map：目标 → 命令列表 | — | 全部 |  | 按目标在产物生成后执行；提供 FPACK_ARTIFACT（第一个产物）和 FPACK_ARTIFACTS。 示例：`{dmg: [./scripts/upload_dmg.sh "$FPACK_ARTIFACT"]}` |
+
+### 2.6 `android`
+
+Android：apk、aab。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `android.split_per_abi` | `false` \\| `true` \\| `both` | `false` | apk | `FPACK_SPLIT_PER_ABI`<br>`--split-per-abi` | false：一个通用 APK；true：每个 ABI 一个 APK；both：两者都要。 示例：`both` |
+| `android.abis` | list（或单个字符串） | `armeabi-v7a、arm64-v8a、x86_64` | apk, aab | `--abis` | 目标 ABI（--target-platform）。 示例：`[arm64-v8a, armeabi-v7a]` |
+| `android.project_args` | map | — | apk, aab |  | Gradle 项目属性（flutter -P key=value），build.gradle 中可用 project.findProperty 读取（例如开关 minify/R8）。 示例：`{minify: "true"}` |
+| `android.extra_args` | list（或单个字符串） | — | apk, aab |  | 追加到 flutter build apk/appbundle 的参数。 示例：`[--android-skip-build-dependency-validation]` |
+
+#### `android.signing`
+
+发布签名：通过注入方式生效，不修改 Gradle 文件。密码请放在环境变量中。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `android.signing.store_file` | path | `无（使用项目自己的 android/key.properties）` | apk, aab | `FPACK_ANDROID_KEYSTORE` | keystore 文件（.jks/.keystore）。CI 中可用 FPACK_ANDROID_KEYSTORE_BASE64 提供。 示例：`~/keys/upload.jks` |
+| `android.signing.store_password` | string | — | apk, aab | `FPACK_ANDROID_KEYSTORE_PASSWORD` | keystore 密码。 示例：`${KEYSTORE_PASSWORD}` |
+| `android.signing.key_alias` | string | — | apk, aab | `FPACK_ANDROID_KEY_ALIAS` | key 别名。 示例：`upload` |
+| `android.signing.key_password` | string | `store_password` | apk, aab | `FPACK_ANDROID_KEY_PASSWORD` | key 密码。 示例：`${KEY_PASSWORD}` |
+| `android.signing.v1` | bool | `apksigner 默认（minSdk < 24 时开启）` | apk |  | APK v1 签名（JAR 签名，Android 7 以下需要）。设置 v1-v4 任意一项时，fpack 会用 apksigner 和 android.signing 重新签名 APK。 示例：`true` |
+| `android.signing.v2` | bool | `true` | apk |  | APK v2 签名（Android 7+）。 示例：`true` |
+| `android.signing.v3` | bool | `true` | apk |  | APK v3 签名（Android 9+，支持密钥轮换）。 示例：`true` |
+| `android.signing.v4` | bool | `false` | apk |  | APK v4 签名（增量安装，Android 11+）；会在 APK 旁生成 <apk>.idsig。 示例：`true` |
+
+### 2.7 `ios`
+
+iOS：ipa。设置 team_id … export_options 中任意一项时，fpack 会自动生成 ExportOptions.plist。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `ios.export_method` | `app-store-connect` \\| `app-store` \\| `release-testing` \\| `ad-hoc` \\| `development` \\| `debugging` \\| `enterprise` | `app-store-connect` | ipa | `FPACK_IOS_EXPORT_METHOD`<br>`--export-method` | IPA 导出方式。 示例：`ad-hoc` |
+| `ios.export_options_plist` | path | — | ipa | `FPACK_IOS_EXPORT_OPTIONS_PLIST`<br>`--export-options-plist` | 自己的 ExportOptions.plist；优先于下面所有生成选项。 示例：`ios/ExportOptions.plist` |
+| `ios.codesign` | bool | `true` | ipa | `FPACK_IOS_CODESIGN`<br>`--no-codesign` | false：构建未签名 IPA（Payload/ 结构），用于之后重签名。 示例：`false` |
+| `ios.team_id` | string | `Xcode 工程中的 DEVELOPMENT_TEAM` | ipa |  | Apple 团队 ID（teamID）。 示例：`ABCDE12345` |
+| `ios.signing_style` | `automatic` \\| `manual` | `automatic` | ipa |  | signingStyle：automatic 或 manual（manual 需要 provisioning_profiles）。 示例：`manual` |
+| `ios.signing_certificate` | string | — | ipa |  | signingCertificate（手动签名），例如 "Apple Distribution"。 示例：`Apple Distribution` |
+| `ios.provisioning_profiles` | map | — | ipa |  | provisioningProfiles：bundle id → 描述文件名称或 UUID（扩展也要列出）。 示例：`{com.xuehua.im: XueHua AdHoc}` |
+| `ios.upload_symbols` | bool | `true` | ipa |  | uploadSymbols：是否上传符号表到 App Store Connect。 示例：`false` |
+| `ios.manage_app_version_and_build_number` | bool | `true` | ipa |  | manageAppVersionAndBuildNumber：是否由 App Store Connect 自动管理版本号/构建号。 示例：`false` |
+| `ios.destination` | `export` \\| `upload` | `export` | ipa |  | export 为本地导出 IPA，upload 为直接上传到 App Store Connect（ExportOptions 的 destination）。 示例：`upload` |
+| `ios.thinning` | string | `<none>` | ipa |  | ad-hoc/development/enterprise 导出时的瘦身（thinning）选项。 示例：`<thin-for-all-variants>` |
+| `ios.strip_swift_symbols` | bool | `true` | ipa |  | stripSwiftSymbols。 示例：`false` |
+| `ios.export_options` | map (any) | — | ipa |  | 其他任意 ExportOptions.plist 键（原样写入）。 示例：`{iCloudContainerEnvironment: Production}` |
+| `ios.extra_args` | list（或单个字符串） | — | ipa |  | 追加到 flutter build ipa 的参数。 示例：`[--no-tree-shake-icons]` |
+
+### 2.8 `macos`
+
+macOS：macos（.app zip）、dmg、pkg。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `macos.extra_args` | list（或单个字符串） | — | macos, dmg, pkg |  | 追加到 flutter build macos 的参数。 示例：`[--no-tree-shake-icons]` |
+
+#### `macos.sign`
+
+Developer ID 签名与公证（只来自本文件、FPACK_MACOS_* 和命令行参数）。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `macos.sign.enabled` | bool | `设置了 identity 时为 true` | macos, dmg, pkg | `FPACK_MACOS_SIGN`<br>`--sign / --no-sign` | 用 Developer ID 重新签名 .app（并签名 DMG）。为 true 但未设置 identity 时自动选用第一个 “Developer ID Application” 证书。false（--no-sign）同时关闭 pkg 签名与公证。 示例：`true` |
+| `macos.sign.identity` | string | — | macos, dmg, pkg | `FPACK_MACOS_SIGN_IDENTITY`<br>`--sign-identity` | App 的 codesign 证书；设置后即启用签名。 示例：`"Developer ID Application: Your Name (TEAMID)"` |
+| `macos.sign.entitlements` | path | `macos/Runner/Release.entitlements` | macos, dmg, pkg |  | 重新签名 App 时使用的 entitlements。 示例：`macos/Runner/Release.entitlements` |
+| `macos.sign.hardened_runtime` | bool | `true` | macos, dmg, pkg |  | 使用 Hardened Runtime 签名（公证必需）。 示例：`true` |
+| `macos.sign.notarize` | bool | `设置了公证凭证时为 true` | macos, dmg, pkg | `FPACK_MACOS_NOTARIZE`<br>`--notarize / --no-notarize` | 公证并装订 zip、DMG 与已签名的 pkg（会上传到 Apple）。 示例：`true` |
+| `macos.sign.notary_profile` | string | — | macos, dmg, pkg | `FPACK_MACOS_NOTARY_PROFILE`<br>`--notary-profile` | `xcrun notarytool store-credentials <名字>` 创建的钥匙串配置名（本地推荐）。 示例：`NotaryProfile` |
+| `macos.sign.notary_apple_id` | string | — | macos, dmg, pkg | `FPACK_NOTARY_APPLE_ID` | 公证用 Apple ID（配合 notary_team_id + notary_password），替代钥匙串配置。 示例：`dev@example.com` |
+| `macos.sign.notary_team_id` | string | — | macos, dmg, pkg | `FPACK_NOTARY_TEAM_ID` | Apple ID 公证时的团队 ID。 示例：`ABCDE12345` |
+| `macos.sign.notary_password` | string | — | macos, dmg, pkg | `FPACK_NOTARY_PASSWORD` | Apple ID 公证用的 App 专用密码。 示例：`${NOTARY_PASSWORD}` |
+| `macos.sign.notary_api_key` | path | — | macos, dmg, pkg | `FPACK_NOTARY_API_KEY` | 公证用 App Store Connect API 密钥（.p8，适合 CI）。 示例：`~/keys/AuthKey_ABC123.p8` |
+| `macos.sign.notary_api_key_id` | string | — | macos, dmg, pkg | `FPACK_NOTARY_API_KEY_ID` | API 密钥 ID。 示例：`ABC123DEF4` |
+| `macos.sign.notary_api_issuer` | string | — | macos, dmg, pkg | `FPACK_NOTARY_API_ISSUER` | API Issuer UUID（个人密钥可省略）。 示例：`69a6de7e-…` |
+| `macos.sign.installer_identity` | string | — | pkg | `FPACK_MACOS_INSTALLER_IDENTITY`<br>`--installer-identity` | 签名 .pkg 的证书，与 App 的 “Developer ID Application” 不同。不设置则 pkg 不签名。 示例：`"Developer ID Installer: Your Name (TEAMID)"` |
+
+#### `macos.dmg`
+
+DMG 磁盘镜像。窗口/图标布局需要 create-dmg（brew install create-dmg）。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `macos.dmg.tool` | `auto` \\| `hdiutil` \\| `create-dmg` | `auto` | dmg | `FPACK_DMG_TOOL`<br>`--dmg-tool` | auto：装了 create-dmg（或设置了布局键）时用 create-dmg，否则用 hdiutil。 示例：`create-dmg` |
+| `macos.dmg.volume_name` | string | `.app 名称` | dmg |  | 挂载 DMG 后显示的卷名。 示例：`雪花IM` |
+| `macos.dmg.volume_icon` | path | — | dmg |  | 卷图标（.icns）。需要 create-dmg。 示例：`macos/dmg/volume.icns` |
+| `macos.dmg.background` | path | — | dmg |  | 窗口背景图。需要 create-dmg。 示例：`macos/dmg/background.png` |
+| `macos.dmg.window_position` | `[x, y]` | `[200, 120]` | dmg |  | 窗口位置 [x, y]。需要 create-dmg。 示例：`[200, 120]` |
+| `macos.dmg.window_size` | `[x, y]` | `[660, 400]` | dmg |  | 窗口大小 [宽, 高]。需要 create-dmg。 示例：`[660, 400]` |
+| `macos.dmg.icon_size` | int | `128` | dmg |  | 窗口中的图标大小。需要 create-dmg。 示例：`128` |
+| `macos.dmg.app_position` | `[x, y]` | `[180, 190]` | dmg |  | App 图标位置 [x, y]。需要 create-dmg。 示例：`[180, 190]` |
+| `macos.dmg.applications_position` | `[x, y]` | `[480, 190]` | dmg |  | “应用程序”快捷方式位置 [x, y]。需要 create-dmg。 示例：`[480, 190]` |
+| `macos.dmg.format` | `UDZO` \\| `UDBZ` \\| `ULFO` \\| `ULMO` \\| `UDRO` | `UDZO` | dmg |  | 镜像格式：UDZO（zlib）、UDBZ（bzip2）、ULFO（lzfse，macOS 10.11+）、ULMO（lzma，10.15+）、UDRO（只读不压缩）。 示例：`ULFO` |
+| `macos.dmg.filesystem` | `HFS+` \\| `APFS` | `HFS+` | dmg |  | 镜像文件系统。 示例：`APFS` |
+| `macos.dmg.license` | path | — | dmg |  | 打开 DMG 时显示的许可协议（.txt/.rtf）。需要 create-dmg。 示例：`LICENSE.txt` |
+
+#### `macos.pkg`
+
+安装包（pkgbuild + productbuild）。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `macos.pkg.identifier` | string | `macOS 工程的 bundle id` | pkg |  | 安装包标识（pkgutil --pkgs 中显示）。 示例：`com.xuehua.im` |
+| `macos.pkg.version` | string | `版本名` | pkg |  | 安装包版本。 示例：`1.2.0` |
+| `macos.pkg.install_location` | string | `/Applications` | pkg |  | App 安装到的绝对路径目录。 示例：`/Applications` |
+| `macos.pkg.title` | string | `.app 名称` | pkg |  | 安装器窗口标题。 示例：`雪花IM` |
+| `macos.pkg.welcome` | path | — | pkg |  | 欢迎页（.html/.rtf/.txt）。 示例：`macos/installer/welcome.html` |
+| `macos.pkg.readme` | path | — | pkg |  | “请先阅读”页（.html/.rtf/.txt）。 示例：`macos/installer/readme.html` |
+| `macos.pkg.license` | path | — | pkg |  | 用户必须同意的许可页（.html/.rtf/.txt）。 示例：`macos/installer/license.rtf` |
+| `macos.pkg.conclusion` | path | — | pkg |  | 完成页（.html/.rtf/.txt）。 示例：`macos/installer/done.html` |
+| `macos.pkg.background` | path | — | pkg |  | 背景图（浅色/深色模式都使用）。 示例：`macos/installer/background.png` |
+| `macos.pkg.min_os` | string | `工程的 MACOSX_DEPLOYMENT_TARGET` | pkg |  | 最低 macOS 版本；低于此版本时安装器会拒绝安装。 示例：`10.15` |
+| `macos.pkg.preinstall` | path | — | pkg |  | 安装前执行的脚本（自动设为可执行）。 示例：`macos/installer/preinstall.sh` |
+| `macos.pkg.postinstall` | path | — | pkg |  | 安装后执行的脚本。 示例：`macos/installer/postinstall.sh` |
+| `macos.pkg.relocatable` | bool | `false` | pkg |  | true：App 被移动过时在原位置升级；false：总是安装到 install_location。 示例：`true` |
+| `macos.pkg.require_restart` | bool | `false` | pkg |  | 安装完成后要求重启。 示例：`true` |
+
+### 2.9 `windows`
+
+Windows：windows（zip）、exe（Inno Setup）、msix。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `windows.extra_args` | list（或单个字符串） | — | windows, exe, msix |  | 追加到 flutter build windows 的参数。 示例：`[--no-tree-shake-icons]` |
+
+#### `windows.inno_setup`
+
+Inno Setup 安装程序（.exe）。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `windows.inno_setup.app_id` | string | `由 app.identifier 推导的固定 GUID` | exe |  | AppId：请永远保持不变，升级时才能覆盖旧版本。 示例：`8D3B5E6A-1C2D-4E5F-8A9B-0C1D2E3F4A5B` |
+| `windows.inno_setup.script` | path | — | exe |  | 自定义 .iss 脚本；fpack 会传入 /DAppName /DAppVersion /DAppPublisher /DAppExeName /DSourceDir /DAppId /DAppURL。 示例：`windows/installer.iss` |
+| `windows.inno_setup.iscc` | path | `PATH 或 Program Files 中的 ISCC` | exe |  | ISCC.exe 路径。 示例：`C:/Program Files (x86)/Inno Setup 6/ISCC.exe` |
+| `windows.inno_setup.publisher` | string | `app.publisher` | exe |  | AppPublisher（发布者）。 示例：`XueHua Tech` |
+| `windows.inno_setup.publisher_url` | url | `app.homepage` | exe |  | AppPublisherURL（发布者网址）。 示例：`https://xuehua.example.com` |
+| `windows.inno_setup.support_url` | url | `app.support_url` | exe |  | AppSupportURL（支持网址）。 示例：`https://xuehua.example.com/support` |
+| `windows.inno_setup.updates_url` | url | — | exe |  | AppUpdatesURL（更新网址）。 示例：`https://xuehua.example.com/download` |
+| `windows.inno_setup.default_dir` | string | `{autopf}\<显示名>` | exe |  | 默认安装目录（可用 Inno 常量）。 示例：`'{autopf}\XueHua'` |
+| `windows.inno_setup.group_name` | string | `显示名` | exe |  | 开始菜单文件夹。 示例：`XueHua` |
+| `windows.inno_setup.desktop_icon` | `none` \\| `unchecked` \\| `checked` | `unchecked` | exe |  | 桌面快捷方式：none 不提供，unchecked 提供但默认不勾选，checked 默认勾选。 示例：`checked` |
+| `windows.inno_setup.run_after_install` | bool | `true` | exe |  | 最后一页提供“运行 <应用>”选项。 示例：`false` |
+| `windows.inno_setup.license_file` | path | — | exe |  | 许可协议页（.txt/.rtf）。 示例：`LICENSE.txt` |
+| `windows.inno_setup.info_before` | path | — | exe |  | 安装前信息页（.txt/.rtf）。 示例：`docs/before.txt` |
+| `windows.inno_setup.info_after` | path | — | exe |  | 安装后信息页（.txt/.rtf）。 示例：`docs/after.txt` |
+| `windows.inno_setup.setup_icon` | path | `windows/runner/resources/app_icon.ico` | exe |  | 安装程序图标（.ico）。 示例：`windows/installer/setup.ico` |
+| `windows.inno_setup.wizard_image` | path | — | exe |  | 向导大图（.bmp/.png，100% 缩放下 164×314）。 示例：`windows/installer/wizard.bmp` |
+| `windows.inno_setup.wizard_small_image` | path | — | exe |  | 向导小图（.bmp/.png，55×55）。 示例：`windows/installer/wizard-small.bmp` |
+| `windows.inno_setup.wizard_style` | `modern` \\| `classic` | `modern` | exe |  | 向导样式。 示例：`classic` |
+| `windows.inno_setup.languages` | list（或单个字符串） | `[en]` | exe |  | 安装程序语言；第一个为默认，多个时让用户选择。zh-CN/zh-TW 需要 Inno Setup 6.5+（旧版本时 fpack 自带语言文件）。支持：en zh-CN zh-TW ja ko de fr es it pt-BR pt ru uk tr pl nl cs ar he。 示例：`[zh-CN, en]` |
+| `windows.inno_setup.privileges` | `user` \\| `admin` \\| `ask` | `ask` | exe |  | user：仅当前用户（无需管理员）；admin：所有用户（需要 UAC）；ask：让用户选择。 示例：`admin` |
+| `windows.inno_setup.compression` | string | `lzma2/max` | exe |  | 压缩方式（lzma2/max、lzma2/ultra64、zip、none 等）。 示例：`lzma2/ultra64` |
+| `windows.inno_setup.min_version` | string | `10.0` | exe |  | 最低 Windows 版本（MinVersion）。 示例：`10.0.17763` |
+
+#### `windows.sign`
+
+使用 signtool 进行 Authenticode 签名：应用 .exe 与安装程序。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `windows.sign.certificate` | path | — | windows, exe, msix | `FPACK_WINDOWS_CERTIFICATE` | 代码签名证书（.pfx）。设置它（或 thumbprint）后会签名应用 .exe、安装程序和 MSIX。 示例：`C:/certs/codesign.pfx` |
+| `windows.sign.password` | string | — | windows, exe, msix | `FPACK_WINDOWS_CERTIFICATE_PASSWORD` | 证书密码。 示例：`${WINDOWS_CERT_PASSWORD}` |
+| `windows.sign.thumbprint` | string | — | windows, exe | `FPACK_WINDOWS_CERT_THUMBPRINT` | Windows 证书存储中证书的 SHA-1 指纹（替代 .pfx）。 示例：`1A2B3C…` |
+| `windows.sign.timestamp_url` | url | `http://timestamp.digicert.com` | windows, exe |  | RFC 3161 时间戳服务器。 示例：`http://timestamp.sectigo.com` |
+| `windows.sign.signtool` | path | `PATH 或 Windows SDK 中的 signtool` | windows, exe |  | signtool.exe 路径。 示例：`C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe` |
+| `windows.sign.description` | string | `显示名` | windows, exe |  | UAC 弹窗中显示的描述（/d）。 示例：`XueHua IM` |
+
+#### `windows.msix`
+
+MSIX 包（需要 msix 开发依赖）。这些键会覆盖 pubspec 中的 msix_config。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `windows.msix.display_name` | string | `app.display_name` | msix |  | 显示名称。 示例：`雪花IM` |
+| `windows.msix.publisher_display_name` | string | `app.publisher` | msix |  | 发布者显示名称。 示例：`XueHua Tech` |
+| `windows.msix.identity_name` | string | `app.identifier` | msix |  | 包标识名称（Identity Name）。 示例：`com.xuehua.im` |
+| `windows.msix.publisher` | string | `取自证书` | msix |  | 发布者（证书 Subject）；上架 Store 时必填。 示例：`CN=XueHua Tech, O=XueHua Tech, C=CN` |
+| `windows.msix.version` | string | `版本名补齐为 a.b.c.0` | msix |  | MSIX 版本（a.b.c.d）。 示例：`1.2.0.0` |
+| `windows.msix.logo` | path | `msix 默认 / 应用图标` | msix |  | Logo 图片（≥ 400×400 的 PNG）。 示例：`windows/msix/logo.png` |
+| `windows.msix.description` | string | `app.description` | msix |  | 包描述。 示例：`A fast and secure messenger` |
+| `windows.msix.capabilities` | list（或单个字符串） | — | msix |  | 能力声明（capabilities）。 示例：`[internetClient, microphone, webcam]` |
+| `windows.msix.languages` | list（或单个字符串） | — | msix |  | 语言。 示例：`[zh-cn, en-us]` |
+| `windows.msix.file_extensions` | list（或单个字符串） | — | msix |  | 应用可打开的文件扩展名。 示例：`[.xhim]` |
+| `windows.msix.protocol_activation` | list（或单个字符串） | — | msix |  | 可激活应用的 URL 协议。 示例：`[xuehua]` |
+| `windows.msix.execution_alias` | string | — | msix |  | 命令行别名。 示例：`xuehua` |
+| `windows.msix.start_at_login` | bool | `false` | msix |  | 登录时自动启动。 示例：`true` |
+| `windows.msix.os_min_version` | string | `10.0.17763.0` | msix |  | 最低 Windows 版本。 示例：`10.0.19041.0` |
+| `windows.msix.store` | bool | `false` | msix |  | 为 Microsoft Store 构建（不签名，由 Store 签名）。 示例：`true` |
+| `windows.msix.sign` | bool | `true` | msix |  | 是否签名 MSIX（false 时必须设置 publisher）。 示例：`false` |
+| `windows.msix.certificate` | path | `windows.sign.certificate，否则使用 msix 测试证书` | msix |  | 签名 MSIX 用的证书（.pfx）。 示例：`C:/certs/codesign.pfx` |
+| `windows.msix.certificate_password` | string | `windows.sign.password` | msix |  | 证书密码。 示例：`${WINDOWS_CERT_PASSWORD}` |
+| `windows.msix.extra_args` | list（或单个字符串） | — | msix |  | 追加到 dart run msix:create 的参数。 示例：`[--trim-logo, "false"]` |
+
+### 2.10 `linux`
+
+Linux：linux（tar.gz）、deb、rpm、appimage。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `linux.package_name` | string | `应用名转小写并用 - 连接` | deb, rpm, appimage |  | deb/rpm 包名，以及 /usr/bin 中的命令名。 示例：`xuehua-im` |
+| `linux.prefix` | string | `/opt/<package_name>` | deb, rpm |  | 应用文件的安装目录。 示例：`/usr/lib/xuehua-im` |
+| `linux.icon` | path | `flutter_launcher_icons 的图片，否则 web/icons/Icon-512.png` | deb, rpm, appimage |  | 菜单与 AppImage 使用的 PNG 图标。 示例：`assets/icon/icon.png` |
+| `linux.icon_sizes` | list of int | `[16, 32, 48, 64, 128, 256, 512]` | deb, rpm |  | 安装到 hicolor 主题的图标尺寸（由 linux.icon 缩放，不放大）。 示例：`[48, 128, 256]` |
+| `linux.categories` | list（或单个字符串） | `[Utility]` | deb, rpm, appimage |  | freedesktop.org 菜单分类（.desktop 的 Categories=）。 示例：`[Network, InstantMessaging]` |
+| `linux.generic_name` | string | — | deb, rpm, appimage |  | .desktop 的 GenericName=。 示例：`Instant Messenger` |
+| `linux.keywords` | list（或单个字符串） | — | deb, rpm, appimage |  | .desktop 的 Keywords=（搜索关键词）。 示例：`[chat, im, message]` |
+| `linux.mime_types` | list（或单个字符串） | — | deb, rpm, appimage |  | .desktop 的 MimeType=（可打开的文件类型 / URL 协议）。 示例：`[x-scheme-handler/xuehua]` |
+| `linux.startup_wm_class` | string | `可执行文件名` | deb, rpm, appimage |  | .desktop 的 StartupWMClass=（让窗口与启动器图标归为一组）。 示例：`xue_hua_im` |
+| `linux.metainfo` | path | — | deb, rpm, appimage |  | AppStream metainfo，安装到 /usr/share/metainfo（软件中心展示）。 示例：`linux/packaging/com.xuehua.im.metainfo.xml` |
+| `linux.appimagetool` | path | `PATH 中的 appimagetool` | appimage |  | appimagetool 路径。 示例：`~/.local/bin/appimagetool` |
+| `linux.extra_args` | list（或单个字符串） | — | linux, deb, rpm, appimage |  | 追加到 flutter build linux 的参数。 示例：`[--no-tree-shake-icons]` |
+
+#### `linux.deb`
+
+Debian/Ubuntu 软件包。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `linux.deb.depends` | list（或单个字符串） | `[libgtk-3-0 \| libgtk-3-0t64]` | deb |  | Depends（依赖）。 示例：`[libgtk-3-0, libsecret-1-0]` |
+| `linux.deb.recommends` | list（或单个字符串） | — | deb |  | Recommends（推荐）。 示例：`[gnome-keyring]` |
+| `linux.deb.suggests` | list（或单个字符串） | — | deb |  | Suggests（建议）。 示例：`[libnotify-bin]` |
+| `linux.deb.conflicts` | list（或单个字符串） | — | deb |  | Conflicts（冲突）。 示例：`[xuehua-im-beta]` |
+| `linux.deb.section` | string | `utils` | deb |  | Section（分区）。 示例：`net` |
+| `linux.deb.priority` | `required` \\| `important` \\| `standard` \\| `optional` \\| `extra` | `optional` | deb |  | Priority（优先级）。 示例：`optional` |
+| `linux.deb.preinst` | path | — | deb |  | 解包前执行的维护脚本。 示例：`linux/packaging/preinst` |
+| `linux.deb.postinst` | path | — | deb |  | 安装后执行的维护脚本。 示例：`linux/packaging/postinst` |
+| `linux.deb.prerm` | path | — | deb |  | 卸载前执行的维护脚本。 示例：`linux/packaging/prerm` |
+| `linux.deb.postrm` | path | — | deb |  | 卸载后执行的维护脚本。 示例：`linux/packaging/postrm` |
+
+#### `linux.rpm`
+
+Fedora/RHEL/openSUSE 软件包。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `linux.rpm.requires` | list（或单个字符串） | `[gtk3]` | rpm |  | Requires（依赖）。 示例：`[gtk3, libsecret]` |
+| `linux.rpm.group` | string | `Applications/Internet` | rpm |  | Group（分组）。 示例：`Applications/Communications` |
+| `linux.rpm.license` | string | `app.license` | rpm |  | License（许可证）。 示例：`MIT` |
+| `linux.rpm.pre` | path | — | rpm |  | %pre 脚本。 示例：`linux/packaging/pre.sh` |
+| `linux.rpm.post` | path | — | rpm |  | %post 脚本。 示例：`linux/packaging/post.sh` |
+| `linux.rpm.preun` | path | — | rpm |  | %preun 脚本。 示例：`linux/packaging/preun.sh` |
+| `linux.rpm.postun` | path | — | rpm |  | %postun 脚本。 示例：`linux/packaging/postun.sh` |
+
+#### `linux.appimage`
+
+AppImage。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `linux.appimage.update_information` | string | — | appimage |  | 内嵌更新信息（供 AppImageUpdate 使用）。 示例：`gh-releases-zsync\|xuehua\|im\|latest\|*x86_64.AppImage.zsync` |
+| `linux.appimage.extra_args` | list（或单个字符串） | — | appimage |  | 追加到 appimagetool 的参数。 示例：`[--comp, zstd]` |
+
+### 2.11 `web`
+
+Web：web（zip）。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `web.base_href` | string | `保持 index.html 原样` | web | `--base-href` | <base href>；必须以 / 开头和结尾。 示例：`/app/` |
+| `web.wasm` | bool | `false` | web | `--wasm` | 编译为 WebAssembly（带 JS 回退）。 示例：`true` |
+| `web.source_maps` | bool | `false` | web |  | 生成 source map。 示例：`true` |
+| `web.csp` | bool | `false` | web |  | 不动态生成代码（满足 CSP 限制）。 示例：`true` |
+| `web.optimization_level` | int | `4` | web |  | dart2js / dart2wasm 优化级别 0-4（-O）。 示例：`2` |
+| `web.static_assets_url` | url | — | web |  | 从其他域名加载静态资源（必须以 / 结尾）。 示例：`https://cdn.example.com/app/` |
+| `web.web_resources_cdn` | bool | `true` | web |  | false：打包 CanvasKit，不从 CDN 加载。 示例：`false` |
+| `web.web_define` | map | — | web |  | --web-define：web/index.html 中的模板变量。 示例：`{API_URL: https://api.example.com}` |
+| `web.extra_args` | list（或单个字符串） | — | web |  | 追加到 flutter build web 的参数。 示例：`[--dump-info]` |
+
+<!-- END GENERATED KEYS -->
+
+### 2.12 补充说明
+
+**Android 签名**：通过 Android Gradle 插件标准的 `android.injected.signing.*` 属性（`ORG_GRADLE_PROJECT_*` 环境变量）注入，不修改 Gradle 文件；密码不会出现在命令行、日志或 `--dry-run` 输出中。构建前用 `keytool` 校验密码和别名，构建后用 `apksigner verify --print-certs` / `keytool -printcert` 校验产物，并在结果中显示签名者与签名方案（v1/v2/v3/v4）。设置了 `android.signing.v1`–`v4` 中任意一项时，fpack 会用 `apksigner sign` 以这些方案重新签名每个 APK（密码通过环境变量传给 apksigner）；`v4: true` 时同时输出 `<apk>.idsig`。
+
+**iOS ExportOptions.plist**：设置了 `ios.team_id`、`signing_style`、`provisioning_profiles`、`upload_symbols`、`manage_app_version_and_build_number`、`destination`、`thinning`、`strip_swift_symbols`、`export_options` 中任意一项（且没有设置 `ios.export_options_plist`）时，fpack 会在构建前生成 `build/fpack/ExportOptions.plist` 并传给 `flutter build ipa --export-options-plist`；`--dry-run` 会显示这一步。`destination: upload` 时 Xcode 直接上传到 App Store Connect，本地不保留 IPA。
+
+**macOS 公证凭证**（三选一，优先级从高到低）：`notary_profile`（钥匙串配置，推荐本机使用）→ `notary_api_key` + `notary_api_key_id` (+ `notary_api_issuer`)（App Store Connect API 密钥，推荐 CI）→ `notary_apple_id` + `notary_team_id` + `notary_password`（App 专用密码，会被隐藏）。设置了任意一种凭证即视为开启公证（前提是已签名）。`hardened_runtime: false` 只适合不公证的内部分发。
+
+**DMG 布局**：`background`、`volume_icon`、`window_position`、`window_size`、`icon_size`、`app_position`、`applications_position`、`license` 需要 [create-dmg](https://github.com/create-dmg/create-dmg)（`brew install create-dmg`）；`tool: auto` 时装了 create-dmg 就会使用，没装则用 `hdiutil` 并警告这些设置被忽略。`format` / `filesystem` 两种工具都支持。
+
+**pkg 安装包**（`fpack build pkg`）：复制 .app →（配置了 `identity` 时）Developer ID 重新签名 → `pkgbuild --root … --component-plist …`（安装到 `install_location`；`relocatable: false` 时升级总是覆盖该位置；`preinstall`/`postinstall` 会放入 `--scripts` 目录并设为可执行）→ `productbuild --distribution …`（支持 arm64 + x86_64，不提示 Rosetta；`min_os` 写入 `allowed-os-versions`，`require_restart` 写入 `onConclusion="RequireRestart"`；`installer_identity` 存在时 `--sign … --timestamp`）→ `pkgutil --check-signature` →（签名且开启公证时）`notarytool submit --wait` → `stapler staple` → `spctl --assess --type install`。同一次运行中 `macos`、`dmg`、`pkg` 共享一次 `flutter build macos`。
 
 fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 `dmg:` 段；需要签名/公证时请在 `fpack.yaml` 的 `macos.sign` 中配置（或使用 `FPACK_MACOS_*` 环境变量、命令行参数）。
 
-### 2.8 `windows`
+**Inno Setup**：fpack 生成的脚本包含 `AppId`、发布者/网址、版权、`DefaultDirName`、开始菜单、桌面快捷方式任务、许可/信息页、图标与向导图片、`MinVersion`、权限模式（`privileges`：`user` 免 UAC、`admin` 所有用户、`ask` 让用户选择，静默安装可加 `/CURRENTUSER` 或 `/ALLUSERS`）以及多语言。`languages` 的第一个是默认语言，多个语言时显示语言选择框；`zh-CN`/`zh-TW` 在 Inno Setup 6.5+ 中自带，旧版本时 fpack 会写入自带的官方翻译文件（取自 jrsoftware/issrc）。自定义 `script` 时 fpack 仍通过 `/D` 传入 `AppName`、`AppVersion`、`AppPublisher`、`AppExeName`、`SourceDir`、`AppId`、`AppURL`。
 
-| 键 | 类型 | 默认值 | 目标 | 说明 |
-| --- | --- | --- | --- | --- |
-| `windows.inno_setup.app_id` | string（GUID） | 由 `app.identifier` 计算出的稳定 GUID | exe | Inno Setup `AppId`。发布后不要更改，否则用户升级时会被当成另一个应用。 |
-| `windows.inno_setup.script` | path | 无（使用 fpack 内置脚本） | exe | 自定义 `.iss` 脚本。fpack 会以 `/D` 传入 `AppName`、`AppVersion`、`AppPublisher`、`AppExeName`、`SourceDir`、`AppId`、`AppURL` 等定义。 |
-| `windows.inno_setup.iscc` | path | 自动查找 `ISCC.exe`（PATH 与默认安装位置） | exe | Inno Setup 编译器路径。 |
-| `windows.msix.extra_args` | list | 无 | msix | 追加到 `dart run msix:create` 的参数。msix 目标需要项目把 [`msix`](https://pub.dev/packages/msix) 加为 dev 依赖；其余 MSIX 设置写在 pubspec 的 `msix_config:` 中。 |
-| `windows.extra_args` | list | 无 | windows, exe, msix | 只追加到 `flutter build windows`。 |
+**Windows 签名**：设置 `windows.sign.certificate`（.pfx）或 `thumbprint`（证书存储）后：`flutter build windows` 完成后立即用 signtool 签名 `build/windows/…/<app>.exe`（windows zip、exe、msix 都包含已签名的 exe）；Inno Setup 通过 `SignTool=fpack` 签名安装程序和卸载程序；msix 使用同一证书（`--certificate-path` / `--signtool-options`）。密码不会显示在日志或 `--dry-run` 中。
 
-### 2.9 `linux`
+**MSIX**：`windows.msix.*` 会转换成 `dart run msix:create` 的参数，优先于 pubspec 的 `msix_config:`；未设置的 `display_name`、`publisher_display_name`、`identity_name`、`description` 在 `msix_config` 也没有时取 `app.*`。fpack 始终加 `--install-certificate false`，避免在 CI 中卡在提问。
 
-| 键 | 类型 | 默认值 | 目标 | 说明 |
-| --- | --- | --- | --- | --- |
-| `linux.package_name` | string | 应用名转小写、`_` 换成 `-`（如 `xue-hua-im`） | deb, rpm, appimage, linux | 软件包名，也用于安装路径和 `.desktop` 文件名。 |
-| `linux.icon` | path（PNG） | `flutter_launcher_icons` 配置的图标 → `web/icons/Icon-512.png` → `Icon-192.png` | deb, rpm, appimage, linux | 菜单 / AppImage 图标。AppImage 没有图标时会报错。 |
-| `linux.categories` | string | `Utility;` | deb, rpm, appimage, linux | freedesktop 分类，例如 `Network;Chat;`。 |
-| `linux.deb.depends` | list | 无 | deb | deb 的 `Depends:`，例如 `["libgtk-3-0 \| libgtk-3-0t64"]`。 |
-| `linux.rpm.requires` | list | 无 | rpm | rpm 的 `Requires:`，例如 `[gtk3]`。 |
-| `linux.appimagetool` | path | 自动查找 `appimagetool` | appimage | appimagetool 路径。`--all` 时找不到会跳过 appimage。 |
-| `linux.extra_args` | list | 无 | linux, deb, rpm, appimage | 只追加到 `flutter build linux`。 |
+**Linux 软件包**：安装到 `linux.prefix`（默认 `/opt/<包名>`），`/usr/bin/<包名>` 为符号链接；`.desktop` 文件包含 `Name`、`GenericName`、`Comment`、`Categories`、`Keywords`、`MimeType`、`StartupWMClass`；图标按 `icon_sizes` 缩放到 `/usr/share/icons/hicolor/<N>x<N>/apps/`（不会放大），另放一份到 `/usr/share/pixmaps/`；`metainfo` 安装到 `/usr/share/metainfo/`；`/usr/share/doc/<包名>/copyright` 写入 `app.copyright` 和 `app.license`。deb 的维护脚本、rpm 的 `%pre/%post/%preun/%postun` 来自对应的文件。AppImage 的 `.desktop` 额外包含 `X-AppImage-Version`，`update_information` 会嵌入 AppImage（`appimagetool --updateinformation`）。
 
-### 2.10 `web`
+**钩子**：`hooks.pre_build` 在第一个 flutter build 之前运行一次（失败则停止构建）；`hooks.pre_package.<目标>` / `hooks.post_package.<目标>` 在该目标打包前后运行；`hooks.post_build` 在最后运行一次（即使有目标失败）。命令在项目根目录用 `sh -c`（Windows 为 `cmd /C`）执行，可用环境变量：`FPACK_PROJECT_ROOT`、`FPACK_OUTPUT_DIR`、`FPACK_VERSION`、`FPACK_BUILD_NUMBER`、`FPACK_MODE`、`FPACK_FLAVOR`；打包钩子另有 `FPACK_TARGET`、`FPACK_ARTIFACT`（第一个产物）、`FPACK_ARTIFACTS`（换行分隔）；`post_build` 另有 `FPACK_ARTIFACTS` 与 `FPACK_SUCCESS`（`1`/`0`）。注意 `${VAR}` 会在加载 fpack.yaml 时被替换，钩子运行时才有的变量请写成 `$FPACK_ARTIFACT`（不带花括号）。`--dry-run` 会列出所有钩子命令。
 
-| 键 | 类型 | 默认值 | 目标 | 说明 |
-| --- | --- | --- | --- | --- |
-| `web.base_href` | string | Flutter 默认（`/`） | web | 部署在子路径时设置，例如 `/app/`（必须以 `/` 开头和结尾）。 |
-| `web.wasm` | bool | `false` | web | 用 WebAssembly 构建（`--wasm`）。 |
-| `web.extra_args` | list | 无 | web | 只追加到 `flutter build web`。 |
+**Web**：Flutter 3.x 已移除 `--pwa-strategy` 与 `--web-renderer`，因此没有对应的键；`web.wasm`、`source_maps`、`csp`、`optimization_level`、`static_assets_url`、`web_resources_cdn`、`web_define` 分别对应 `flutter build web` 的同名参数。zip 文件名可用 `output.names.web` 修改。
 
 ---
 
@@ -183,33 +433,51 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 
 ### 3.1 构建设置（覆盖 fpack.yaml，被命令行覆盖）
 
-| 变量 | 类型 | 对应 fpack.yaml | 目标 | 说明 |
-| --- | --- | --- | --- | --- |
-| `FPACK_FLUTTER` | path | `flutter.sdk` | 全部 | Flutter SDK 根目录。 |
-| `FPACK_CONFIG` | path | — | 全部 | 配置文件路径（代替项目根目录的 `fpack.yaml`）。 |
-| `FPACK_MODE` | `release`\|`profile`\|`debug` | `build.mode` | 全部 | 构建模式。 |
-| `FPACK_FLAVOR` | string | `build.flavor` | 支持 flavor 的目标 | flavor。 |
-| `FPACK_ENTRY` | path | `build.target` | 全部 | 入口文件。 |
-| `FPACK_BUILD_NAME` | string | `build.build_name` | 全部 | 版本名。 |
-| `FPACK_BUILD_NUMBER` | string | `build.build_number` | 全部 | 构建号（CI 中常用 `${{ github.run_number }}`）。 |
-| `FPACK_OUTPUT_DIR` | 模板 | `output.dir` | 全部 | 产物目录。 |
-| `FPACK_OVERWRITE` | bool | `output.overwrite` | 全部 | 覆盖已存在的产物。 |
-| `FPACK_OBFUSCATE` | bool | `build.obfuscate` | 原生目标 | 混淆 Dart 代码。 |
-| `FPACK_SPLIT_PER_ABI` | `false`\|`true`\|`both` | `android.split_per_abi` | apk | APK 拆分方式。 |
-| `FPACK_ANDROID_KEYSTORE` | path | `android.signing.store_file` | apk, aab | keystore 路径。 |
-| `FPACK_ANDROID_KEYSTORE_BASE64` | base64 | — | apk, aab | keystore 文件内容的 base64（适合 CI secrets）。仅在没有设置 keystore 路径时使用；fpack 会写入 `build/fpack/secrets/`（权限 0600），构建结束后删除。 |
-| `FPACK_ANDROID_KEYSTORE_PASSWORD` | string | `android.signing.store_password` | apk, aab | keystore 密码。 |
-| `FPACK_ANDROID_KEY_ALIAS` | string | `android.signing.key_alias` | apk, aab | key 别名。 |
-| `FPACK_ANDROID_KEY_PASSWORD` | string | `android.signing.key_password` | apk, aab | key 密码（默认同 keystore 密码）。 |
-| `FPACK_IOS_EXPORT_METHOD` | string | `ios.export_method` | ipa | 导出方式。 |
-| `FPACK_IOS_EXPORT_OPTIONS_PLIST` | path | `ios.export_options_plist` | ipa | ExportOptions.plist。 |
-| `FPACK_IOS_CODESIGN` | bool | `ios.codesign` | ipa | `false` = 未签名 IPA。 |
-| `FPACK_MACOS_SIGN` | bool | `macos.sign.enabled` | macos, dmg, pkg | 是否 Developer ID 签名（`false` 同时关闭 pkg 签名与公证）。 |
-| `FPACK_MACOS_SIGN_IDENTITY` | string | `macos.sign.identity` | macos, dmg, pkg | App 的 codesign 证书（Developer ID Application）。 |
-| `FPACK_MACOS_INSTALLER_IDENTITY` | string | `macos.sign.installer_identity` | pkg | pkg 签名证书（Developer ID Installer）。 |
-| `FPACK_MACOS_NOTARIZE` | bool | `macos.sign.notarize` | macos, dmg, pkg | 是否公证。 |
-| `FPACK_MACOS_NOTARY_PROFILE` | string | `macos.sign.notary_profile` | macos, dmg, pkg | notarytool 钥匙串配置名。 |
-| `FPACK_DMG_TOOL` | `auto`\|`hdiutil`\|`create-dmg` | `macos.dmg.tool` | dmg | DMG 工具。 |
+每个变量对应一个 fpack.yaml 键（自动生成）。布尔值接受 `true/false/1/0/yes/no`；列表用逗号分隔。
+
+<!-- BEGIN GENERATED ENV -->
+| 变量 | 对应 fpack.yaml | 类型 | 说明 |
+| --- | --- | --- | --- |
+| `FPACK_FLUTTER` | `flutter.sdk` | path | 使用的 Flutter SDK 根目录。 |
+| `FPACK_MODE` | `build.mode` | `release` \\| `profile` \\| `debug` | 构建模式。 |
+| `FPACK_FLAVOR` | `build.flavor` | string | flavor / Xcode scheme（--flavor）；文件名中的 {flavor}。 |
+| `FPACK_ENTRY` | `build.target` | path | 入口文件（flutter -t）。 |
+| `FPACK_BUILD_NAME` | `build.build_name` | string/number | 版本名（{version}）。 |
+| `FPACK_BUILD_NUMBER` | `build.build_number` | string/number | 构建号（{build}）。 |
+| `FPACK_OBFUSCATE` | `build.obfuscate` | bool | 混淆 Dart 代码；符号文件保存到 split_debug_info（默认 <输出目录>/debug-info/<平台>）。 |
+| `FPACK_OUTPUT_DIR` | `output.dir` | string | 产物目录（相对于项目，可用占位符）。 |
+| `FPACK_OVERWRITE` | `output.overwrite` | bool | 已存在同名产物时覆盖，而不是停止。 |
+| `FPACK_SPLIT_PER_ABI` | `android.split_per_abi` | `false` \\| `true` \\| `both` | false：一个通用 APK；true：每个 ABI 一个 APK；both：两者都要。 |
+| `FPACK_ANDROID_KEYSTORE` | `android.signing.store_file` | path | keystore 文件（.jks/.keystore）。CI 中可用 FPACK_ANDROID_KEYSTORE_BASE64 提供。 |
+| `FPACK_ANDROID_KEYSTORE_PASSWORD` | `android.signing.store_password` | string | keystore 密码。 |
+| `FPACK_ANDROID_KEY_ALIAS` | `android.signing.key_alias` | string | key 别名。 |
+| `FPACK_ANDROID_KEY_PASSWORD` | `android.signing.key_password` | string | key 密码。 |
+| `FPACK_IOS_EXPORT_METHOD` | `ios.export_method` | `app-store-connect` \\| `app-store` \\| `release-testing` \\| `ad-hoc` \\| `development` \\| `debugging` \\| `enterprise` | IPA 导出方式。 |
+| `FPACK_IOS_EXPORT_OPTIONS_PLIST` | `ios.export_options_plist` | path | 自己的 ExportOptions.plist；优先于下面所有生成选项。 |
+| `FPACK_IOS_CODESIGN` | `ios.codesign` | bool | false：构建未签名 IPA（Payload/ 结构），用于之后重签名。 |
+| `FPACK_MACOS_SIGN` | `macos.sign.enabled` | bool | 用 Developer ID 重新签名 .app（并签名 DMG）。为 true 但未设置 identity 时自动选用第一个 “Developer ID Application” 证书。false（--no-sign）同时关闭 pkg 签名与公证。 |
+| `FPACK_MACOS_SIGN_IDENTITY` | `macos.sign.identity` | string | App 的 codesign 证书；设置后即启用签名。 |
+| `FPACK_MACOS_NOTARIZE` | `macos.sign.notarize` | bool | 公证并装订 zip、DMG 与已签名的 pkg（会上传到 Apple）。 |
+| `FPACK_MACOS_NOTARY_PROFILE` | `macos.sign.notary_profile` | string | `xcrun notarytool store-credentials <名字>` 创建的钥匙串配置名（本地推荐）。 |
+| `FPACK_NOTARY_APPLE_ID` | `macos.sign.notary_apple_id` | string | 公证用 Apple ID（配合 notary_team_id + notary_password），替代钥匙串配置。 |
+| `FPACK_NOTARY_TEAM_ID` | `macos.sign.notary_team_id` | string | Apple ID 公证时的团队 ID。 |
+| `FPACK_NOTARY_PASSWORD` | `macos.sign.notary_password` | string | Apple ID 公证用的 App 专用密码。 |
+| `FPACK_NOTARY_API_KEY` | `macos.sign.notary_api_key` | path | 公证用 App Store Connect API 密钥（.p8，适合 CI）。 |
+| `FPACK_NOTARY_API_KEY_ID` | `macos.sign.notary_api_key_id` | string | API 密钥 ID。 |
+| `FPACK_NOTARY_API_ISSUER` | `macos.sign.notary_api_issuer` | string | API Issuer UUID（个人密钥可省略）。 |
+| `FPACK_MACOS_INSTALLER_IDENTITY` | `macos.sign.installer_identity` | string | 签名 .pkg 的证书，与 App 的 “Developer ID Application” 不同。不设置则 pkg 不签名。 |
+| `FPACK_DMG_TOOL` | `macos.dmg.tool` | `auto` \\| `hdiutil` \\| `create-dmg` | auto：装了 create-dmg（或设置了布局键）时用 create-dmg，否则用 hdiutil。 |
+| `FPACK_WINDOWS_CERTIFICATE` | `windows.sign.certificate` | path | 代码签名证书（.pfx）。设置它（或 thumbprint）后会签名应用 .exe、安装程序和 MSIX。 |
+| `FPACK_WINDOWS_CERTIFICATE_PASSWORD` | `windows.sign.password` | string | 证书密码。 |
+| `FPACK_WINDOWS_CERT_THUMBPRINT` | `windows.sign.thumbprint` | string | Windows 证书存储中证书的 SHA-1 指纹（替代 .pfx）。 |
+<!-- END GENERATED ENV -->
+
+另外：
+
+| 变量 | 说明 |
+| --- | --- |
+| `FPACK_CONFIG` | 配置文件路径（代替项目根目录的 `fpack.yaml`）。 |
+| `FPACK_ANDROID_KEYSTORE_BASE64` | keystore 文件内容的 base64（适合 CI secrets）。仅在没有设置 keystore 路径时使用；fpack 会写入 `build/fpack/secrets/`（权限 0600），构建结束后删除。 |
 
 ### 3.2 输出与界面
 
@@ -304,7 +572,8 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 | --- | --- | --- |
 | `fpack doctor [目标…]` | — | 按目标检查前置条件（Flutter、Android SDK/JDK、签名、Xcode、证书、CocoaPods、Inno Setup、dpkg-deb…），每个问题都给出修复方法。不指定目标时检查所有目标。 |
 | `fpack list`（`ls`、`targets`） | — | 列出所有目标、产物格式，以及本机能否构建。 |
-| `fpack init` | `-f`, `--force`：覆盖已有的 fpack.yaml；`-y`：不提问，使用检测到的默认值 | 生成带注释的 `fpack.yaml`。 |
+| `fpack init` | `-f`, `--force`：覆盖已有的 fpack.yaml；`-y`：不提问，使用检测到的默认值；`--lang zh\|en`：注释语言 | 生成带注释的 `fpack.yaml`：列出**所有**键（可选的保持注释），每个键都有说明、可选值、默认值和示例，并预填从项目检测到的值（应用 ID、flavor、版本、团队 ID、GUID…）。只问几个问题（默认目标、显示名、APK 拆分、keystore、iOS 导出方式、输出目录）。`fpack.yaml` 已存在且没有 `--force` 时不会覆盖，而是写入 `fpack.yaml.new` 并显示差异。 |
+| `fpack schema` | `-o FILE`：写入文件 | 输出 fpack.yaml 的 JSON Schema（编辑器补全/校验）。 |
 | `fpack clean` | `--dist`：同时删除输出目录（会先确认，`-y` 跳过确认）；`--flutter-clean`：同时运行 `flutter clean`；`--all`：等同 `--dist --flutter-clean`；`-n`, `--dry-run`：只显示将删除什么 | 默认只删除 fpack 的工作目录 `build/fpack/`（临时文件与日志）。 |
 | `fpack version` | — | 显示 fpack、原生核心与启动器的版本。 |
 
@@ -334,6 +603,10 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 | `{variant}` | `setup`、`portable`、`unsigned` … | `setup` |
 | `{mode}` | 构建模式；**release 时为空** | `profile` |
 | `{flavor}` | flavor | `prod` |
+| `{target}` | fpack 目标名 | `exe` |
+| `{date}` | 构建日期（YYYYMMDD） | `20261009` |
+
+`output.names` 可以为单个目标指定不同的模板，例如 `output.names: {exe: "{app}-setup-{version}", web: "{app}-web"}`。两个产物算出同一个文件名时，构建前会报错。
 
 在花括号内加前缀 `-`、`_`、`.`、`+`（如 `{-flavor}`、`{+build}`）表示：值非空时先插入这个分隔符再插入值，值为空时整体省略。文件名中不安全的字符会被替换。
 
