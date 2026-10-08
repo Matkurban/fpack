@@ -61,6 +61,11 @@ type FlutterStep struct {
 	Env      []string
 	Secret   []string
 	Warnings []string
+	// Prepare runs before the flutter build (e.g. writing a generated
+	// ExportOptions.plist), After runs once it succeeded (e.g. signing the
+	// runner executable). Both are listed in dry runs.
+	Prepare []Op
+	After   []Op
 }
 
 // Inputs are paths located after the Flutter build.
@@ -174,6 +179,11 @@ type Context struct {
 	Mac     MacSigning
 	Signing AndroidSigning
 
+	// Started is the build start (for the {date} placeholder).
+	Started time.Time
+	// CurrentTarget is the target being planned (set by PackageFor).
+	CurrentTarget string
+
 	androidEnv *AndroidEnv
 }
 
@@ -204,12 +214,21 @@ func (c *Context) Rel(p string) string {
 
 // ArtifactPath returns the final path for an artifact.
 func (c *Context) ArtifactPath(p host.Platform, arch, variant, ext string) (string, error) {
-	name, err := pack.Render(c.Config.NameTemplate(), pack.Fields{
+	tmpl, key := c.Config.NameTemplate(), "output.name"
+	if n := c.Config.Output.Names[c.CurrentTarget]; n != "" {
+		tmpl, key = n, "output.names."+c.CurrentTarget
+	}
+	started := c.Started
+	if started.IsZero() {
+		started = time.Now()
+	}
+	name, err := pack.Render(tmpl, pack.Fields{
 		App: c.AppName, Version: c.BuildName, Build: c.BuildNumber, Platform: string(p),
 		Arch: arch, Variant: variant, Mode: c.Mode(), Flavor: c.Flavor(),
+		Target: c.CurrentTarget, Date: started.Format("20060102"),
 	})
 	if err != nil {
-		return "", fmt.Errorf("output.name: %w", err)
+		return "", fmt.Errorf("%s: %w", key, err)
 	}
 	return filepath.Join(c.OutDir, name+ext), nil
 }
@@ -321,6 +340,9 @@ func CommonArgs(c *Context, p host.Platform, sub string) ([]string, []string) {
 	}
 	for _, f := range c.Config.Build.DartDefineFromFile {
 		args = append(args, "--dart-define-from-file="+f)
+	}
+	if t := c.Config.Build.TreeShakeIcons; t != nil && !*t {
+		args = append(args, "--no-tree-shake-icons")
 	}
 	return args, warns
 }

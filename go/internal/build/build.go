@@ -56,6 +56,7 @@ type ArtifactResult struct {
 	Arch   string `json:"arch,omitempty"`
 	Size   int64  `json:"size,omitempty"`
 	SHA256 string `json:"sha256,omitempty"`
+	SHA512 string `json:"sha512,omitempty"`
 }
 
 // TargetResult is the outcome of one target.
@@ -107,6 +108,10 @@ type Summary struct {
 	DurationMs   int64           `json:"durationMs"`
 	Targets      []*TargetResult `json:"targets"`
 	Conflicts    []string        `json:"conflicts,omitempty"`
+	// Hooks lists pre/post build hook commands (dry run).
+	Hooks []string `json:"hooks,omitempty"`
+	// HookError is set when a post_build hook failed.
+	HookError string `json:"hookError,omitempty"`
 }
 
 type stepState struct {
@@ -121,6 +126,9 @@ type stepState struct {
 // Run executes a build request.
 func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summary {
 	start := time.Now()
+	if c.Started.IsZero() {
+		c.Started = start
+	}
 	s := &Summary{
 		FpackVersion: version.Version, Project: c.Project.Name, ProjectRoot: c.Project.Root,
 		Version: c.BuildName, BuildNumber: c.BuildNumber, Flutter: c.SDK.Version, FlutterRoot: c.SDK.Root,
@@ -182,7 +190,8 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 		}
 		var issues []targets.Issue
 		if hostOK {
-			issues = append(projectIssues(c), t.Preflight(c)...)
+			issues = append(projectIssues(c), targets.ConfigIssues(c, t.Name())...)
+			issues = append(issues, t.Preflight(c)...)
 		}
 		var fatalIssue *targets.Issue
 		for i := range issues {
@@ -229,6 +238,7 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 	}
 
 	// 3. Predict artifacts: conflicts + dry-run plan.
+	planned := map[string]string{}
 	for _, tr := range s.Targets {
 		if tr.Status != Planned && !(req.DryRun && len(tr.steps) > 0) {
 			continue
@@ -237,13 +247,19 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 		if err != nil {
 			continue
 		}
-		p, err := tr.target.Package(c, in)
+		p, err := targets.PackageFor(c, tr.target, in)
 		if err != nil {
 			tr.Status, tr.Error = Failed, err.Error()
 			continue
 		}
 		for _, a := range p.Artifacts {
 			tr.Artifacts = append(tr.Artifacts, ArtifactResult{Path: a.Path, File: filepath.Base(a.Path), Kind: a.Kind, Arch: a.Arch})
+			if other, dup := planned[a.Path]; dup {
+				tr.Status = Failed
+				tr.Error = i18n.F("%s and %s would both write %s", "%s 与 %s 会写入同一个文件 %s", other, tr.Target, filepath.Base(a.Path))
+				tr.Fix = i18n.S("make output.name / output.names unique, e.g. add {target} or {-arch}", "让 output.name / output.names 互不相同，例如加入 {target} 或 {-arch}")
+			}
+			planned[a.Path] = tr.Target
 			if exists(a.Path) && !c.Config.Overwrite() {
 				s.Conflicts = append(s.Conflicts, a.Path)
 			}
@@ -251,7 +267,17 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 		tr.Notes = appendUnique(tr.Notes, p.Notes...)
 		if req.DryRun {
 			for _, key := range tr.steps {
+				for _, op := range steps[key].step.Prepare {
+					if op.Cmd != nil {
+						tr.Commands = append(tr.Commands, op.Cmd.String())
+					}
+				}
 				tr.Commands = append(tr.Commands, flutterCmd(c, steps[key].step).String())
+				for _, op := range steps[key].step.After {
+					if op.Cmd != nil {
+						tr.Commands = append(tr.Commands, op.Cmd.String())
+					}
+				}
 			}
 			for _, op := range p.Ops {
 				if op.Cmd != nil {
@@ -262,6 +288,12 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 	}
 
 	if req.DryRun {
+		for _, op := range targets.BuildHookOps(c, false, nil, true) {
+			s.Hooks = append(s.Hooks, op.Cmd.String())
+		}
+		for _, op := range targets.BuildHookOps(c, true, nil, true) {
+			s.Hooks = append(s.Hooks, op.Cmd.String())
+		}
 		printPlan(c, u, s, steps)
 		return finish(c, u, s, start, "", logDir)
 	}
@@ -294,6 +326,23 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 	}
 	defer c.Signing.Cleanup()
 
+	// pre_build hooks run once, before the first flutter build.
+	if hasPlanned(s) {
+		if ops := targets.BuildHookOps(c, false, nil, true); len(ops) > 0 {
+			u.Blank()
+			u.Step("hooks.pre_build")
+			if f := execOps(ctx, c, u, ops, filepath.Join(logDir, stamp+"-hooks.log"), req.Verbose); f != nil {
+				for _, tr := range s.Targets {
+					if tr.Status == Planned {
+						tr.Status, tr.Error, tr.Log, tr.Excerpt = Failed, f.err, f.log, f.excerpt
+					}
+				}
+				u.Fail(f.err)
+				printFailure(c, u, f.excerpt, f.hint, f.hint != "", f.log)
+			}
+		}
+	}
+
 	interrupted := false
 	for _, key := range order {
 		st := steps[key]
@@ -310,9 +359,19 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 			interrupted = true
 			break
 		}
+		if f := execOps(ctx, c, u, st.step.Prepare, filepath.Join(logDir, stamp+"-"+st.step.Key+"-prepare.log"), req.Verbose); f != nil {
+			failStep(c, u, st, f)
+			continue
+		}
 		runStep(ctx, c, u, st, logDir, stamp, req.Verbose)
 		if errors.Is(ctx.Err(), context.Canceled) {
 			interrupted = true
+		}
+		if !st.failed && !interrupted {
+			if f := execOps(ctx, c, u, st.step.After, filepath.Join(logDir, stamp+"-"+st.step.Key+"-after.log"), req.Verbose); f != nil {
+				failStep(c, u, st, f)
+				continue
+			}
 		}
 		for _, tr := range st.users {
 			if tr.Status != Planned || !allDone(tr, steps) || interrupted {
@@ -339,16 +398,42 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 	// 5. Checksums.
 	checksums := ""
 	if c.Config.Checksums() && anySuccess(s) {
-		p, sums, err := pack.WriteChecksums(c.OutDir)
+		alg := orSHA256(c.Config.Output.ChecksumAlgorithm)
+		p, sums, err := pack.WriteChecksumsAlg(c.OutDir, alg)
 		if err == nil {
 			checksums = p
 			for _, tr := range s.Targets {
 				for i := range tr.Artifacts {
-					tr.Artifacts[i].SHA256 = sums[tr.Artifacts[i].File]
+					if alg == "sha512" {
+						tr.Artifacts[i].SHA512 = sums[tr.Artifacts[i].File]
+					} else {
+						tr.Artifacts[i].SHA256 = sums[tr.Artifacts[i].File]
+					}
 				}
 			}
 		} else {
 			u.Warn(i18n.S("could not write checksums: ", "无法写入校验和：") + err.Error())
+		}
+	}
+
+	// 6. post_build hooks (also after failures; FPACK_SUCCESS tells which).
+	if !interrupted {
+		var paths []string
+		for _, tr := range s.Targets {
+			for _, a := range tr.Artifacts {
+				if tr.Status == Success {
+					paths = append(paths, a.Path)
+				}
+			}
+		}
+		if ops := targets.BuildHookOps(c, true, paths, !anyFailed(s)); len(ops) > 0 && (anySuccess(s) || anyFailed(s)) {
+			u.Blank()
+			u.Step("hooks.post_build")
+			if f := execOps(ctx, c, u, ops, filepath.Join(logDir, stamp+"-hooks.log"), req.Verbose); f != nil {
+				s.HookError = f.err
+				u.Fail(f.err)
+				printFailure(c, u, f.excerpt, f.hint, f.hint != "", f.log)
+			}
 		}
 	}
 	return finish(c, u, s, start, checksums, logDir)
@@ -376,6 +461,31 @@ func allDone(tr *TargetResult, steps map[string]*stepState) bool {
 		}
 	}
 	return true
+}
+
+func anyFailed(s *Summary) bool {
+	for _, t := range s.Targets {
+		if t.Status == Failed {
+			return true
+		}
+	}
+	return false
+}
+
+func hasPlanned(s *Summary) bool {
+	for _, t := range s.Targets {
+		if t.Status == Planned {
+			return true
+		}
+	}
+	return false
+}
+
+func orSHA256(a string) string {
+	if a == "" {
+		return "sha256"
+	}
+	return a
 }
 
 func anySuccess(s *Summary) bool {
@@ -572,75 +682,21 @@ func packageTarget(ctx context.Context, c *targets.Context, u *ui.UI, tr *Target
 	tr.Warnings = appendUnique(tr.Warnings, p.Warnings...)
 	logPath := filepath.Join(logDir, stamp+"-"+tr.Target+".log")
 	var notes []string
-	for _, op := range p.Ops {
-		if ctx.Err() != nil {
+	f := runOps(ctx, c, u, p.Ops, logPath, verbose, &notes, &tr.Warnings)
+	if f != nil {
+		if f.interrupted {
 			tr.Status, tr.Reason = Skipped, i18n.S("interrupted", "已中断")
 			return
 		}
-		if op.Fn != nil {
-			if err := op.Fn(); err != nil {
-				tr.Status, tr.Error = Failed, op.Desc+": "+err.Error()
-				u.Fail(tr.Target + ": " + tr.Error)
-				return
-			}
-			continue
-		}
-		if op.Cmd == nil {
-			continue
-		}
-		cmdCopy := *op.Cmd
-		if cmdCopy.Dir == "" {
-			cmdCopy.Dir = c.Project.Root
-		}
-		sp := u.StartSpinner(op.Desc)
-		opts := runner.Options{LogPath: logPath, OnLine: func(l string) { sp.Update(l) }}
-		if verbose {
-			opts.Stream = u.Writer()
-		}
-		res, err := runner.Run(ctx, cmdCopy, opts)
-		sp.Stop()
-		note := ""
-		if op.Check != nil && !errors.Is(err, runner.ErrInterrupted) {
-			var cerr error
-			note, cerr = op.Check(res)
-			if cerr != nil && err == nil {
-				err = cerr
-			} else if cerr != nil {
-				err = fmt.Errorf("%v: %v", err, cerr)
-			}
-		}
-		if note != "" {
-			notes = append(notes, note)
-		}
-		if err != nil {
-			if errors.Is(err, runner.ErrInterrupted) {
-				tr.Status, tr.Reason = Skipped, i18n.S("interrupted", "已中断")
-				return
-			}
-			if op.Optional {
-				tr.Warnings = append(tr.Warnings, op.Desc+": "+err.Error())
-				continue
-			}
-			tr.Status = Failed
-			tr.Error = op.Desc + ": " + err.Error()
-			tr.Excerpt = hints.Excerpt(res.Tail, 20)
+		tr.Status, tr.Error, tr.Excerpt, tr.Hint = Failed, f.err, f.excerpt, f.hint
+		if f.cmd {
 			tr.Log = logPath
-			h, ok := hints.Match(res.Tail)
-			if !ok {
-				h, ok = hints.Match([]string{err.Error()})
-			}
-			if ok {
-				tr.Hint = h.Text()
-			} else if op.Hint != "" {
-				tr.Hint, ok = op.Hint, true
-			}
-			u.Fail(tr.Target + ": " + tr.Error)
-			printFailure(c, u, tr.Excerpt, tr.Hint, ok, logPath)
-			return
 		}
-		if verbose || !u.Interactive() {
-			u.Detail("✓ " + op.Desc)
+		u.Fail(tr.Target + ": " + tr.Error)
+		if f.cmd {
+			printFailure(c, u, tr.Excerpt, tr.Hint, tr.Hint != "", logPath)
 		}
+		return
 	}
 	for _, n := range notes {
 		if strings.HasPrefix(n, "WARN:") {
@@ -682,4 +738,113 @@ func projectIssues(c *targets.Context) []targets.Issue {
 			Fix: i18n.S("clone/copy that package to the expected location (relative to the project), then rerun", "请把该包克隆/复制到对应位置（相对于项目目录）后重试")})
 	}
 	return out
+}
+
+// opFailure describes a failed operation.
+type opFailure struct {
+	err, hint, log string
+	excerpt        []string
+	cmd            bool // an external command failed (log available)
+	interrupted    bool
+}
+
+// execOps runs ops (hooks, step prepare/after) and reports the first failure.
+func execOps(ctx context.Context, c *targets.Context, u *ui.UI, ops []targets.Op, logPath string, verbose bool) *opFailure {
+	if len(ops) == 0 {
+		return nil
+	}
+	var notes, warns []string
+	f := runOps(ctx, c, u, ops, logPath, verbose, &notes, &warns)
+	for _, w := range warns {
+		u.Warn(firstLineOf(w))
+	}
+	if f != nil {
+		f.log = logPath
+	}
+	return f
+}
+
+// runOps executes operations in order. Notes from Check functions and
+// warnings from optional ops are appended to notes/warns.
+func runOps(ctx context.Context, c *targets.Context, u *ui.UI, ops []targets.Op, logPath string, verbose bool, notes, warns *[]string) *opFailure {
+	for _, op := range ops {
+		if ctx.Err() != nil {
+			return &opFailure{interrupted: true, err: i18n.S("interrupted", "已中断")}
+		}
+		if op.Fn != nil {
+			if err := op.Fn(); err != nil {
+				return &opFailure{err: op.Desc + ": " + err.Error(), hint: op.Hint}
+			}
+			continue
+		}
+		if op.Cmd == nil {
+			continue
+		}
+		cmdCopy := *op.Cmd
+		if cmdCopy.Dir == "" {
+			cmdCopy.Dir = c.Project.Root
+		}
+		sp := u.StartSpinner(op.Desc)
+		opts := runner.Options{LogPath: logPath, OnLine: func(l string) { sp.Update(l) }}
+		if verbose {
+			opts.Stream = u.Writer()
+		}
+		res, err := runner.Run(ctx, cmdCopy, opts)
+		sp.Stop()
+		note := ""
+		if op.Check != nil && !errors.Is(err, runner.ErrInterrupted) {
+			var cerr error
+			note, cerr = op.Check(res)
+			if cerr != nil && err == nil {
+				err = cerr
+			} else if cerr != nil {
+				err = fmt.Errorf("%v: %v", err, cerr)
+			}
+		}
+		if note != "" {
+			*notes = append(*notes, note)
+		}
+		if err != nil {
+			if errors.Is(err, runner.ErrInterrupted) {
+				return &opFailure{interrupted: true, err: i18n.S("interrupted", "已中断")}
+			}
+			if op.Optional {
+				*warns = append(*warns, op.Desc+": "+err.Error())
+				continue
+			}
+			f := &opFailure{err: op.Desc + ": " + err.Error(), excerpt: hints.Excerpt(res.Tail, 20), cmd: true}
+			h, ok := hints.Match(res.Tail)
+			if !ok {
+				h, ok = hints.Match([]string{err.Error()})
+			}
+			if ok {
+				f.hint = h.Text()
+			} else {
+				f.hint = op.Hint
+			}
+			return f
+		}
+		if verbose || !u.Interactive() {
+			u.Detail("✓ " + op.Desc)
+		}
+	}
+	return nil
+}
+
+// failStep marks every target of a step as failed by a prepare/after op.
+func failStep(c *targets.Context, u *ui.UI, st *stepState, f *opFailure) {
+	st.done, st.failed = true, true
+	for _, tr := range st.users {
+		if tr.Status != Planned {
+			continue
+		}
+		tr.attempted = true
+		if tr.start.IsZero() {
+			tr.start = time.Now()
+		}
+		tr.Status, tr.Error, tr.Excerpt, tr.Hint, tr.Log = Failed, f.err, f.excerpt, f.hint, f.log
+		tr.duration = time.Since(tr.start)
+	}
+	u.Fail(f.err)
+	printFailure(c, u, f.excerpt, f.hint, f.hint != "", f.log)
 }

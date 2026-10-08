@@ -143,12 +143,12 @@ func TestPkgInstallerIdentityChecks(t *testing.T) {
 	delete(c.Tools.(*fakeTools).bins, "productbuild")
 	os.MkdirAll(filepath.Join(c.Project.Root, "docs"), 0o755)
 	os.WriteFile(filepath.Join(c.Project.Root, "docs", "welcome.md"), []byte("x"), 0o644)
-	is = (&Pkg{}).Preflight(c)
+	is = append(ConfigIssues(c, "pkg"), (&Pkg{}).Preflight(c)...)
 	msgs := ""
 	for _, i := range is {
 		msgs += i.Msg + "\n"
 	}
-	if len(is) != 3 || !strings.Contains(msgs, "pkgbuild/productbuild") || !strings.Contains(msgs, "unsupported file type \".md\"") || !strings.Contains(msgs, "file not found: nope.html") {
+	if len(is) != 3 || !strings.Contains(msgs, "pkgbuild/productbuild") || !strings.Contains(msgs, "unsupported file type \".md\"") || !strings.Contains(msgs, "macos.pkg.readme: file not found: nope.html") {
 		t.Fatal(msgs)
 	}
 }
@@ -168,5 +168,39 @@ func TestPkgSharesFlutterBuildWithMacosAndDMG(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("pkg not a macOS target")
+	}
+}
+
+func TestPkgOptions(t *testing.T) {
+	c := pkgCtx(t, "macos:\n  pkg:\n    version: 9.9.9\n    min_os: \"11.0\"\n    relocatable: true\n    require_restart: true\n    postinstall: scripts/post.sh\n")
+	os.MkdirAll(filepath.Join(c.Project.Root, "scripts"), 0o755)
+	os.WriteFile(filepath.Join(c.Project.Root, "scripts", "post.sh"), []byte("echo hi\r\n"), 0o644)
+	p := plan(t, &Pkg{}, c)
+	all := strings.Join(cmds(p), "\n")
+	if !strings.Contains(all, "--version 9.9.9") || !strings.Contains(all, "--scripts") {
+		t.Fatal(all)
+	}
+	for _, op := range p.Ops {
+		if op.Fn != nil && !strings.HasPrefix(op.Desc, "move") {
+			if err := op.Fn(); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	stage := c.Stage("pkg")
+	dist, _ := os.ReadFile(filepath.Join(stage, "distribution.xml"))
+	for _, want := range []string{`<os-version min="11.0"/>`, `onConclusion="RequireRestart"`, `require-scripts="true"`, `version="9.9.9"`} {
+		if !strings.Contains(string(dist), want) {
+			t.Errorf("distribution.xml lacks %s:\n%s", want, dist)
+		}
+	}
+	plist, _ := os.ReadFile(filepath.Join(stage, "component.plist"))
+	if !strings.Contains(string(plist), "<key>BundleIsRelocatable</key>\n\t\t<true/>") {
+		t.Error(string(plist))
+	}
+	sc, err := os.ReadFile(filepath.Join(stage, "scripts", "postinstall"))
+	st, _ := os.Stat(filepath.Join(stage, "scripts", "postinstall"))
+	if err != nil || !strings.HasPrefix(string(sc), "#!/bin/sh") || strings.Contains(string(sc), "\r") || st.Mode()&0o111 == 0 {
+		t.Fatalf("%q %v", sc, err)
 	}
 }

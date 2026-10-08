@@ -289,10 +289,19 @@ func TestInitYesWritesConfigOnce(t *testing.T) {
 	if r.code != 0 {
 		t.Fatalf("generated fpack.yaml rejected: %s", r.stderr)
 	}
-	// Second init refuses to overwrite.
+	// Second init never overwrites: it writes fpack.yaml.new and a diff.
+	os.WriteFile(filepath.Join(proj, "fpack.yaml"), append(b, []byte("# my edit\n")...), 0o644)
 	r = run(t, nil, "init", "--yes", "-C", proj, "--flutter", sdk)
-	if r.code == 0 {
-		t.Fatalf("init overwrote existing fpack.yaml\n%s%s", r.stdout, r.stderr)
+	after, _ := os.ReadFile(filepath.Join(proj, "fpack.yaml"))
+	if r.code != 0 || !strings.HasSuffix(string(after), "# my edit\n") {
+		t.Fatalf("init touched existing fpack.yaml\n%s%s", r.stdout, r.stderr)
+	}
+	if nb, err := os.ReadFile(filepath.Join(proj, "fpack.yaml.new")); err != nil || string(nb) != string(b) || !strings.Contains(r.stdout+r.stderr, "- # my edit") {
+		t.Fatalf("expected fpack.yaml.new and a diff: %v\n%s%s", err, r.stdout, r.stderr)
+	}
+	r = run(t, nil, "init", "--yes", "--force", "-C", proj, "--flutter", sdk)
+	if after, _ := os.ReadFile(filepath.Join(proj, "fpack.yaml")); r.code != 0 || string(after) != string(b) {
+		t.Fatal("--force did not replace fpack.yaml")
 	}
 	// pubspec untouched
 	if b, _ := os.ReadFile(filepath.Join(proj, "pubspec.yaml")); !strings.HasPrefix(string(b), "name: my_app\n") {

@@ -40,6 +40,7 @@ type Project struct {
 	IOSTeam                   string
 	MacProductName            string
 	MacBundleID               string // PRODUCT_BUNDLE_IDENTIFIER in macos/Runner/Configs/AppInfo.xcconfig
+	MacDeploymentTarget       string // MACOSX_DEPLOYMENT_TARGET of macos/Runner.xcodeproj
 	LinuxBinary               string
 	LinuxAppID                string
 	WindowsBinary             string
@@ -186,6 +187,9 @@ func Load(root string) (*Project, error) {
 		p.IOSBundleID = firstMatch(pbx, `PRODUCT_BUNDLE_IDENTIFIER = "?([A-Za-z0-9.\-]+)"?;`)
 	}
 	appInfo := readFile(filepath.Join(root, "macos", "Runner", "Configs", "AppInfo.xcconfig"))
+	if pbx := readFile(filepath.Join(root, "macos", "Runner.xcodeproj", "project.pbxproj")); pbx != "" {
+		p.MacDeploymentTarget = firstMatch(pbx, `MACOSX_DEPLOYMENT_TARGET = "?([0-9.]+)"?;`)
+	}
 	p.MacProductName = firstMatch(appInfo, `(?m)^\s*PRODUCT_NAME\s*=\s*(.+?)\s*$`)
 	p.MacBundleID = firstMatch(appInfo, `(?m)^\s*PRODUCT_BUNDLE_IDENTIFIER\s*=\s*([A-Za-z0-9.\-]+)\s*$`)
 	linuxCM := readFile(filepath.Join(root, "linux", "CMakeLists.txt"))
@@ -414,6 +418,11 @@ func (p *Project) Identifier() string {
 func (p *Project) Abs(rel string) string {
 	if rel == "" || filepath.IsAbs(rel) {
 		return rel
+	}
+	if strings.HasPrefix(rel, "~/") || strings.HasPrefix(rel, `~\`) {
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, rel[2:])
+		}
 	}
 	return filepath.Join(p.Root, rel)
 }

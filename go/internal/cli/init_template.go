@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Matkurban/fpack/go/internal/config"
+	"github.com/Matkurban/fpack/go/internal/host"
 	"github.com/Matkurban/fpack/go/internal/i18n"
 	"github.com/Matkurban/fpack/go/internal/project"
+	"github.com/Matkurban/fpack/go/internal/targets"
 )
 
 type initValues struct {
@@ -26,148 +29,207 @@ func yq(s string) string {
 	if s == "" {
 		return `""`
 	}
-	if strings.ContainsAny(s, ":#{}[],&*?|<>=!%@`'\"") || strings.TrimSpace(s) != s {
-		return `"` + strings.ReplaceAll(s, `"`, `\"`) + `"`
+	if strings.ContainsAny(s, ":#{}[],&*?|<>=!%@`'\"\\") || strings.TrimSpace(s) != s || isYAMLKeyword(s) {
+		return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(s) + `"`
 	}
 	return s
 }
 
+func isYAMLKeyword(s string) bool {
+	switch strings.ToLower(s) {
+	case "true", "false", "yes", "no", "on", "off", "null", "~":
+		return true
+	}
+	for _, r := range s {
+		if (r < '0' || r > '9') && r != '.' && r != '-' && r != '+' {
+			return false
+		}
+	}
+	return true // numbers stay strings
+}
+
+// sectionPlatform maps top-level sections to the platform they need.
+var sectionPlatform = map[string]host.Platform{"android": host.Android, "ios": host.IOS, "macos": host.MacOS, "windows": host.Windows, "linux": host.Linux, "web": host.Web}
+
+// initDefaults returns active values (written uncommented) and detected
+// values (used instead of the generic example in commented lines).
+func initDefaults(v initValues) (active, detected map[string]string, hints map[string][]string) {
+	p := v.Proj
+	active, detected, hints = map[string]string{}, map[string]string{}, map[string][]string{}
+	if v.Display != "" {
+		active["app.display_name"] = yq(v.Display)
+	}
+	if len(v.Targets) > 0 {
+		active["build.targets"] = "[" + strings.Join(v.Targets, ", ") + "]"
+	}
+	if v.OutDir != "" && v.OutDir != config.DefaultOutputDir {
+		active["output.dir"] = yq(v.OutDir)
+	}
+	if p.Platforms[host.Android] && v.Split != "" {
+		active["android.split_per_abi"] = v.Split
+	}
+	if v.Keystore != "" {
+		active["android.signing.store_file"] = yq(v.Keystore)
+		active["android.signing.store_password"] = "${FPACK_ANDROID_KEYSTORE_PASSWORD}"
+		active["android.signing.key_alias"] = yq(orStr(v.Alias, "upload"))
+		active["android.signing.key_password"] = "${FPACK_ANDROID_KEY_PASSWORD:-${FPACK_ANDROID_KEYSTORE_PASSWORD}}"
+	}
+	if v.ExportMethod != "" {
+		active["ios.export_method"] = v.ExportMethod
+	}
+	set := func(k, val string) {
+		if val != "" && !strings.Contains(val, "$") {
+			detected[k] = yq(val)
+		}
+	}
+	id := p.Identifier()
+	set("app.name", p.Name)
+	set("app.description", p.Description)
+	set("app.identifier", id)
+	set("build.build_name", p.Version)
+	set("build.build_number", p.BuildNumber)
+	if fl := p.AndroidFlavors; len(fl) > 0 {
+		set("build.flavor", fl[0])
+		hints["build.flavor"] = []string{i18n.S("Android flavors found: ", "检测到的 Android flavor：") + strings.Join(fl, ", ")}
+	}
+	set("ios.team_id", p.IOSTeam)
+	set("macos.pkg.identifier", orStr(p.MacBundleID, id))
+	set("macos.pkg.min_os", p.MacDeploymentTarget)
+	set("macos.pkg.title", v.Display)
+	set("macos.dmg.volume_name", v.Display)
+	if len(v.DevIDs) > 0 {
+		set("macos.sign.identity", v.DevIDs[0])
+		hints["macos.sign.identity"] = append([]string{i18n.S("Developer ID identities found in this Mac's keychain:", "本机钥匙串中的 Developer ID 证书：")}, v.DevIDs...)
+	} else if v.KeychainSeen {
+		hints["macos.sign.identity"] = []string{i18n.S("(no Developer ID Application certificate in this keychain; list them with: security find-identity -v -p codesigning)", "（本机钥匙串中没有 Developer ID Application 证书；查看：security find-identity -v -p codesigning）")}
+	}
+	if len(v.InstallerIDs) > 0 {
+		set("macos.sign.installer_identity", v.InstallerIDs[0])
+		hints["macos.sign.installer_identity"] = append([]string{i18n.S("installer identities in this keychain:", "本机钥匙串中的安装包证书：")}, v.InstallerIDs...)
+	}
+	if id != "" {
+		set("windows.inno_setup.app_id", targets.StableGUID(id))
+		set("windows.msix.identity_name", id)
+	}
+	set("windows.inno_setup.group_name", v.Display)
+	set("windows.msix.display_name", v.Display)
+	pkg := strings.ToLower(strings.ReplaceAll(p.Name, "_", "-"))
+	set("linux.package_name", pkg)
+	set("linux.startup_wm_class", p.LinuxBinary)
+	if p.LauncherIcon != "" {
+		set("linux.icon", p.LauncherIcon)
+	}
+	return active, detected, hints
+}
+
+func orStr(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
+}
+
+// renderInitYAML writes every fpack.yaml key, grouped by section, each with
+// a comment (what it does, allowed values, default, example). Sections of
+// platforms the project does not have are left out.
 func renderInitYAML(v initValues) string {
+	lang := "en"
+	if i18n.IsZH() {
+		lang = "zh"
+	}
 	S := i18n.S
+	active, detected, hints := initDefaults(v)
 	var b strings.Builder
 	w := func(format string, a ...any) { fmt.Fprintf(&b, format+"\n", a...) }
-	w("# fpack configuration – %s", "https://github.com/Matkurban/fpack/blob/main/doc/configuration.md")
+	w("# yaml-language-server: $schema=%s", config.SchemaURL)
+	w("# fpack %s – %s", S("configuration", "配置文件"), "https://github.com/Matkurban/fpack/blob/main/doc/configuration.md")
 	w("# %s", S("Precedence: command-line flags > FPACK_* environment variables > this file > defaults.", "优先级：命令行参数 > FPACK_* 环境变量 > 本文件 > 默认值。"))
-	w("# %s", S("Every key is optional. ${VAR} and ${VAR:-default} read environment variables.", "所有键都是可选的。${VAR} 与 ${VAR:-默认值} 会读取环境变量。"))
-	w("# %s", S("fpack never edits your project files; it only reads them.", "fpack 只读取项目文件，绝不修改。"))
-	w("")
-	w("app:")
-	w("  # %s", S("Base name of artifact files (default: pubspec name).", "产物文件名前缀（默认：pubspec 中的 name）。"))
-	w("  # name: %s", v.Proj.Name)
-	w("  display_name: %s", yq(v.Display))
-	w("  # publisher: \"Your Company\"          # %s", S("Windows installer / Linux packages", "Windows 安装程序 / Linux 安装包"))
-	w("  # identifier: %s", v.Proj.Identifier())
-	w("")
-	w("build:")
-	w("  # %s", S("Targets built by a plain `fpack build`.", "直接运行 `fpack build` 时构建的目标。"))
-	if len(v.Targets) > 0 {
-		w("  targets: [%s]", strings.Join(v.Targets, ", "))
-	} else {
-		w("  # targets: [apk, aab]")
-	}
-	w("  mode: release                  # release | profile | debug")
-	flv := "prod"
-	if fl := v.Proj.AndroidFlavors; len(fl) > 0 {
-		flv = fl[0]
-		w("  # %s %s", S("Android flavors found:", "检测到的 Android flavor："), strings.Join(fl, ", "))
-	}
-	w("  # flavor: %s", flv)
-	w("  # target: lib/main.dart        # %s", S("entry point (flutter -t)", "入口文件（flutter -t）"))
-	w("  # dart_define:")
-	w("  #   API_URL: https://api.example.com")
-	w("  # dart_define_from_file: [env/prod.json]")
-	w("  # obfuscate: true               # %s", S("symbols are kept in <output>/debug-info/", "符号文件保存在 <输出目录>/debug-info/"))
-	w("  # extra_args: []                # %s", S("appended to every flutter build", "附加到每次 flutter build"))
-	w("")
-	w("output:")
-	w("  dir: %s", yq(v.OutDir))
-	w("  # %s {app} {version} {build} {platform} {arch} {variant} {mode} {flavor}; %s", S("placeholders:", "占位符："), S("{-x} adds '-' only when x is set", "{-x} 表示 x 非空时才加 '-'"))
-	w("  # name: \"{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}\"")
-	w("  # overwrite: false              # %s", S("true = replace existing files (same as --force)", "true = 覆盖已有文件（等同 --force）"))
-	w("  # checksums: true               # %s", S("write SHA256SUMS", "生成 SHA256SUMS"))
-	if v.Proj.Platforms["android"] {
-		w("")
-		w("android:")
-		w("  split_per_abi: %s            # %s", v.Split, S("false = universal APK, true = one APK per ABI, both", "false = 通用 APK，true = 按 ABI 拆分，both = 两者都要"))
-		w("  # abis: [arm64-v8a, armeabi-v7a, x86_64]")
-		w("  # %s", S("Release signing, injected without touching Gradle files. Keep passwords in env vars!", "Release 签名，无需修改 Gradle 文件即可注入。密码请放在环境变量里！"))
-		w("  # %s", S("CI: FPACK_ANDROID_KEYSTORE_BASE64 can hold the keystore itself.", "CI：可用 FPACK_ANDROID_KEYSTORE_BASE64 直接传入 keystore 内容。"))
-		if v.Keystore != "" {
-			w("  signing:")
-			w("    store_file: %s", yq(v.Keystore))
-			w("    store_password: ${FPACK_ANDROID_KEYSTORE_PASSWORD}")
-			w("    key_alias: %s", yq(v.Alias))
-			w("    key_password: ${FPACK_ANDROID_KEY_PASSWORD:-${FPACK_ANDROID_KEYSTORE_PASSWORD}}")
-		} else {
-			w("  # signing:")
-			w("  #   store_file: ~/keys/upload-keystore.jks")
-			w("  #   store_password: ${FPACK_ANDROID_KEYSTORE_PASSWORD}")
-			w("  #   key_alias: upload")
-			w("  #   key_password: ${FPACK_ANDROID_KEY_PASSWORD}")
-		}
-	}
-	if v.Proj.Platforms["ios"] {
-		w("")
-		w("ios:")
-		w("  # app-store-connect | app-store | release-testing | ad-hoc | development | enterprise")
-		if v.ExportMethod != "" {
-			w("  export_method: %s", v.ExportMethod)
-		} else {
-			w("  # export_method: ad-hoc")
-		}
-		w("  # export_options_plist: ios/ExportOptions.plist   # %s", S("wins over export_method", "优先于 export_method"))
-		w("  # codesign: false               # %s", S("unsigned IPA (same as --no-codesign)", "未签名 IPA（等同 --no-codesign）"))
-	}
-	if v.Proj.Platforms["macos"] {
-		w("")
-		w("macos:")
-		w("  # %s", S("Developer ID signing + notarization for distribution outside the App Store.", "用于 App Store 以外分发的 Developer ID 签名 + 公证。"))
-		w("  # %s", S("Without it, the .app keeps Xcode's signature and the DMG is unsigned.", "不配置时 .app 保留 Xcode 的签名，DMG 不签名。"))
-		w("  # %s", S("Flags/env override this: --sign/--no-sign, --sign-identity, --notarize/--no-notarize, --notary-profile, FPACK_MACOS_*.", "命令行/环境变量可覆盖：--sign/--no-sign、--sign-identity、--notarize/--no-notarize、--notary-profile、FPACK_MACOS_*。"))
-		if len(v.DevIDs) > 0 {
-			w("  # %s", S("Developer ID identities found in this Mac's keychain:", "本机钥匙串中的 Developer ID 证书："))
-			for _, id := range v.DevIDs {
-				w("  #   %s", id)
+	w("# %s", S("Every key is optional: uncomment what you need. ${VAR} / ${VAR:-default} read environment variables when the file is loaded.", "所有键都是可选的：需要哪个就取消注释。${VAR} / ${VAR:-默认值} 会在加载时读取环境变量。"))
+	w("# %s", S("Relative paths are relative to the project root. fpack never edits your project files; it only reads them.", "相对路径均相对于项目根目录。fpack 只读取项目文件，绝不修改。"))
+
+	var skipped []string
+	shown := map[string]bool{}
+	for _, sec := range config.Sections {
+		top := strings.Split(sec.Path, ".")[0]
+		if pl, ok := sectionPlatform[top]; ok && !v.Proj.Platforms[pl] {
+			if !strings.Contains(sec.Path, ".") {
+				skipped = append(skipped, top)
 			}
-		} else if v.KeychainSeen {
-			w("  # %s", S("(no Developer ID Application certificate found in this keychain; list them with: security find-identity -v -p codesigning)", "（本机钥匙串中没有 Developer ID Application 证书；查看：security find-identity -v -p codesigning）"))
+			continue
 		}
-		identity := "Developer ID Application: Your Name (TEAMID)"
-		if len(v.DevIDs) > 0 {
-			identity = v.DevIDs[0]
+		depth := strings.Count(sec.Path, ".")
+		ind := strings.Repeat("  ", depth)
+		w("")
+		if depth == 0 {
+			w("# %s", strings.Repeat("-", 76))
 		}
-		w("  # sign:")
-		w("  #   identity: %s   # %s", yq(identity), S("setting it turns signing on", "设置后即启用签名"))
-		w("  #   entitlements: macos/Runner/Release.entitlements")
-		w("  #   notary_profile: NotaryProfile    # %s", S("xcrun notarytool store-credentials NotaryProfile …; setting it turns notarization on", "xcrun notarytool store-credentials NotaryProfile …；设置后即启用公证"))
-		w("  #   # notarize: false              # %s", S("keep signing, skip notarization (same as --no-notarize)", "只签名不公证（等同 --no-notarize）"))
-		installer := "Developer ID Installer: Your Name (TEAMID)"
-		if len(v.InstallerIDs) > 0 {
-			installer = v.InstallerIDs[0]
-			w("  #   # %s %s", S("installer identities in this keychain:", "本机钥匙串中的安装包证书："), strings.Join(v.InstallerIDs, "; "))
+		w("%s# %s", ind, sec.Doc.Text(lang))
+		w("%s%s:", ind, sec.Path[strings.LastIndex(sec.Path, ".")+1:])
+		for _, k := range config.Keys {
+			parent := ""
+			if i := strings.LastIndex(k.Path, "."); i > 0 {
+				parent = k.Path[:i]
+			}
+			if parent != sec.Path || shown[k.Path] {
+				continue
+			}
+			shown[k.Path] = true
+			writeKey(&b, k, lang, depth+1, active, detected, hints)
 		}
-		w("  #   installer_identity: %s   # %s", yq(installer), S("signs the .pkg (a separate certificate from the app's)", "签名 .pkg（与 App 的证书不同）"))
-		w("  # pkg:                           # %s", S("fpack build pkg: installer that puts the app into /Applications", "fpack build pkg：把 App 安装到 /Applications 的安装包"))
-		w("  #   identifier: %s", yq(v.Proj.Identifier()))
-		w("  #   install_location: /Applications")
-		w("  #   title: %s", yq(v.Display))
-		w("  #   welcome: macos/installer/welcome.html     # %s", S(".html/.rtf/.txt; also readme, license, conclusion", ".html/.rtf/.txt；另有 readme、license、conclusion"))
-		w("  #   background: macos/installer/background.png")
-		w("  # dmg:")
-		w("  #   tool: auto                   # auto | hdiutil | create-dmg")
-		w("  #   volume_name: %s", yq(v.Display))
 	}
-	if v.Proj.Platforms["windows"] {
+	if len(skipped) > 0 {
 		w("")
-		w("# windows:")
-		w("#   inno_setup:")
-		w("#     app_id: \"\"                  # %s", S("stable GUID; default is derived from the app identifier", "固定 GUID；默认根据应用标识生成"))
-		w("#     script: windows/installer.iss # %s", S("optional custom script", "可选的自定义脚本"))
-	}
-	if v.Proj.Platforms["linux"] {
-		w("")
-		w("# linux:")
-		w("#   package_name: %s", strings.ToLower(strings.ReplaceAll(v.Proj.Name, "_", "-")))
-		w("#   icon: assets/icon.png        # %s", S("PNG used for .deb/.rpm/.AppImage", ".deb/.rpm/.AppImage 使用的 PNG 图标"))
-		w("#   categories: \"Network;Chat;\"")
-		w("#   deb:")
-		w("#     depends: [\"libgtk-3-0 | libgtk-3-0t64\"]")
-	}
-	if v.Proj.Platforms["web"] {
-		w("")
-		w("# web:")
-		w("#   base_href: /")
-		w("#   wasm: false")
+		w("# %s %s", S("Not shown (the project has no folder for them):", "未列出（项目中没有对应平台目录）："), strings.Join(skipped, ", "))
+		w("# %s", S("see doc/configuration.md or `fpack schema` for their keys.", "这些键见 doc/configuration.md 或 `fpack schema`。"))
 	}
 	return b.String()
+}
+
+func writeKey(b *strings.Builder, k config.Key, lang string, depth int, active, detected map[string]string, hints map[string][]string) {
+	S := i18n.S
+	ind := strings.Repeat("  ", depth)
+	name := k.Path[strings.LastIndex(k.Path, ".")+1:]
+	fmt.Fprintf(b, "%s# %s\n", ind, k.Doc.Text(lang))
+	var meta []string
+	if len(k.Enum) > 0 {
+		meta = append(meta, S("values: ", "可选值：")+strings.Join(k.Enum, " | "))
+	}
+	if k.Kind == config.KSplit {
+		meta = append(meta, S("values: ", "可选值：")+"false | true | both")
+	}
+	if def := k.Default.Text(lang); def != "" {
+		meta = append(meta, S("default: ", "默认：")+def)
+	}
+	val, isActive := active[k.Path]
+	shownVal := val
+	if !isActive {
+		shownVal = k.Example
+		if d, ok := detected[k.Path]; ok {
+			shownVal = d
+			meta = append(meta, S("detected", "检测到"))
+		}
+	}
+	if shownVal != k.Example {
+		meta = append(meta, S("example: ", "示例：")+k.Example)
+	}
+	if k.Env != "" {
+		meta = append(meta, "env "+k.Env)
+	}
+	if k.Flag != "" {
+		meta = append(meta, S("flag ", "参数 ")+k.Flag)
+	}
+	if k.Secret {
+		meta = append(meta, S("keep it in an environment variable", "请放在环境变量中"))
+	}
+	if len(meta) > 0 {
+		fmt.Fprintf(b, "%s# %s\n", ind, strings.Join(meta, S("; ", "；")))
+	}
+	for _, h := range hints[k.Path] {
+		fmt.Fprintf(b, "%s#   %s\n", ind, h)
+	}
+	if isActive {
+		fmt.Fprintf(b, "%s%s: %s\n", ind, name, val)
+	} else {
+		fmt.Fprintf(b, "%s# %s: %s\n", ind, name, shownVal)
+	}
 }

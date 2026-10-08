@@ -4,6 +4,9 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"image"
+	"image/color"
+	"image/png"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -105,5 +108,36 @@ func TestArchivesAndChecksums(t *testing.T) {
 	data, _ := os.ReadFile(p)
 	if !strings.Contains(string(data), "  a.tar.gz\n") || !strings.Contains(string(data), "  a.zip\n") {
 		t.Fatal(string(data))
+	}
+}
+
+func TestResizePNG(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "in.png")
+	img := image.NewNRGBA(image.Rect(0, 0, 64, 32))
+	for y := 0; y < 32; y++ {
+		for x := 0; x < 64; x++ {
+			img.SetNRGBA(x, y, color.NRGBA{R: 255, A: 255})
+		}
+	}
+	f, _ := os.Create(src)
+	png.Encode(f, img)
+	f.Close()
+	dst := filepath.Join(dir, "16.png")
+	if err := ResizePNG(src, dst, 16); err != nil {
+		t.Fatal(err)
+	}
+	w, h, err := PNGSize(dst)
+	if err != nil || w != 16 || h != 16 {
+		t.Fatalf("size %dx%d %v", w, h, err)
+	}
+	f, _ = os.Open(dst)
+	out, _ := png.Decode(f)
+	f.Close()
+	if c := color.NRGBAModel.Convert(out.At(8, 8)).(color.NRGBA); c.R != 255 || c.A != 255 {
+		t.Errorf("center pixel %v", c)
+	}
+	if c := color.NRGBAModel.Convert(out.At(8, 0)).(color.NRGBA); c.A != 0 {
+		t.Errorf("letterbox pixel should be transparent: %v", c)
 	}
 }

@@ -290,10 +290,10 @@ func runInit(e *Env, p *parsed) int {
 	}
 	proj := ctxT.Project
 	dest := filepath.Join(proj.Root, "fpack.yaml")
-	if _, err := os.Stat(dest); err == nil && !p.b("force") {
-		u.Errorf("%s", i18n.F("%s already exists", "%s 已存在", ctxT.Rel(dest)))
-		u.Hint(i18n.S("edit it, or regenerate with: fpack init --force", "可直接编辑，或重新生成：fpack init --force"))
-		return build.ExitUsage
+	existing, readErr := os.ReadFile(dest)
+	exists := readErr == nil
+	if exists && !p.b("force") {
+		u.Warn(i18n.F("%s already exists – it will not be overwritten; writing fpack.yaml.new instead (use --force to replace it)", "%s 已存在 —— 不会覆盖，改为生成 fpack.yaml.new（使用 --force 可直接替换）", ctxT.Rel(dest)))
 	}
 	interactive := !p.b("yes")
 	if f, ok := e.Stdin.(*os.File); interactive && (!ok || !isTTY(f)) {
@@ -415,6 +415,28 @@ func runInit(e *Env, p *parsed) int {
 		u.Errorf("internal error: generated config is invalid: %v", err)
 		return build.ExitFailed
 	}
+	if exists && !p.b("force") {
+		newPath := dest + ".new"
+		if err := os.WriteFile(newPath, []byte(content), 0o644); err != nil {
+			u.Errorf("%v", err)
+			return build.ExitFailed
+		}
+		u.Blank()
+		u.Success(i18n.F("wrote %s", "已生成 %s", ctxT.Rel(newPath)))
+		u.Println(i18n.S("Differences (- your fpack.yaml, + new template):", "差异（- 现有 fpack.yaml，+ 新模板）："))
+		for _, l := range lineDiff(string(existing), content, 80) {
+			switch {
+			case strings.HasPrefix(l, "+"):
+				u.Println("  " + u.Green(l))
+			case strings.HasPrefix(l, "-"):
+				u.Println("  " + u.Red(l))
+			default:
+				u.Println("  " + u.Dim(l))
+			}
+		}
+		u.Hint(i18n.S("merge what you need into fpack.yaml, or replace it: fpack init --force", "把需要的部分合并进 fpack.yaml，或直接替换：fpack init --force"))
+		return 0
+	}
 	if err := os.WriteFile(dest, []byte(content), 0o644); err != nil {
 		u.Errorf("%v", err)
 		return build.ExitFailed
@@ -441,4 +463,90 @@ func contains(l []string, v string) bool {
 		}
 	}
 	return false
+}
+
+// lineDiff returns a compact line diff (LCS based): "-" removed, "+" added,
+// "…" for skipped unchanged runs. At most max lines are returned.
+func lineDiff(a, b string, max int) []string {
+	x, y := strings.Split(strings.TrimRight(a, "\n"), "\n"), strings.Split(strings.TrimRight(b, "\n"), "\n")
+	if len(x)*len(y) > 4_000_000 {
+		return []string{fmt.Sprintf("(%d → %d lines)", len(x), len(y))}
+	}
+	n, m := len(x), len(y)
+	lcs := make([][]int32, n+1)
+	for i := range lcs {
+		lcs[i] = make([]int32, m+1)
+	}
+	for i := n - 1; i >= 0; i-- {
+		for j := m - 1; j >= 0; j-- {
+			if x[i] == y[j] {
+				lcs[i][j] = lcs[i+1][j+1] + 1
+			} else if lcs[i+1][j] >= lcs[i][j+1] {
+				lcs[i][j] = lcs[i+1][j]
+			} else {
+				lcs[i][j] = lcs[i][j+1]
+			}
+		}
+	}
+	var out []string
+	same := 0
+	flush := func() {
+		if same > 0 {
+			out = append(out, fmt.Sprintf("… %d %s", same, i18n.S("unchanged line(s)", "行未变")))
+			same = 0
+		}
+	}
+	i, j := 0, 0
+	for i < n || j < m {
+		switch {
+		case i < n && j < m && x[i] == y[j]:
+			same++
+			i, j = i+1, j+1
+			continue
+		case j < m && (i == n || lcs[i][j+1] >= lcs[i+1][j]):
+			flush()
+			out = append(out, "+ "+y[j])
+			j++
+		default:
+			flush()
+			out = append(out, "- "+x[i])
+			i++
+		}
+		if len(out) >= max {
+			return append(out, i18n.S("… (diff truncated)", "…（差异过长已截断）"))
+		}
+	}
+	flush()
+	return out
+}
+
+// ------------------------------------------------------------------ schema --
+
+func schemaCommand() *command {
+	c := &command{name: "schema", en: "print the JSON schema of fpack.yaml (editor autocompletion and validation)", zh: "输出 fpack.yaml 的 JSON Schema（用于编辑器补全与校验）",
+		flags: []flagSpec{{names: []string{"--output", "-o"}, kind: kString, metavar: "FILE", en: "write to FILE instead of stdout", zh: "写入 FILE 而不是标准输出"}}}
+	c.help = func() string {
+		return cmdHelp(c, "fpack schema [-o FILE]", "  fpack schema -o .vscode/fpack.schema.json\n"+
+			"  # "+i18n.S("fpack init adds this line so VS Code / IntelliJ (YAML plugin) use it automatically:", "fpack init 会在 fpack.yaml 顶部加入下面这行，VS Code / IntelliJ（YAML 插件）会自动使用：")+"\n"+
+			"  # yaml-language-server: $schema="+config.SchemaURL+"\n")
+	}
+	c.run = func(e *Env, p *parsed) int {
+		b, err := config.Schema()
+		if err != nil {
+			fmt.Fprintln(e.Stderr, err)
+			return build.ExitFailed
+		}
+		b = append(b, '\n')
+		if out := p.s("output"); out != "" {
+			if err := os.WriteFile(out, b, 0o644); err != nil {
+				fmt.Fprintln(e.Stderr, err)
+				return build.ExitFailed
+			}
+			fmt.Fprintln(e.Stderr, i18n.F("wrote %s", "已生成 %s", out))
+			return 0
+		}
+		e.Stdout.Write(b)
+		return 0
+	}
+	return c
 }

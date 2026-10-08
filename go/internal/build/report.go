@@ -75,25 +75,17 @@ func printPlan(c *targets.Context, u *ui.UI, s *Summary, steps map[string]*stepS
 				continue
 			}
 			shown[key] = tr.Target
+			printOps(u, st.step.Prepare)
 			u.Info("$ " + flutterCmd(c, st.step).String())
+			printOps(u, st.step.After)
 			for _, w := range st.step.Warnings {
 				u.Warn(w)
 			}
 		}
 		in, err := tr.target.Locate(c, true, time.Time{})
 		if err == nil {
-			if p, err := tr.target.Package(c, in); err == nil {
-				for _, op := range p.Ops {
-					if op.Cmd != nil {
-						opt := ""
-						if op.Optional {
-							opt = u.Dim(i18n.S("  (optional)", "  （可选）"))
-						}
-						u.Info("$ " + op.Cmd.String() + opt)
-					} else {
-						u.Info(u.Dim("· " + op.Desc))
-					}
-				}
+			if p, err := targets.PackageFor(c, tr.target, in); err == nil {
+				printOps(u, p.Ops)
 			}
 		}
 		for _, a := range tr.Artifacts {
@@ -104,6 +96,13 @@ func printPlan(c *targets.Context, u *ui.UI, s *Summary, steps map[string]*stepS
 		}
 		for _, n := range tr.Notes {
 			u.Detail(n)
+		}
+	}
+	if len(s.Hooks) > 0 {
+		u.Blank()
+		u.Println(u.Bold("hooks"))
+		for _, h := range s.Hooks {
+			u.Info("$ " + h)
 		}
 	}
 	if len(s.Conflicts) > 0 {
@@ -167,6 +166,8 @@ func finish(c *targets.Context, u *ui.UI, s *Summary, start time.Time, checksums
 		s.ExitCode = ExitPrereq
 	case !s.DryRun && ok == 0:
 		s.ExitCode = ExitPrereq // nothing could be built
+	case s.HookError != "":
+		s.ExitCode = ExitFailed
 	}
 	s.Success = s.ExitCode == 0
 
@@ -293,4 +294,18 @@ func finish(c *targets.Context, u *ui.UI, s *Summary, start time.Time, checksums
 		u.Println(u.Red("✗ " + msg))
 	}
 	return s
+}
+
+func printOps(u *ui.UI, ops []targets.Op) {
+	for _, op := range ops {
+		if op.Cmd != nil {
+			opt := ""
+			if op.Optional {
+				opt = u.Dim(i18n.S("  (optional)", "  （可选）"))
+			}
+			u.Info("$ " + op.Cmd.String() + opt)
+		} else {
+			u.Info(u.Dim("· " + op.Desc))
+		}
+	}
 }

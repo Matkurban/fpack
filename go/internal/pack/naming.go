@@ -17,12 +17,14 @@ type Fields struct {
 	Variant  string // setup, portable, unsigned...
 	Mode     string // release/profile/debug
 	Flavor   string
+	Target   string // fpack target name: apk, exe, deb…
+	Date     string // build date, YYYYMMDD
 }
 
 var placeholder = regexp.MustCompile(`\{([-_.+]?)([a-z]+)\}`)
 
 // Placeholders lists valid template keys.
-var Placeholders = []string{"app", "version", "build", "platform", "arch", "variant", "mode", "flavor"}
+var Placeholders = []string{"app", "version", "build", "platform", "arch", "variant", "mode", "flavor", "target", "date"}
 
 func (f Fields) value(key string) (string, bool) {
 	switch key {
@@ -46,6 +48,10 @@ func (f Fields) value(key string) (string, bool) {
 		return f.Mode, true
 	case "flavor":
 		return f.Flavor, true
+	case "target":
+		return f.Target, true
+	case "date":
+		return f.Date, true
 	}
 	return "", false
 }

@@ -1,6 +1,7 @@
 package targets
 
 import (
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -25,8 +26,27 @@ func (*WebZip) Steps(c *Context) ([]FlutterStep, error) {
 	if b := c.Config.Web.BaseHref; b != "" {
 		args = append(args, "--base-href", b)
 	}
-	if c.Config.Web.Wasm != nil && *c.Config.Web.Wasm {
+	w2 := c.Config.Web
+	if boolOr(w2.Wasm, false) {
 		args = append(args, "--wasm")
+	}
+	if w2.SourceMaps != nil {
+		args = append(args, map[bool]string{true: "--source-maps", false: "--no-source-maps"}[*w2.SourceMaps])
+	}
+	if boolOr(w2.CSP, false) {
+		args = append(args, "--csp")
+	}
+	if o := w2.OptimizationLevel; o != nil {
+		args = append(args, fmt.Sprintf("-O%d", *o))
+	}
+	if u := w2.StaticAssetsURL; u != "" {
+		args = append(args, "--static-assets-url", u)
+	}
+	if w2.WebResourcesCDN != nil {
+		args = append(args, map[bool]string{true: "--web-resources-cdn", false: "--no-web-resources-cdn"}[*w2.WebResourcesCDN])
+	}
+	for _, k := range sortedKeys(w2.WebDefine) {
+		args = append(args, "--web-define="+k+"="+w2.WebDefine[k])
 	}
 	args = append(args, tailArgs(c, c.Config.Web.ExtraArgs)...)
 	return []FlutterStep{{Key: "web", Platform: host.Web, Args: args, Warnings: w}}, nil

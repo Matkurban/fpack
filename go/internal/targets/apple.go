@@ -35,6 +35,42 @@ type MacSigning struct {
 	// Installer signs the .pkg ("Developer ID Installer: …", a separate
 	// certificate from the app's); "" = unsigned pkg. Cleared by --no-sign.
 	Installer string
+	// HardenedRuntime adds --options runtime (required for notarization).
+	HardenedRuntime bool
+	// Notary credentials other than a keychain profile.
+	AppleID, TeamID, Password   string
+	APIKey, APIKeyID, APIIssuer string
+}
+
+// NotaryAuth returns the notarytool credential arguments and the secrets
+// to redact: keychain profile > API key > Apple ID.
+func (m MacSigning) NotaryAuth() (args, secrets []string, env []string) {
+	switch {
+	case m.Profile != "":
+		return []string{"--keychain-profile", m.Profile}, nil, nil
+	case m.APIKey != "":
+		args = []string{"--key", m.APIKey, "--key-id", m.APIKeyID}
+		if m.APIIssuer != "" {
+			args = append(args, "--issuer", m.APIIssuer)
+		}
+		return args, nil, nil
+	case m.AppleID != "":
+		return []string{"--apple-id", m.AppleID, "--team-id", m.TeamID, "--password", m.Password}, []string{m.Password}, nil
+	}
+	return []string{"--keychain-profile", DefaultNotaryProfile}, nil, nil
+}
+
+// NotaryLabel describes the credential kind for messages.
+func (m MacSigning) NotaryLabel() string {
+	switch {
+	case m.Profile != "":
+		return "keychain profile " + m.Profile
+	case m.APIKey != "":
+		return "App Store Connect API key " + m.APIKeyID
+	case m.AppleID != "":
+		return "Apple ID " + m.AppleID
+	}
+	return "keychain profile " + DefaultNotaryProfile
 }
 
 // Source names where macOS signing settings come from (for messages).
@@ -47,8 +83,11 @@ const DefaultNotaryProfile = "NotaryProfile"
 // FPACK_MACOS_* and command-line overrides.
 func ResolveMacSigning(p *project.Project, cfg *config.Config) (MacSigning, error) {
 	s := cfg.MacOS.Sign
-	m := MacSigning{Identity: s.Identity, Profile: s.NotaryProfile}
-	m.Configured = s.Identity != "" || s.NotaryProfile != ""
+	m := MacSigning{Identity: s.Identity, Profile: s.NotaryProfile, HardenedRuntime: s.HardenedRuntime == nil || *s.HardenedRuntime,
+		AppleID: s.NotaryAppleID, TeamID: s.NotaryTeamID, Password: s.NotaryPassword,
+		APIKey: p.Abs(s.NotaryAPIKey), APIKeyID: s.NotaryAPIKeyID, APIIssuer: s.NotaryAPIIssuer}
+	hasCred := s.NotaryProfile != "" || s.NotaryAppleID != "" || s.NotaryAPIKey != ""
+	m.Configured = s.Identity != "" || hasCred
 	switch {
 	case s.Enabled != nil:
 		m.Enabled = *s.Enabled
@@ -60,7 +99,7 @@ func ResolveMacSigning(p *project.Project, cfg *config.Config) (MacSigning, erro
 	case s.Notarize != nil:
 		m.Notarize = *s.Notarize
 	default:
-		m.Notarize = s.NotaryProfile != ""
+		m.Notarize = hasCred
 	}
 	if s.Entitlements != "" {
 		m.Entitlements = p.Abs(s.Entitlements)
@@ -74,8 +113,11 @@ func ResolveMacSigning(p *project.Project, cfg *config.Config) (MacSigning, erro
 	if !m.Enabled {
 		m.Notarize = false // nothing to notarize without a Developer ID signature
 	}
-	if m.Notarize && m.Profile == "" {
+	if m.Notarize && !hasCred {
 		m.Profile = DefaultNotaryProfile
+	}
+	if m.Notarize && !m.HardenedRuntime {
+		return m, fmt.Errorf("%s", i18n.S("macos.sign: notarization requires the hardened runtime (hardened_runtime: false with notarize)", "macos.sign：公证要求启用 hardened runtime（hardened_runtime: false 与公证冲突）"))
 	}
 	return m, nil
 }
@@ -260,13 +302,17 @@ func (c *Context) entitlements() string {
 // entitlements and the hardened runtime (required for notarization).
 func signAppOps(c *Context, app string) []Op {
 	id := c.Mac.IdentityLabel()
-	sign2 := []string{"--force", "--options", "runtime", "--timestamp"}
+	rt := []string{"--options", "runtime"}
+	if !c.Mac.HardenedRuntime {
+		rt = nil
+	}
+	sign2 := append(append([]string{"--force"}, rt...), "--timestamp")
 	if e := c.entitlements(); e != "" {
 		sign2 = append(sign2, "--entitlements", e)
 	}
 	sign2 = append(sign2, "--sign", id, app)
 	return []Op{
-		{Desc: i18n.S("sign nested code", "签名内嵌代码"), Cmd: cmd("codesign", "--force", "--deep", "--options", "runtime", "--timestamp", "--sign", id, app), Hint: hintIdentity()},
+		{Desc: i18n.S("sign nested code", "签名内嵌代码"), Cmd: cmd("codesign", append(append([]string{"--force", "--deep"}, rt...), "--timestamp", "--sign", id, app)...), Hint: hintIdentity()},
 		{Desc: i18n.S("sign app bundle", "签名 App"), Cmd: cmd("codesign", sign2...), Hint: hintIdentity()},
 		{Desc: i18n.S("verify signature", "校验签名"), Cmd: cmd("codesign", "--verify", "--deep", "--strict", "--verbose=2", app)},
 	}
@@ -278,15 +324,31 @@ func hintIdentity() string {
 
 // notarizeOps submits a file to Apple, waits, and staples the ticket.
 func notarizeOps(c *Context, file string) []Op {
-	profile := c.Mac.Profile
+	auth, secrets, _ := c.Mac.NotaryAuth()
+	hint := i18n.S("check the notarization credentials (macos.sign.notary_*)", "请检查公证凭证（macos.sign.notary_*）")
+	if c.Mac.Profile != "" || (c.Mac.APIKey == "" && c.Mac.AppleID == "") {
+		profile := auth[1]
+		hint = i18n.F("create the profile once: xcrun notarytool store-credentials %s --apple-id <apple-id> --team-id <team-id>", "先创建凭证：xcrun notarytool store-credentials %s --apple-id <Apple ID> --team-id <团队ID>", profile)
+	}
 	return []Op{
-		{Desc: i18n.S("notarize (uploads to Apple and waits, usually 1–10 min)", "公证（上传到 Apple 并等待，通常 1–10 分钟）"),
-			Cmd:   &runner.Cmd{Name: "xcrun", Args: []string{"notarytool", "submit", file, "--keychain-profile", profile, "--wait", "--output-format", "json"}, Capture: true},
-			Check: notaryCheck(profile),
-			Hint:  i18n.F("create the profile once: xcrun notarytool store-credentials %s --apple-id <apple-id> --team-id <team-id>", "先创建凭证：xcrun notarytool store-credentials %s --apple-id <Apple ID> --team-id <团队ID>", profile)},
+		{Desc: i18n.F("notarize with %s (uploads to Apple and waits, usually 1–10 min)", "使用 %s 公证（上传到 Apple 并等待，通常 1–10 分钟）", c.Mac.NotaryLabel()),
+			Cmd:   &runner.Cmd{Name: "xcrun", Args: append(append([]string{"notarytool", "submit", file}, auth...), "--wait", "--output-format", "json"), Capture: true, Secret: secrets},
+			Check: notaryCheck(strings.Join(redactAuth(auth), " ")),
+			Hint:  hint},
 		{Desc: i18n.S("staple notarization ticket", "装订公证票据"), Cmd: cmd("xcrun", "stapler", "staple", file)},
 		{Desc: i18n.S("Gatekeeper assessment", "Gatekeeper 校验"), Cmd: cmd("spctl", "--assess", "--type", "open", "--context", "context:primary-signature", "--verbose=2", file), Optional: true},
 	}
+}
+
+// redactAuth hides the app-specific password in messages.
+func redactAuth(a []string) []string {
+	out := append([]string(nil), a...)
+	for i := range out {
+		if i > 0 && out[i-1] == "--password" {
+			out[i] = "<app-specific-password>"
+		}
+	}
+	return out
 }
 
 // NotaryResult is notarytool's JSON output.
@@ -306,7 +368,7 @@ func notaryCheck(profile string) func(runner.Result) (string, error) {
 			return "", nil
 		}
 		if res.Status != "Accepted" {
-			return "", fmt.Errorf("%s", i18n.F("notarization status %q (%s). Details: xcrun notarytool log %s --keychain-profile %s", "公证状态 %q（%s）。查看详情：xcrun notarytool log %s --keychain-profile %s", res.Status, res.Message, res.ID, profile))
+			return "", fmt.Errorf("%s", i18n.F("notarization status %q (%s). Details: xcrun notarytool log %s %s", "公证状态 %q（%s）。查看详情：xcrun notarytool log %s %s", res.Status, res.Message, res.ID, profile))
 		}
 		return i18n.S("notarized ✓", "已公证 ✓"), nil
 	}
@@ -397,16 +459,77 @@ func exportMethodLabel(m string) string {
 func (*IPA) Steps(c *Context) ([]FlutterStep, error) {
 	args, w := CommonArgs(c, host.IOS, "ipa")
 	ios := c.Config.IOS
+	var prepare []Op
 	switch {
 	case !c.Config.IOSCodesign():
 		args = append(args, "--no-codesign")
 	case ios.ExportOptionsPlist != "":
 		args = append(args, "--export-options-plist", ios.ExportOptionsPlist)
+	case iosExportOptionsSet(c):
+		path := filepath.Join(c.WorkDir, "ExportOptions.plist")
+		body := PlistXML(IOSExportOptions(c))
+		prepare = append(prepare, Op{Desc: i18n.F("write %s", "写入 %s", c.Rel(path)), Fn: func() error {
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				return err
+			}
+			return os.WriteFile(path, []byte(body), 0o644)
+		}})
+		args = append(args, "--export-options-plist", c.Rel(path))
 	case ios.ExportMethod != "":
 		args = append(args, "--export-method", ios.ExportMethod)
 	}
 	args = append(args, tailArgs(c, ios.ExtraArgs)...)
-	return []FlutterStep{{Key: "ipa", Platform: host.IOS, Args: args, Warnings: w}}, nil
+	return []FlutterStep{{Key: "ipa", Platform: host.IOS, Args: args, Warnings: w, Prepare: prepare}}, nil
+}
+
+// iosExportOptionsSet reports whether fpack must generate ExportOptions.plist.
+func iosExportOptionsSet(c *Context) bool {
+	i := c.Config.IOS
+	return i.TeamID != "" || i.SigningStyle != "" || i.SigningCertificate != "" || len(i.ProvisioningProfiles) > 0 ||
+		i.UploadSymbols != nil || i.ManageVersion != nil || i.Destination != "" || i.Thinning != "" ||
+		i.StripSwiftSymbols != nil || len(i.ExportOptions) > 0
+}
+
+// IOSExportOptions builds the ExportOptions.plist dictionary.
+func IOSExportOptions(c *Context) map[string]any {
+	i := c.Config.IOS
+	m := map[string]any{"method": orDefault(i.ExportMethod, "app-store-connect")}
+	if t := orDefault(i.TeamID, c.Project.IOSTeam); t != "" {
+		m["teamID"] = t
+	}
+	if i.SigningStyle != "" {
+		m["signingStyle"] = i.SigningStyle
+	}
+	if i.SigningCertificate != "" {
+		m["signingCertificate"] = i.SigningCertificate
+	}
+	if len(i.ProvisioningProfiles) > 0 {
+		m["provisioningProfiles"] = i.ProvisioningProfiles
+	}
+	if i.UploadSymbols != nil {
+		m["uploadSymbols"] = *i.UploadSymbols
+	}
+	if i.ManageVersion != nil {
+		m["manageAppVersionAndBuildNumber"] = *i.ManageVersion
+	}
+	if i.Destination != "" {
+		m["destination"] = i.Destination
+	}
+	if i.Thinning != "" {
+		m["thinning"] = i.Thinning
+	}
+	if i.StripSwiftSymbols != nil {
+		m["stripSwiftSymbols"] = *i.StripSwiftSymbols
+	}
+	for k, v := range i.ExportOptions {
+		m[k] = v
+	}
+	return m
+}
+
+// iosUploads reports whether the export uploads instead of writing an IPA.
+func iosUploads(c *Context) bool {
+	return c.Config.IOSCodesign() && c.Config.IOS.ExportOptionsPlist == "" && c.Config.IOS.Destination == "upload"
 }
 
 func (*IPA) Locate(c *Context, predicted bool, since time.Time) (Inputs, error) {
@@ -422,6 +545,9 @@ func (*IPA) Locate(c *Context, predicted bool, since time.Time) (Inputs, error) 
 		return nil, notFound("*.app", c.Rel(dir))
 	}
 	dir := filepath.Join(root, "build", "ios", "ipa")
+	if iosUploads(c) {
+		return Inputs{}, nil
+	}
 	if predicted {
 		return Inputs{"ipa": filepath.Join(dir, "*.ipa")}, nil
 	}
@@ -452,6 +578,10 @@ func (*IPA) Package(c *Context, in Inputs) (*Plan, error) {
 		pl.Notes = append(pl.Notes, i18n.S("unsigned IPA: re-sign it (e.g. with Xcode, fastlane resign or a signing service) before installing on devices", "未签名 IPA：安装到设备前需要重新签名（例如 Xcode、fastlane resign 或签名服务）"))
 		return pl, nil
 	}
+	if iosUploads(c) {
+		pl.Notes = append(pl.Notes, i18n.S("destination: upload – Xcode uploaded the build to App Store Connect, no IPA is kept locally", "destination: upload —— Xcode 已将构建上传到 App Store Connect，本地不保留 IPA"))
+		return pl, nil
+	}
 	dst, err := c.ArtifactPath(host.IOS, "arm64", "", ".ipa")
 	if err != nil {
 		return nil, err
@@ -460,6 +590,8 @@ func (*IPA) Package(c *Context, in Inputs) (*Plan, error) {
 	method := exportMethodLabel(c.Config.IOS.ExportMethod)
 	if c.Config.IOS.ExportOptionsPlist != "" {
 		method = c.Config.IOS.ExportOptionsPlist
+	} else if iosExportOptionsSet(c) {
+		method += ", generated ExportOptions.plist"
 	}
 	pl.Artifacts = []Artifact{{Path: dst, Kind: "IPA (" + method + ")", Arch: "arm64"}}
 	return pl, nil
@@ -575,8 +707,13 @@ func (*DMG) Description() string {
 
 func (*DMG) Preflight(c *Context) []Issue {
 	out := append(xcodePreflight(c, "macos"), macSigningPreflight(c)...)
-	if c.Config.MacOS.DMG.Tool == "create-dmg" && c.Tools.Find("create-dmg") == "" {
+	d := c.Config.MacOS.DMG
+	if d.Tool == "create-dmg" && c.Tools.Find("create-dmg") == "" {
 		out = append(out, fatal(i18n.S("macos.dmg.tool is create-dmg but it is not installed", "macos.dmg.tool 设置为 create-dmg，但未安装"), "brew install create-dmg"))
+	}
+	if keys := dmgLayoutKeys(c); len(keys) > 0 && dmgTool(c) == "hdiutil" {
+		msg := i18n.F("%s need create-dmg; hdiutil ignores them", "%s 需要 create-dmg；hdiutil 会忽略这些设置", strings.Join(keys, ", "))
+		out = append(out, warn(msg, "brew install create-dmg"))
 	}
 	if c.Mac.Notarize && !c.DryRun {
 		if _, ok := c.Tools.Probe("xcrun", "--find", "notarytool"); !ok {
@@ -590,6 +727,30 @@ func (*DMG) Steps(c *Context) ([]FlutterStep, error) { return macStep(c), nil }
 
 func (*DMG) Locate(c *Context, predicted bool, _ time.Time) (Inputs, error) {
 	return locateMacApp(c, predicted)
+}
+
+// dmgLayoutKeys lists configured keys only create-dmg honours.
+func dmgLayoutKeys(c *Context) []string {
+	d := c.Config.MacOS.DMG
+	var k []string
+	for _, x := range []struct {
+		name string
+		set  bool
+	}{{"background", d.Background != ""}, {"volume_icon", d.VolumeIcon != ""}, {"window_position", len(d.WindowPosition) > 0},
+		{"window_size", len(d.WindowSize) > 0}, {"icon_size", d.IconSize != 0}, {"app_position", len(d.AppPosition) > 0},
+		{"applications_position", len(d.ApplicationsPosition) > 0}, {"license", d.License != ""}} {
+		if x.set {
+			k = append(k, "macos.dmg."+x.name)
+		}
+	}
+	return k
+}
+
+func pairOr(p config.Pair, x, y int) []string {
+	if len(p) == 2 {
+		x, y = p[0], p[1]
+	}
+	return []string{fmt.Sprint(x), fmt.Sprint(y)}
 }
 
 // dmgTool decides between create-dmg (andreyvit's script) and hdiutil.
@@ -632,11 +793,37 @@ func (*DMG) Package(c *Context, in Inputs) (*Plan, error) {
 		pl.Ops = append(pl.Ops, signAppOps(c, staged)...)
 	}
 	tool := dmgTool(c)
+	d := c.Config.MacOS.DMG
+	format := orDefault(d.Format, "UDZO")
+	fs := orDefault(d.Filesystem, "HFS+")
 	if tool == "create-dmg" {
-		args := []string{"--volname", vol, "--window-size", "660", "400", "--icon-size", "128",
-			"--icon", appName, "180", "190", "--hide-extension", appName, "--app-drop-link", "480", "190"}
-		if bg := c.Config.MacOS.DMG.Background; bg != "" {
+		icon := d.IconSize
+		if icon == 0 {
+			icon = 128
+		}
+		args := []string{"--volname", vol}
+		if len(d.WindowPosition) == 2 {
+			args = append(args, append([]string{"--window-pos"}, pairOr(d.WindowPosition, 0, 0)...)...)
+		}
+		args = append(args, append([]string{"--window-size"}, pairOr(d.WindowSize, 660, 400)...)...)
+		args = append(args, "--icon-size", fmt.Sprint(icon))
+		args = append(args, append([]string{"--icon", appName}, pairOr(d.AppPosition, 180, 190)...)...)
+		args = append(args, "--hide-extension", appName)
+		args = append(args, append([]string{"--app-drop-link"}, pairOr(d.ApplicationsPosition, 480, 190)...)...)
+		if bg := d.Background; bg != "" {
 			args = append(args, "--background", c.Project.Abs(bg))
+		}
+		if v := d.VolumeIcon; v != "" {
+			args = append(args, "--volicon", c.Project.Abs(v))
+		}
+		if l := d.License; l != "" {
+			args = append(args, "--eula", c.Project.Abs(l))
+		}
+		if format != "UDZO" {
+			args = append(args, "--format", format)
+		}
+		if fs != "HFS+" {
+			args = append(args, "--filesystem", fs)
 		}
 		if !c.Interactive {
 			args = append(args, "--skip-jenkins") // no Finder/AppleScript styling in CI
@@ -647,7 +834,7 @@ func (*DMG) Package(c *Context, in Inputs) (*Plan, error) {
 		link := filepath.Join(root, "Applications")
 		pl.Ops = append(pl.Ops,
 			Op{Desc: i18n.S("add /Applications shortcut", "添加 /Applications 快捷方式"), Fn: func() error { return os.Symlink("/Applications", link) }},
-			Op{Desc: i18n.S("create DMG (hdiutil)", "创建 DMG（hdiutil）"), Cmd: cmd("hdiutil", "create", "-volname", vol, "-srcfolder", root, "-ov", "-fs", "HFS+", "-format", "UDZO", tmp)})
+			Op{Desc: i18n.S("create DMG (hdiutil)", "创建 DMG（hdiutil）"), Cmd: cmd("hdiutil", "create", "-volname", vol, "-srcfolder", root, "-ov", "-fs", fs, "-format", format, tmp)})
 	}
 	kind := "DMG"
 	if c.Mac.Enabled {

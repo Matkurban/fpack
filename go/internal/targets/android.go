@@ -204,7 +204,53 @@ func (*APK) Optional() bool          { return false }
 func (*APK) Description() string {
 	return i18n.S("Android APK (universal and/or per-ABI)", "Android APK（通用包和/或按 ABI 拆分）")
 }
-func (*APK) Preflight(c *Context) []Issue { return androidPreflight(c) }
+func (*APK) Preflight(c *Context) []Issue {
+	out := androidPreflight(c)
+	if apkSchemesSet(c) {
+		switch {
+		case !c.Signing.Enabled:
+			out = append(out, warn(i18n.S("android.signing.v1-v4 are ignored: no keystore is configured (android.signing.store_file)", "android.signing.v1-v4 被忽略：未配置 keystore（android.signing.store_file）"), ""))
+		case c.Android().Apksigner() == "":
+			out = append(out, fatal(i18n.S("android.signing.v1-v4 need apksigner (Android SDK build-tools)", "android.signing.v1-v4 需要 apksigner（Android SDK build-tools）"),
+				"sdkmanager \"build-tools;36.0.0\""))
+		}
+	}
+	return out
+}
+
+// apkSchemesSet reports whether any signature scheme is configured.
+func apkSchemesSet(c *Context) bool {
+	s := c.Config.Android.Signing
+	return s.V1 != nil || s.V2 != nil || s.V3 != nil || s.V4 != nil
+}
+
+// resignOp re-signs an APK with apksigner and the configured schemes.
+func resignOp(c *Context, signer, src, dst string) Op {
+	s := c.Signing
+	sc := c.Config.Android.Signing
+	args := []string{"sign", "--ks", s.StoreFile, "--ks-pass", "env:FPACK_KS_PASS", "--ks-key-alias", s.KeyAlias, "--key-pass", "env:FPACK_KEY_PASS"}
+	for i, b := range []*bool{sc.V1, sc.V2, sc.V3, sc.V4} {
+		if b != nil {
+			args = append(args, fmt.Sprintf("--v%d-signing-enabled", i+1), fmt.Sprint(*b))
+		}
+	}
+	args = append(args, "--out", dst, src)
+	return Op{Desc: i18n.F("sign %s with apksigner (%s)", "用 apksigner 签名 %s（%s）", filepath.Base(dst), schemeLabel(sc)),
+		Cmd:  &runner.Cmd{Name: signer, Args: args, Env: []string{"FPACK_KS_PASS=" + s.StorePassword, "FPACK_KEY_PASS=" + s.KeyPassword}, Secret: []string{s.StorePassword, s.KeyPassword}},
+		Hint: i18n.S("check android.signing (keystore, alias, passwords)", "请检查 android.signing（keystore、别名、密码）")}
+}
+
+func schemeLabel(sc config.AndroidSigning) string {
+	var on []string
+	for i, b := range []*bool{sc.V1, sc.V2, sc.V3, sc.V4} {
+		if b != nil && *b {
+			on = append(on, fmt.Sprintf("v%d", i+1))
+		} else if b != nil {
+			on = append(on, fmt.Sprintf("-v%d", i+1))
+		}
+	}
+	return strings.Join(on, " ")
+}
 
 var abiToPlatform = map[string]string{"armeabi-v7a": "android-arm", "arm64-v8a": "android-arm64", "x86_64": "android-x64"}
 
@@ -216,6 +262,9 @@ func androidArgs(c *Context, sub string) ([]string, []string) {
 			plats = append(plats, abiToPlatform[a])
 		}
 		args = append(args, "--target-platform", strings.Join(plats, ","))
+	}
+	for _, k := range sortedKeys(c.Config.Android.ProjectArgs) {
+		args = append(args, "-P", k+"="+c.Config.Android.ProjectArgs[k])
 	}
 	return args, warns
 }
@@ -316,15 +365,23 @@ func (t *APK) Package(c *Context, in Inputs) (*Plan, error) {
 			return nil, err
 		}
 		kind := "APK (" + key + ")"
-		pl.Ops = append(pl.Ops, copyOp(c, src, dst))
-		pl.Artifacts = append(pl.Artifacts, Artifact{Path: dst, Kind: kind, Arch: key})
+		if signer := c.Android().Apksigner(); apkSchemesSet(c) && c.Signing.Enabled && signer != "" {
+			pl.Ops = append(pl.Ops, resignOp(c, signer, src, dst))
+			pl.Artifacts = append(pl.Artifacts, Artifact{Path: dst, Kind: kind, Arch: key})
+			if v4 := c.Config.Android.Signing.V4; v4 != nil && *v4 {
+				pl.Artifacts = append(pl.Artifacts, Artifact{Path: dst + ".idsig", Kind: "APK v4 signature (" + key + ")", Arch: key})
+			}
+		} else {
+			pl.Ops = append(pl.Ops, copyOp(c, src, dst))
+			pl.Artifacts = append(pl.Artifacts, Artifact{Path: dst, Kind: kind, Arch: key})
+		}
 		if first == "" {
 			first = dst
 		}
 	}
 	if first != "" {
 		if signer := c.Android().Apksigner(); signer != "" {
-			pl.Ops = append(pl.Ops, Op{Desc: i18n.S("verify APK signature", "校验 APK 签名"), Cmd: &runner.Cmd{Name: signer, Args: []string{"verify", "--print-certs", first}, Capture: true},
+			pl.Ops = append(pl.Ops, Op{Desc: i18n.S("verify APK signature", "校验 APK 签名"), Cmd: &runner.Cmd{Name: signer, Args: []string{"verify", "--verbose", "--print-certs", first}, Capture: true},
 				Optional: true, Check: signerCheck(c, `(?m)certificate DN: (.+)$`)})
 		}
 	}
@@ -342,6 +399,10 @@ func signerCheck(c *Context, pattern string) func(runner.Result) (string, error)
 			return "", nil
 		}
 		dn := strings.TrimSpace(m[1])
+		schemes := ""
+		for _, v := range regexp.MustCompile(`(?m)^Verified using (v[0-9.]+) scheme[^:]*: true`).FindAllStringSubmatch(r.Output, -1) {
+			schemes += " " + v[1]
+		}
 		if strings.Contains(dn, "CN=Android Debug") {
 			if injected {
 				return "WARN:" + i18n.S("signing was configured but the output is signed with the DEBUG key – the Gradle signingConfigs may override injected signing", "已配置签名，但产物仍使用 DEBUG 密钥签名 —— Gradle 的 signingConfigs 可能覆盖了注入的签名"), nil
@@ -350,6 +411,9 @@ func signerCheck(c *Context, pattern string) func(runner.Result) (string, error)
 				return i18n.S("signed with the Android debug key", "使用 Android debug 密钥签名"), nil
 			}
 			return "WARN:" + i18n.S("signed with the Android DEBUG key – not accepted by Google Play", "使用 Android DEBUG 密钥签名 —— Google Play 不接受"), nil
+		}
+		if schemes != "" {
+			return i18n.F("signed by %s (schemes:%s)", "签名者：%s（签名方案：%s）", dn, schemes), nil
 		}
 		return i18n.F("signed by %s", "签名者：%s", dn), nil
 	}

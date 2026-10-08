@@ -58,7 +58,7 @@ func (*Pkg) Preflight(c *Context) []Issue {
 		}
 		switch {
 		case !exists(path):
-			out = append(out, fatal(i18n.F("macos.pkg.%s: file not found: %s", "macos.pkg.%s：找不到文件：%s", key, c.Rel(path)), ""))
+			// reported by ConfigIssues
 		case !contains(exts, strings.ToLower(filepath.Ext(path))):
 			out = append(out, fatal(i18n.F("macos.pkg.%s: unsupported file type %q (use %s)", "macos.pkg.%s：不支持的文件类型 %q（可用 %s）", key, filepath.Ext(path), strings.Join(exts, ", ")), ""))
 		}
@@ -143,7 +143,11 @@ func pkgIdentifier(c *Context) string {
 // componentPlist keeps the app at the install location: by default pkgbuild
 // marks bundles relocatable, so an upgrade would land wherever an older copy
 // of the app was found instead of /Applications.
-func componentPlist(appName string) string {
+func componentPlist(appName string, relocatable bool) string {
+	reloc := "<false/>"
+	if relocatable {
+		reloc = "<true/>"
+	}
 	return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -152,7 +156,7 @@ func componentPlist(appName string) string {
 		<key>BundleHasStrictIdentifier</key>
 		<true/>
 		<key>BundleIsRelocatable</key>
-		<false/>
+		` + reloc + `
 		<key>BundleIsVersionChecked</key>
 		<true/>
 		<key>BundleOverwriteAction</key>
@@ -173,7 +177,7 @@ func xmlText(s string) string {
 
 // distributionXML is productbuild's distribution file. hostArchitectures
 // keeps Installer from asking for Rosetta on Apple silicon.
-func distributionXML(title, id, version, compPkg string, res [][2]string) string {
+func distributionXML(title, id, version, compPkg string, res [][2]string, o pkgDistOptions) string {
 	var b strings.Builder
 	b.WriteString("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<installer-gui-script minSpecVersion=\"2\">\n")
 	fmt.Fprintf(&b, "    <title>%s</title>\n", xmlText(title))
@@ -186,7 +190,14 @@ func distributionXML(title, id, version, compPkg string, res [][2]string) string
 		}
 		fmt.Fprintf(&b, "    <%s file=\"%s\"/>\n", r[0], name)
 	}
-	fmt.Fprintf(&b, `    <options customize="never" require-scripts="false" hostArchitectures="arm64,x86_64"/>
+	if o.MinOS != "" {
+		fmt.Fprintf(&b, "    <volume-check>\n        <allowed-os-versions>\n            <os-version min=\"%s\"/>\n        </allowed-os-versions>\n    </volume-check>\n", xmlText(o.MinOS))
+	}
+	conclusion := "none"
+	if o.Restart {
+		conclusion = "RequireRestart"
+	}
+	fmt.Fprintf(&b, `    <options customize="never" require-scripts="%[5]t" hostArchitectures="arm64,x86_64"/>
     <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true"/>
     <choices-outline>
         <line choice="default">
@@ -197,10 +208,17 @@ func distributionXML(title, id, version, compPkg string, res [][2]string) string
     <choice id="%[1]s" visible="false">
         <pkg-ref id="%[1]s"/>
     </choice>
-    <pkg-ref id="%[1]s" version="%[2]s" onConclusion="none">%[3]s</pkg-ref>
+    <pkg-ref id="%[1]s" version="%[2]s" onConclusion="%[4]s">%[3]s</pkg-ref>
 </installer-gui-script>
-`, xmlText(id), xmlText(version), xmlText(compPkg))
+`, xmlText(id), xmlText(version), xmlText(compPkg), conclusion, o.Scripts)
 	return b.String()
+}
+
+// pkgDistOptions are distribution.xml settings beyond pages and title.
+type pkgDistOptions struct {
+	MinOS   string
+	Restart bool
+	Scripts bool
 }
 
 func (*Pkg) Package(c *Context, in Inputs) (*Plan, error) {
@@ -231,6 +249,12 @@ func (*Pkg) Package(c *Context, in Inputs) (*Plan, error) {
 		title = strings.TrimSuffix(appName, ".app")
 	}
 	res := pkgResources(c)
+	version := orDefault(pc.Version, c.BuildName)
+	minOS := orDefault(pc.MinOS, c.Project.MacDeploymentTarget)
+	scripts := filepath.Join(stage, "scripts")
+	hasScripts := pc.Preinstall != "" || pc.Postinstall != ""
+	opts := pkgDistOptions{MinOS: minOS, Restart: boolOr(pc.RequireRestart, false), Scripts: hasScripts}
+	relocatable := boolOr(pc.Relocatable, false)
 
 	pl := &Plan{Ops: []Op{
 		resetDirOp(c, stage),
@@ -244,18 +268,28 @@ func (*Pkg) Package(c *Context, in Inputs) (*Plan, error) {
 			if err := os.MkdirAll(pkgs, 0o755); err != nil {
 				return err
 			}
-			if err := os.WriteFile(plist, []byte(componentPlist(appName)), 0o644); err != nil {
+			if err := os.WriteFile(plist, []byte(componentPlist(appName, relocatable)), 0o644); err != nil {
 				return err
+			}
+			for name, src := range map[string]string{"preinstall": pc.Preinstall, "postinstall": pc.Postinstall} {
+				if src == "" {
+					continue
+				}
+				if err := os.MkdirAll(scripts, 0o755); err != nil {
+					return err
+				}
+				if err := installScript(c.Project.Abs(src), filepath.Join(scripts, name)); err != nil {
+					return err
+				}
 			}
 			for _, r := range res {
 				if err := pack.CopyFile(r[1], filepath.Join(resDir, filepath.Base(r[1]))); err != nil {
 					return err
 				}
 			}
-			return os.WriteFile(dist, []byte(distributionXML(title, id, c.BuildName, compPkg, res)), 0o644)
+			return os.WriteFile(dist, []byte(distributionXML(title, id, version, compPkg, res, opts)), 0o644)
 		}},
-		Op{Desc: i18n.F("component package → %s (pkgbuild)", "组件包 → %s（pkgbuild）", loc), Cmd: cmd("pkgbuild", "--root", root, "--component-plist", plist,
-			"--identifier", id, "--version", c.BuildName, "--install-location", loc, filepath.Join(pkgs, compPkg))},
+		Op{Desc: i18n.F("component package → %s (pkgbuild)", "组件包 → %s（pkgbuild）", loc), Cmd: cmd("pkgbuild", pkgbuildArgs(root, plist, id, version, loc, scripts, hasScripts, filepath.Join(pkgs, compPkg))...)},
 	)
 	pb := []string{"--distribution", dist, "--package-path", pkgs}
 	if len(res) > 0 {
@@ -298,6 +332,14 @@ func (*Pkg) Package(c *Context, in Inputs) (*Plan, error) {
 		pl.Notes = append(pl.Notes, i18n.S("the app inside the pkg is not Developer ID signed (notarization needs it); ", "pkg 内的 App 未使用 Developer ID 签名（公证需要）；")+unsignedHowTo())
 	}
 	return pl, nil
+}
+
+func pkgbuildArgs(root, plist, id, version, loc, scripts string, hasScripts bool, out string) []string {
+	a := []string{"--root", root, "--component-plist", plist, "--identifier", id, "--version", version, "--install-location", loc}
+	if hasScripts {
+		a = append(a, "--scripts", scripts)
+	}
+	return append(a, out)
 }
 
 func hintInstallerIdentity() string {

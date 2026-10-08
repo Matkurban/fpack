@@ -198,6 +198,18 @@ func knownLocations(name string) []string {
 		return []string{"/opt/homebrew/bin/pod", "/usr/local/bin/pod", filepath.Join(home, ".gem", "bin", "pod")}
 	case "makeappx", "makeappx.exe":
 		return nil
+	case "signtool", "signtool.exe":
+		var out []string
+		for _, base := range []string{os.Getenv("ProgramFiles(x86)"), os.Getenv("ProgramFiles")} {
+			if base == "" {
+				continue
+			}
+			m, _ := filepath.Glob(filepath.Join(base, "Windows Kits", "10", "bin", "10.*", "x64", "signtool.exe"))
+			sort.Sort(sort.Reverse(sort.StringSlice(m)))
+			out = append(out, m...)
+			out = append(out, filepath.Join(base, "Windows Kits", "10", "App Certification Kit", "signtool.exe"))
+		}
+		return out
 	}
 	return nil
 }

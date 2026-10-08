@@ -5,8 +5,10 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
+	"hash"
 	"io"
 	"io/fs"
 	"os"
@@ -174,12 +176,41 @@ func SHA256File(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// ChecksumsFile is the name of the checksum list written to the output dir.
+// ChecksumsFile is the default checksum list written to the output dir.
 const ChecksumsFile = "SHA256SUMS"
 
-// WriteChecksums (re)writes dir/SHA256SUMS for every regular file in dir,
-// in `sha256sum`/`shasum -a 256 -c` compatible format.
+// ChecksumFiles maps algorithms to their list file names.
+var ChecksumFiles = map[string]string{"sha256": "SHA256SUMS", "sha512": "SHA512SUMS"}
+
+// HashFile returns the hex digest of a file (sha256 or sha512).
+func HashFile(path, alg string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	var h hash.Hash = sha256.New()
+	if alg == "sha512" {
+		h = sha512.New()
+	}
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// WriteChecksums (re)writes dir/SHA256SUMS (see WriteChecksumsAlg).
 func WriteChecksums(dir string) (string, map[string]string, error) {
+	return WriteChecksumsAlg(dir, "sha256")
+}
+
+// WriteChecksumsAlg (re)writes dir/SHA256SUMS or dir/SHA512SUMS for every
+// regular file in dir, in `sha256sum -c` / `shasum -a 512 -c` format.
+func WriteChecksumsAlg(dir, alg string) (string, map[string]string, error) {
+	file, ok := ChecksumFiles[alg]
+	if !ok {
+		alg, file = "sha256", ChecksumsFile
+	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return "", nil, err
@@ -188,10 +219,10 @@ func WriteChecksums(dir string) (string, map[string]string, error) {
 	var names []string
 	for _, e := range entries {
 		n := e.Name()
-		if !e.Type().IsRegular() || n == ChecksumsFile || strings.HasPrefix(n, ".") || strings.HasSuffix(n, ".partial") {
+		if !e.Type().IsRegular() || n == "SHA256SUMS" || n == "SHA512SUMS" || strings.HasPrefix(n, ".") || strings.HasSuffix(n, ".partial") {
 			continue
 		}
-		s, err := SHA256File(filepath.Join(dir, n))
+		s, err := HashFile(filepath.Join(dir, n), alg)
 		if err != nil {
 			return "", nil, err
 		}
@@ -203,7 +234,7 @@ func WriteChecksums(dir string) (string, map[string]string, error) {
 	for _, n := range names {
 		fmt.Fprintf(&b, "%s  %s\n", sums[n], n)
 	}
-	p := filepath.Join(dir, ChecksumsFile)
+	p := filepath.Join(dir, file)
 	return p, sums, os.WriteFile(p, []byte(b.String()), 0o644)
 }
 

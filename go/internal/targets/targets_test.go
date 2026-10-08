@@ -547,11 +547,11 @@ func TestParseNotary(t *testing.T) {
 	if !ok || r.Status != "Invalid" || r.ID != "abc-123" {
 		t.Fatalf("%+v", r)
 	}
-	_, err := notaryCheck("XueHua")(runnerResultOut(`{"id":"abc-123","status":"Invalid","message":"Processing complete"}`))
+	_, err := notaryCheck("--keychain-profile XueHua")(runnerResultOut(`{"id":"abc-123","status":"Invalid","message":"Processing complete"}`))
 	if err == nil || !strings.Contains(err.Error(), "xcrun notarytool log abc-123 --keychain-profile XueHua") {
 		t.Fatalf("%v", err)
 	}
-	note, err := notaryCheck("XueHua")(runnerResultOut(`{"id":"x","status":"Accepted","message":"ok"}`))
+	note, err := notaryCheck("--keychain-profile XueHua")(runnerResultOut(`{"id":"x","status":"Accepted","message":"ok"}`))
 	if err != nil || note == "" {
 		t.Fatal(note, err)
 	}
