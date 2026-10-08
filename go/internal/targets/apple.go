@@ -27,6 +27,7 @@ type MacSigning struct {
 	Notarize     bool
 	Profile      string // notarytool keychain profile
 	Source       string // where the settings came from (for messages)
+	SignSource   string // where the decision to sign (and the identity) came from
 	// NotarizeZip: notarization was requested through fpack (config, env or
 	// flags), not only by the pubspec `dmg:` section, so the macOS zip is
 	// notarized too. The `dmg:` section is about the DMG only.
@@ -45,6 +46,7 @@ func ResolveMacSigning(p *project.Project, cfg *config.Config) (MacSigning, erro
 	var sources []string
 	if sec := mergedDMGSection(p, cfg.Build.Flavor); sec != nil {
 		sources = append(sources, "pubspec.yaml dmg:")
+		m.SignSource = "pubspec.yaml dmg:"
 		m.Enabled = boolOr(sec["sign"], true)
 		m.Notarize = boolOr(sec["notarization"], true)
 		m.Identity, _ = sec["sign-certificate"].(string)
@@ -55,6 +57,9 @@ func ResolveMacSigning(p *project.Project, cfg *config.Config) (MacSigning, erro
 	}
 	s := cfg.MacOS.Sign
 	touched := false
+	if s.Identity != "" || s.Enabled != nil {
+		m.SignSource = "fpack.yaml/env/flags"
+	}
 	if s.Identity != "" {
 		m.Identity = s.Identity
 		if s.Enabled == nil {
@@ -236,8 +241,8 @@ func macSigningPreflight(c *Context) []Issue {
 		}
 	}
 	src := ""
-	if c.Mac.Source != "" {
-		src = i18n.F(" (from %s)", "（来自 %s）", c.Mac.Source)
+	if c.Mac.SignSource != "" {
+		src = i18n.F(" (from %s)", "（来自 %s）", c.Mac.SignSource)
 	}
 	if len(devIDs) == 0 {
 		// Revoked Developer ID certificates are worth calling out.

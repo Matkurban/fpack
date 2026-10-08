@@ -671,6 +671,12 @@ func TestMacSigningNoDeveloperIDCertificate(t *testing.T) {
 	if strings.Contains(msg, "Former") || !strings.Contains(issues[0].Fix, "--no-sign") || !strings.Contains(issues[0].Fix, ".p12") {
 		t.Fatalf("%+v", issues[0])
 	}
+	// --no-notarize only touches notarization: signing is still "from pubspec.yaml dmg:"
+	c = newCtx(t, "darwin", "macos:\n  sign:\n    notarize: false\n", "dmg:\n  sign-certificate: \""+devID+"\"\n")
+	c.Tools.(*fakeTools).probes["security find-identity -v -p codesigning"] = macIdentitiesNoDevID
+	if is := macSigningPreflight(c); len(is) != 1 || !strings.Contains(is[0].Msg, "(from pubspec.yaml dmg:)") || strings.Contains(is[0].Msg, "fpack.yaml") {
+		t.Fatalf("%+v", is)
+	}
 	// --no-sign: no signing preflight at all
 	c = newCtx(t, "darwin", "macos:\n  sign:\n    enabled: false\n", "dmg:\n  sign-certificate: \""+devID+"\"\n")
 	c.Tools.(*fakeTools).probes["security find-identity -v -p codesigning"] = macIdentitiesNoDevID

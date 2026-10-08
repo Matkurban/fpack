@@ -203,8 +203,14 @@ func finish(c *targets.Context, u *ui.UI, s *Summary, start time.Time, checksums
 	}
 	u.Table([]string{i18n.S("TARGET", "目标"), i18n.S("STATUS", "状态"), i18n.S("FILE", "文件"), i18n.S("SIZE", "大小"), i18n.S("TIME", "耗时")}, rows)
 
-	// Details for anything that did not succeed.
-	var details []string
+	// Details for anything that did not succeed. Targets failing for the
+	// same reason (macos + dmg without a Developer ID, …) share one entry.
+	type detail struct {
+		names []string
+		body  string
+	}
+	var details []*detail
+	byBody := map[string]*detail{}
 	for _, t := range s.Targets {
 		if t.Status == Success || (t.Status == Skipped && t.Reason == i18n.S("interrupted", "已中断")) {
 			continue
@@ -213,21 +219,27 @@ func finish(c *targets.Context, u *ui.UI, s *Summary, start time.Time, checksums
 		if reason == "" {
 			reason = t.Error
 		}
-		line := fmt.Sprintf("%s: %s", u.Bold(t.Target), reason)
+		body := reason
 		if t.Fix != "" {
-			line += "\n      " + u.Yellow("→ ") + strings.ReplaceAll(t.Fix, "\n", "\n        ")
+			body += "\n      " + u.Yellow("→ ") + strings.ReplaceAll(t.Fix, "\n", "\n        ")
 		} else if t.Hint != "" && t.Status == Failed {
-			line += "\n      " + u.Yellow("→ ") + t.Hint
+			body += "\n      " + u.Yellow("→ ") + t.Hint
 		}
 		if t.Log != "" {
-			line += "\n      " + u.Dim(i18n.S("log: ", "日志：")+c.Rel(t.Log))
+			body += "\n      " + u.Dim(i18n.S("log: ", "日志：")+c.Rel(t.Log))
 		}
-		details = append(details, line)
+		if d, ok := byBody[body]; ok {
+			d.names = append(d.names, t.Target)
+			continue
+		}
+		d := &detail{names: []string{t.Target}, body: body}
+		byBody[body] = d
+		details = append(details, d)
 	}
 	if len(details) > 0 {
 		u.Blank()
 		for _, d := range details {
-			u.Println("  " + d)
+			u.Println("  " + u.Bold(strings.Join(d.names, ", ")) + ": " + d.body)
 		}
 	}
 	var notes []string

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Matkurban/fpack/go/internal/hints"
@@ -410,6 +411,20 @@ func platformTitle(p host.Platform) string {
 	return string(p)
 }
 
+// heartbeat is the periodic progress line printed in non-interactive runs.
+// Flutter is often silent for minutes (xcodebuild archive, Gradle), so a
+// stale last line is labelled with its age instead of looking current.
+func heartbeat(elapsed time.Duration, last string, age time.Duration) string {
+	run := ui.Duration(elapsed.Truncate(time.Second))
+	if last == "" {
+		return i18n.F("… still running (%s)", "… 仍在运行（%s）", run)
+	}
+	if age >= 45*time.Second {
+		return i18n.F("… still running (%s) · no output for %s, last: %s", "… 仍在运行（%s）· 已 %s 无输出，最后一行：%s", run, ui.Duration(age.Truncate(time.Second)), ui.Truncate(last, 60))
+	}
+	return i18n.F("… still running (%s) %s", "… 仍在运行（%s）%s", run, ui.Truncate(last, 80))
+}
+
 func runStep(ctx context.Context, c *targets.Context, u *ui.UI, st *stepState, logDir, stamp string, verbose bool) {
 	var names []string
 	for _, tr := range st.users {
@@ -432,7 +447,11 @@ func runStep(ctx context.Context, c *targets.Context, u *ui.UI, st *stepState, l
 	}
 	label := "flutter build " + st.step.Args[1]
 	sp := u.StartSpinner(label)
-	last := ""
+	var (
+		mu     sync.Mutex
+		last   string
+		lastAt = time.Now()
+	)
 	stopBeat := make(chan struct{})
 	if !u.Interactive() && !verbose {
 		go func() {
@@ -443,12 +462,21 @@ func runStep(ctx context.Context, c *targets.Context, u *ui.UI, st *stepState, l
 				case <-stopBeat:
 					return
 				case <-t.C:
-					u.Detail(i18n.F("… still running (%s) %s", "… 仍在运行（%s）%s", ui.Duration(time.Since(st.start).Truncate(time.Second)), ui.Truncate(last, 80)))
+					mu.Lock()
+					l, at := last, lastAt
+					mu.Unlock()
+					u.Detail(heartbeat(time.Since(st.start), l, time.Since(at)))
 				}
 			}
 		}()
 	}
-	opts := runner.Options{LogPath: st.logPath, OnLine: func(l string) { last = strings.TrimSpace(l); sp.Update(last) }}
+	opts := runner.Options{LogPath: st.logPath, OnLine: func(l string) {
+		l = strings.TrimSpace(l)
+		mu.Lock()
+		last, lastAt = l, time.Now()
+		mu.Unlock()
+		sp.Update(l)
+	}}
 	if verbose {
 		opts.Stream = u.Writer()
 	}
