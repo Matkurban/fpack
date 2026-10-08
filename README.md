@@ -180,6 +180,8 @@ Flutter 不能跨系统编译 iOS/macOS/Windows/Linux 桌面应用。`fpack buil
 
 ## 配置 fpack.yaml
 
+> 📖 **完整配置参考**（每个 fpack.yaml 键、每个 `FPACK_*` 环境变量、每个命令行参数、优先级规则和完整示例）：[docs/configuration.md](docs/configuration.md)
+
 所有键都是可选的；未知键会报错并提示「你是不是想写 …」。支持 `${VAR}` 和 `${VAR:-默认值}` 引用环境变量。`fpack init` 会生成带完整注释的文件。
 
 ```yaml
@@ -353,6 +355,8 @@ jobs:
 ---
 
 ## 环境变量
+
+完整说明（类型、默认值、影响的目标）见 [docs/configuration.md](docs/configuration.md#3-环境变量)。
 
 | 变量 | 作用 |
 | --- | --- |

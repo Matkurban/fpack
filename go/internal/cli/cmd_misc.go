@@ -156,7 +156,7 @@ func cleanCommand() *command {
 		flags: []flagSpec{
 			{names: []string{"--dist"}, kind: kBool, en: "also delete the output directory (asks first)", zh: "同时删除输出目录（会先确认）"},
 			{names: []string{"--flutter"}, kind: kBool, en: "also run `flutter clean`", zh: "同时运行 `flutter clean`"},
-			{names: []string{"--all"}, kind: kBool, en: "--dist + --flutter", zh: "等同 --dist + --flutter"},
+			{names: []string{"--all"}, kind: kBool, en: "--dist + --flutter-clean", zh: "等同 --dist + --flutter-clean"},
 			{names: []string{"--dry-run", "-n"}, kind: kBool, en: "show what would be deleted", zh: "只显示将删除的内容"},
 		}}
 	// --flutter conflicts with the global --flutter <sdk>: use a distinct key.

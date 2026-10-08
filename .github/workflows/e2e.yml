@@ -1,0 +1,161 @@
+name: E2E
+
+# Installs fpack from this checkout on every host OS and packages a freshly
+# created Flutter app for real.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache-dependency-path: go/go.sum
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+      - name: activate fpack from path (core compiled with Go on first run)
+        shell: pwsh
+        run: |
+          dart pub global activate --source path .
+          Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Pub\Cache\bin"
+      - name: create sample app (+ msix dev dependency)
+        shell: pwsh
+        run: |
+          flutter create --platforms=windows --org dev.fpack.e2e "$env:RUNNER_TEMP\sample"
+          cd "$env:RUNNER_TEMP\sample"
+          flutter pub add --dev msix
+      - name: fpack doctor / list / dry run
+        shell: pwsh
+        working-directory: ${{ runner.temp }}/sample
+        run: |
+          fpack --wrapper-info
+          fpack version
+          fpack doctor
+          fpack list
+          fpack build windows exe msix --dry-run
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: fpack build windows exe msix
+        shell: pwsh
+        working-directory: ${{ runner.temp }}/sample
+        run: |
+          fpack build windows exe msix --json > result.json
+          $code = $LASTEXITCODE
+          python "$env:GITHUB_WORKSPACE\scripts\e2e_check.py" result.json windows exe msix
+          if ($code -ne 0 -or $LASTEXITCODE -ne 0) { Get-Content result.json; exit 1 }
+          Get-ChildItem -Recurse dist | Format-Table FullName, Length
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-dist
+          path: |
+            ${{ runner.temp }}/sample/dist/
+            ${{ runner.temp }}/sample/build/fpack/logs/
+            ${{ runner.temp }}/sample/result.json
+
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache-dependency-path: go/go.sum
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: activate fpack from path (bundled binary)
+        run: |
+          scripts/build_binaries.sh darwin/arm64 darwin/amd64
+          dart pub global activate --source path .
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+      - name: create sample app
+        run: flutter create --platforms=ios,macos --org dev.fpack.e2e "$RUNNER_TEMP/sample"
+      - name: fpack doctor / list / dry run
+        working-directory: ${{ runner.temp }}/sample
+        run: |
+          fpack --wrapper-info
+          fpack doctor
+          fpack list
+          fpack build macos dmg ipa --no-sign --no-codesign --dry-run
+      - name: fpack build macos dmg ipa (unsigned)
+        working-directory: ${{ runner.temp }}/sample
+        run: |
+          set +e
+          fpack build macos dmg ipa --no-sign --no-codesign --json > result.json
+          code=$?
+          python3 "$GITHUB_WORKSPACE/scripts/e2e_check.py" result.json macos dmg ipa || code=1
+          ls -la dist/*/
+          [ $code -eq 0 ] || { cat result.json; exit 1; }
+          hdiutil verify dist/*/*.dmg
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-dist
+          path: |
+            ${{ runner.temp }}/sample/dist/
+            ${{ runner.temp }}/sample/build/fpack/logs/
+            ${{ runner.temp }}/sample/result.json
+
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache-dependency-path: go/go.sum
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: system packages
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libgtk-3-dev rpm
+      - name: activate fpack from path (bundled binary)
+        run: |
+          scripts/build_binaries.sh linux/amd64
+          dart pub global activate --source path .
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+      - name: create sample app
+        run: flutter create --platforms=android,linux,web --org dev.fpack.e2e "$RUNNER_TEMP/sample"
+      - name: fpack doctor / list / dry run
+        working-directory: ${{ runner.temp }}/sample
+        run: |
+          fpack --wrapper-info
+          fpack doctor
+          fpack list
+          fpack build --all --dry-run
+      - name: fpack build apk linux deb rpm web
+        working-directory: ${{ runner.temp }}/sample
+        run: |
+          set +e
+          fpack build apk linux deb rpm web --split-per-abi=both --json > result.json
+          code=$?
+          python3 "$GITHUB_WORKSPACE/scripts/e2e_check.py" result.json apk linux deb rpm web || code=1
+          ls -la dist/*/
+          [ $code -eq 0 ] || { cat result.json; exit 1; }
+          dpkg-deb --info dist/*/*.deb
+          rpm -qip dist/*/*.rpm
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-dist
+          path: |
+            ${{ runner.temp }}/sample/dist/
+            ${{ runner.temp }}/sample/build/fpack/logs/
+            ${{ runner.temp }}/sample/result.json

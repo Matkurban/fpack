@@ -460,7 +460,9 @@ func levenshtein(a, b string) int {
 	return prev[len(rb)]
 }
 
-var envRef = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)(:-([^}]*))?\}`)
+// envRef matches an innermost ${VAR} / ${VAR:-default} (the default holds no
+// further references), so nested defaults like ${A:-${B}} expand inside out.
+var envRef = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)(:-([^${}]*))?\}`)
 
 // interpolate expands ${VAR} and ${VAR:-default} in every string field and
 // returns the names of referenced variables that are not set.
@@ -471,17 +473,25 @@ func interpolate(v reflect.Value, getenv func(string) string) []string {
 		switch v.Kind() {
 		case reflect.String:
 			if v.CanSet() && strings.Contains(v.String(), "${") {
-				v.SetString(envRef.ReplaceAllStringFunc(v.String(), func(m string) string {
-					sm := envRef.FindStringSubmatch(m)
-					if val := getenv(sm[1]); val != "" {
-						return val
-					}
-					if sm[2] != "" {
-						return sm[3]
-					}
-					unset[sm[1]] = true
-					return ""
-				}))
+				// Values substituted in one pass are marked so that their
+				// content is never expanded again (only defaults nest).
+				protect := strings.NewReplacer("$", "\x00", "{", "\x01", "}", "\x02")
+				restore := strings.NewReplacer("\x00", "$", "\x01", "{", "\x02", "}")
+				s := v.String()
+				for pass := 0; pass < 8 && envRef.MatchString(s); pass++ {
+					s = envRef.ReplaceAllStringFunc(s, func(m string) string {
+						sm := envRef.FindStringSubmatch(m)
+						if val := getenv(sm[1]); val != "" {
+							return protect.Replace(val)
+						}
+						if sm[2] != "" {
+							return sm[3]
+						}
+						unset[sm[1]] = true
+						return ""
+					})
+				}
+				v.SetString(restore.Replace(s))
 			}
 		case reflect.Struct:
 			for i := 0; i < v.NumField(); i++ {

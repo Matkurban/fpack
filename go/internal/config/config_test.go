@@ -150,3 +150,18 @@ func TestBadTypes(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+func TestNestedEnvDefaultsAndDollarValues(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "fpack.yaml")
+	os.WriteFile(p, []byte("android:\n  signing:\n    store_password: ${KS:-x}\n    key_password: ${KEY_PW:-${KS}}\n    key_alias: ${A:-${B:-upload}}\n"), 0o644)
+	// the password contains "${" and must be taken literally
+	c, err := Load(p, envOf(map[string]string{"KS": "pa$s${B}w"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := c.Android.Signing
+	if s.StorePassword != "pa$s${B}w" || s.KeyPassword != "pa$s${B}w" || s.KeyAlias != "upload" || len(c.UnsetEnv) != 0 {
+		t.Fatalf("%+v unset=%v", s, c.UnsetEnv)
+	}
+}

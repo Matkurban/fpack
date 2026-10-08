@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag like v0.1.0 (must equal pubspec.yaml version, lib/src/version.dart
+# Push a tag like v1.0.0 (must equal pubspec.yaml version, lib/src/version.dart
 # and go/internal/version/version.go).
 on:
   push:
@@ -29,7 +29,19 @@ jobs:
         with:
           name: prebuilt
           path: prebuilt/
+      # A release created by hand (gh release create) is left untouched, so
+      # its assets and checksums are never replaced by a second build.
+      - name: release already exists?
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::release $GITHUB_REF_NAME already exists – not uploading assets"
+          fi
       - name: GitHub release
+        if: steps.existing.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: release/*

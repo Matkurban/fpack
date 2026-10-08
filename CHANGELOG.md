@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0
+## 1.0.0
 
 - First release.
 - Targets: apk (universal / per-ABI / both), aab, ipa (export method, ExportOptions.plist, unsigned), macos (zip, Developer ID signing, optional notarization), dmg (hdiutil / create-dmg, signing, notarization, stapling), windows (portable zip), exe (Inno Setup), msix, linux (tar.gz), deb, rpm, AppImage, web (zip).
@@ -9,3 +9,5 @@
 - macOS signing defaults read from the pubspec `dmg:` section (read-only).
 - `--dry-run`, `--json`, zh/en output, CI-friendly output, Ctrl-C handling, SHA256SUMS.
 - Dart launcher with verified bundled binaries, Go build fallback and checksum-verified downloads.
+- Complete configuration reference: [docs/configuration.md](docs/configuration.md).
+- Tested end to end on a real app (Android apk/aab, iOS ipa, macOS app/dmg) and in CI on Windows, macOS and Linux.

@@ -23,7 +23,7 @@ void main() {
       'echo "\$FPACK_WRAPPER_VERSION \$*" > $out\nexit 7',
     );
     expect(await runCore(core, ['build', 'apk']), 7);
-    expect(File(out).readAsStringSync().trim(), '0.1.0 build apk');
+    expect(File(out).readAsStringSync().trim(), '1.0.0 build apk');
   });
 
   test('a core killed by a signal maps to 128+N', () async {

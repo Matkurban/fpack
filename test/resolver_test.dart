@@ -33,7 +33,7 @@ void main() {
   CoreResolver resolver({
     Map<String, String> env = const {},
     Downloader? downloader,
-    String version = '0.1.0',
+    String version = '1.0.0',
   }) => CoreResolver(
     packageRoot: pkg,
     host: host,
@@ -44,7 +44,7 @@ void main() {
     log: logs.add,
   );
 
-  void bundle(String content, {String? sha, String version = '0.1.0'}) {
+  void bundle(String content, {String? sha, String version = '1.0.0'}) {
     final f = File('$pkg/prebuilt/linux-amd64/fpack-core')
       ..createSync(recursive: true)
       ..writeAsStringSync(content);
@@ -61,13 +61,13 @@ void main() {
   test(
     'bundled binary is verified, copied to the cache and made executable',
     () async {
-      bundle(fakeCore('0.1.0'));
+      bundle(fakeCore('1.0.0'));
       final r = resolver();
       final core = await r.resolve();
       expect(core.source, CoreSource.bundled);
-      expect(core.path, '$cache/0.1.0/linux-amd64/fpack-core');
+      expect(core.path, '$cache/1.0.0/linux-amd64/fpack-core');
       expect(File('${core.path}.stamp').existsSync(), isTrue);
-      expect(await r.coreVersion(core.path), '0.1.0');
+      expect(await r.coreVersion(core.path), '1.0.0');
 
       // Second run: served from the cache without touching prebuilt/.
       File('$pkg/prebuilt/manifest.json').deleteSync();
@@ -77,25 +77,25 @@ void main() {
   );
 
   test('a rebuilt bundled binary (same version) replaces the cache', () async {
-    bundle(fakeCore('0.1.0'));
+    bundle(fakeCore('1.0.0'));
     expect((await resolver().resolve()).source, CoreSource.bundled);
     expect((await resolver().resolve()).source, CoreSource.cache);
-    bundle('${fakeCore('0.1.0')}# rebuilt\n');
+    bundle('${fakeCore('1.0.0')}# rebuilt\n');
     final again = await resolver().resolve();
     expect(again.source, CoreSource.bundled);
     expect(File(again.path).readAsStringSync(), contains('# rebuilt'));
   });
 
   test('a modified cache entry is not trusted', () async {
-    bundle(fakeCore('0.1.0'));
+    bundle(fakeCore('1.0.0'));
     final core = await resolver().resolve();
-    File(core.path).writeAsStringSync('${fakeCore('0.1.0')}# changed\n');
+    File(core.path).writeAsStringSync('${fakeCore('1.0.0')}# changed\n');
     final again = await resolver().resolve();
     expect(again.source, CoreSource.bundled);
   });
 
   test('checksum mismatch rejects the bundled binary', () async {
-    bundle(fakeCore('0.1.0'), sha: '0' * 64);
+    bundle(fakeCore('1.0.0'), sha: '0' * 64);
     final r = resolver();
     await expectLater(r.resolve(), throwsA(isA<ResolveException>()));
     expect(r.attempts.join('\n'), contains('checksum mismatch'));
@@ -131,7 +131,7 @@ void main() {
   });
 
   test('download is verified against checksums.txt', () async {
-    final good = fakeCore('0.1.0');
+    final good = fakeCore('1.0.0');
     final served = <String, String>{
       'checksums.txt':
           '${sha256Hex(utf8.encode(good))}  fpack-core-linux-amd64\n'
@@ -169,7 +169,7 @@ void main() {
   test('default download URL is the GitHub release of this version', () {
     expect(
       resolver(env: {}).downloadBase.toString(),
-      'https://github.com/Matkurban/fpack/releases/download/v0.1.0/',
+      'https://github.com/Matkurban/fpack/releases/download/v1.0.0/',
     );
   });
 
