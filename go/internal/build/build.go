@@ -420,7 +420,11 @@ func heartbeat(elapsed time.Duration, last string, age time.Duration) string {
 		return i18n.F("… still running (%s)", "… 仍在运行（%s）", run)
 	}
 	if age >= 45*time.Second {
-		return i18n.F("… still running (%s) · no output for %s, last: %s", "… 仍在运行（%s）· 已 %s 无输出，最后一行：%s", run, ui.Duration(age.Truncate(time.Second)), ui.Truncate(last, 60))
+		quiet := ui.Duration(age.Truncate(time.Second))
+		if age < time.Minute {
+			quiet = fmt.Sprintf("%ds", int(age.Seconds()))
+		}
+		return i18n.F("… still running (%s) · no output for %s, last: %s", "… 仍在运行（%s）· 已 %s 无输出，最后一行：%s", run, quiet, ui.Truncate(last, 60))
 	}
 	return i18n.F("… still running (%s) %s", "… 仍在运行（%s）%s", run, ui.Truncate(last, 80))
 }

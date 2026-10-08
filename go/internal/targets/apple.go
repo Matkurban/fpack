@@ -34,6 +34,12 @@ type MacSigning struct {
 	NotarizeZip bool
 }
 
+// signingTurnedOff: signing is configured (pubspec dmg: / fpack.yaml) but
+// was switched off for this run (--no-sign, FPACK_MAC_SIGN=false, enabled: false).
+func (m MacSigning) signingTurnedOff() bool {
+	return !m.Enabled && m.SignSource == "fpack.yaml/env/flags" && strings.Contains(m.Source, "pubspec.yaml dmg:")
+}
+
 // DefaultNotaryProfile matches the `dmg` pub package default.
 const DefaultNotaryProfile = "NotaryProfile"
 
@@ -589,6 +595,8 @@ func (*MacApp) Package(c *Context, in Inputs) (*Plan, error) {
 		pl.Ops = append(pl.Ops, Op{Desc: i18n.S("copy app for signing", "复制 App 以便签名"), Cmd: cmd("ditto", app, src)})
 		pl.Ops = append(pl.Ops, signAppOps(c, src)...)
 		kind = "macOS app (zip, Developer ID signed)"
+	} else if c.Mac.signingTurnedOff() {
+		pl.Notes = append(pl.Notes, i18n.S("not re-signed (--no-sign): keeps Xcode's own signature, which Gatekeeper rejects on other Macs", "未重新签名（--no-sign）：保留 Xcode 的签名，在其他 Mac 上会被 Gatekeeper 拒绝"))
 	} else {
 		pl.Notes = append(pl.Notes, i18n.S("not re-signed (Xcode project signing is used); enable macos.sign for distribution outside the App Store", "未重新签名（使用 Xcode 工程中的签名）；如需在 App Store 外分发请启用 macos.sign"))
 	}
@@ -712,7 +720,9 @@ func (*DMG) Package(c *Context, in Inputs) (*Plan, error) {
 	}
 	pl.Ops = append(pl.Ops, moveOp(c, tmp, dst))
 	pl.Artifacts = []Artifact{{Path: dst, Kind: kind, Arch: "universal"}}
-	if !c.Mac.Enabled {
+	if c.Mac.signingTurnedOff() {
+		pl.Notes = append(pl.Notes, i18n.S("unsigned DMG (--no-sign): Gatekeeper will warn users; drop --no-sign once a Developer ID certificate is installed", "未签名 DMG（--no-sign）：用户打开时 Gatekeeper 会警告；安装 Developer ID 证书后去掉 --no-sign 即可"))
+	} else if !c.Mac.Enabled {
 		pl.Notes = append(pl.Notes, i18n.S("unsigned DMG: Gatekeeper will warn users. Configure macos.sign (or a pubspec dmg: section) to sign and notarize.", "未签名 DMG：用户打开时 Gatekeeper 会警告。配置 macos.sign（或 pubspec 的 dmg: 段）即可签名并公证。"))
 	} else if c.Mac.Source != "" {
 		pl.Notes = append(pl.Notes, i18n.F("signing settings from %s", "签名配置来源：%s", c.Mac.Source))

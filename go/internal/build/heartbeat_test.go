@@ -19,3 +19,9 @@ func TestHeartbeatMarksStaleOutput(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestHeartbeatWholeSeconds(t *testing.T) {
+	if got := heartbeat(time.Minute, "x", 47*time.Second+300*time.Millisecond); !strings.Contains(got, "no output for 47s,") {
+		t.Fatal(got)
+	}
+}

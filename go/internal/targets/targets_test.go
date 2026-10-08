@@ -470,6 +470,12 @@ func TestMacSigningOverrides(t *testing.T) {
 	if c.Mac.Enabled || c.Mac.Notarize {
 		t.Fatalf("%+v", c.Mac)
 	}
+	if n := strings.Join(plan(t, &DMG{}, c).Notes, "\n"); !strings.Contains(n, "(--no-sign)") {
+		t.Fatal(n)
+	}
+	if n := strings.Join(newCtxPlanNotes(t), "\n"); strings.Contains(n, "--no-sign") {
+		t.Fatal(n)
+	}
 	// conflicting explicit config is an error
 	p, _ := project.Load(c.Project.Root)
 	cfg := &config.Config{}
@@ -726,4 +732,9 @@ func TestKeytoolOutputIsLocaleIndependent(t *testing.T) {
 	if a := keytoolEnglish(); len(a) != 2 || a[0] != "-J-Duser.language=en" {
 		t.Fatal(a)
 	}
+}
+
+// newCtxPlanNotes: DMG notes for a project with no signing configured at all.
+func newCtxPlanNotes(t *testing.T) []string {
+	return plan(t, &DMG{}, newCtx(t, "darwin", "", "")).Notes
 }
