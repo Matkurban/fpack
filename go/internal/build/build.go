@@ -243,7 +243,11 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 				order = append(order, fs.Key)
 			}
 			steps[fs.Key].users = append(steps[fs.Key].users, tr)
-			tr.Warnings = appendUnique(tr.Warnings, fs.Warnings...)
+			for _, w := range fs.Warnings {
+				if !strings.HasPrefix(w, targets.NotePrefix) {
+					tr.Warnings = appendUnique(tr.Warnings, w)
+				}
+			}
 		}
 	}
 
@@ -563,9 +567,7 @@ func runStep(ctx context.Context, c *targets.Context, u *ui.UI, st *stepState, l
 	}
 	u.Blank()
 	u.Step(fmt.Sprintf("%s · %s  %s", platformTitle(st.step.Platform), strings.Join(names, ", "), u.Dim(shortFlutter(st.step))))
-	for _, w := range st.step.Warnings {
-		u.Warn(w)
-	}
+	printStepWarnings(u, st.step.Warnings)
 	st.logPath = filepath.Join(logDir, stamp+"-flutter-"+st.step.Key+".log")
 	st.start = time.Now()
 	for _, tr := range st.users {
@@ -652,6 +654,16 @@ func runStep(ctx context.Context, c *targets.Context, u *ui.UI, st *stepState, l
 	u.Success(fmt.Sprintf("%s %s", label, u.Dim("("+ui.Duration(res.Duration)+")")))
 }
 
+func printStepWarnings(u *ui.UI, ws []string) {
+	for _, w := range ws {
+		if n, ok := strings.CutPrefix(w, targets.NotePrefix); ok {
+			u.Detail(n)
+		} else {
+			u.Warn(w)
+		}
+	}
+}
+
 func printFailure(c *targets.Context, u *ui.UI, excerpt []string, hint string, hasHint bool, log string) {
 	if len(excerpt) > 0 {
 		u.Println("")
@@ -682,7 +694,7 @@ func packageTarget(ctx context.Context, c *targets.Context, u *ui.UI, tr *Target
 		u.Fail(tr.Target + ": " + err.Error())
 		return
 	}
-	p, err := tr.target.Package(c, in)
+	p, err := targets.PackageFor(c, tr.target, in)
 	if err != nil {
 		tr.Status, tr.Error = Failed, err.Error()
 		u.Fail(tr.Target + ": " + err.Error())
@@ -718,6 +730,9 @@ func packageTarget(ctx context.Context, c *targets.Context, u *ui.UI, tr *Target
 	tr.Artifacts = tr.Artifacts[:0]
 	for _, a := range p.Artifacts {
 		st, err := os.Stat(a.Path)
+		if err != nil && a.Optional {
+			continue
+		}
 		if err != nil {
 			tr.Status, tr.Error = Failed, i18n.F("expected artifact missing: %s", "缺少预期产物：%s", c.Rel(a.Path))
 			u.Fail(tr.Target + ": " + tr.Error)

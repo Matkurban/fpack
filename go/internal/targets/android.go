@@ -366,9 +366,17 @@ func (t *APK) Package(c *Context, in Inputs) (*Plan, error) {
 		}
 		kind := "APK (" + key + ")"
 		if signer := c.Android().Apksigner(); apkSchemesSet(c) && c.Signing.Enabled && signer != "" {
-			pl.Ops = append(pl.Ops, resignOp(c, signer, src, dst))
+			// Sign into the staging directory, then move: a failed signature
+			// never leaves a partial file in the output directory.
+			stage := c.Stage("apk")
+			tmp := filepath.Join(stage, filepath.Base(dst))
+			if len(pl.Ops) == 0 {
+				pl.Ops = append(pl.Ops, resetDirOp(c, stage))
+			}
+			pl.Ops = append(pl.Ops, resignOp(c, signer, src, tmp), moveOp(c, tmp, dst))
 			pl.Artifacts = append(pl.Artifacts, Artifact{Path: dst, Kind: kind, Arch: key})
 			if v4 := c.Config.Android.Signing.V4; v4 != nil && *v4 {
+				pl.Ops = append(pl.Ops, moveOp(c, tmp+".idsig", dst+".idsig"))
 				pl.Artifacts = append(pl.Artifacts, Artifact{Path: dst + ".idsig", Kind: "APK v4 signature (" + key + ")", Arch: key})
 			}
 		} else {
@@ -381,7 +389,20 @@ func (t *APK) Package(c *Context, in Inputs) (*Plan, error) {
 	}
 	if first != "" {
 		if signer := c.Android().Apksigner(); signer != "" {
-			pl.Ops = append(pl.Ops, Op{Desc: i18n.S("verify APK signature", "校验 APK 签名"), Cmd: &runner.Cmd{Name: signer, Args: []string{"verify", "--verbose", "--print-certs", first}, Capture: true},
+			args := []string{"verify", "--verbose", "--print-certs"}
+			if resigned := apkSchemesSet(c) && c.Signing.Enabled; resigned {
+				sc := c.Config.Android.Signing
+				// apksigner skips v1 for minSdk >= 24 and only checks v4
+				// with the .idsig file: verify what was configured.
+				if sc.V1 != nil && *sc.V1 {
+					args = append(args, "--min-sdk-version", "21") // Flutter's minimum
+				}
+				if sc.V4 != nil && *sc.V4 {
+					args = append(args, "--v4-signature-file", first+".idsig")
+				}
+			}
+			args = append(args, first)
+			pl.Ops = append(pl.Ops, Op{Desc: i18n.S("verify APK signature", "校验 APK 签名"), Cmd: &runner.Cmd{Name: signer, Args: args, Capture: true},
 				Optional: true, Check: signerCheck(c, `(?m)certificate DN: (.+)$`)})
 		}
 	}

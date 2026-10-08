@@ -350,3 +350,34 @@ esac
 		t.Fatalf("log missing: %v", err)
 	}
 }
+
+// TestRealRunHooksAndNames builds for real with a fake flutter: per-target
+// names and pre/post package hooks must apply to the real run, not only to
+// the dry-run plan.
+func TestRealRunHooksAndNames(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake flutter is a shell script")
+	}
+	proj, sdk := fixture(t, `output:
+  names: { web: "{app}-site-{version}" }
+hooks:
+  pre_package: { web: ['echo "pre $FPACK_TARGET" >> hooks.log'] }
+  post_package: { web: ['echo "post $FPACK_TARGET $(basename "$FPACK_ARTIFACT")" >> hooks.log'] }
+  post_build: ['echo "done $FPACK_SUCCESS" >> hooks.log']
+`)
+	flutter := "#!/bin/sh\nif [ \"$1\" = build ] && [ \"$2\" = web ]; then mkdir -p build/web && echo '<html></html>' > build/web/index.html; fi\necho fake flutter \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(sdk, "bin", "flutter"), []byte(flutter), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	r := run(t, nil, "build", "web", "-C", proj, "--flutter", sdk)
+	if r.code != 0 {
+		t.Fatalf("exit %d\n%s", r.code, r.all())
+	}
+	if _, err := os.Stat(filepath.Join(proj, "dist", "2.3.4+5", "my_app-site-2.3.4.zip")); err != nil {
+		t.Fatalf("output.names.web not applied: %v\n%s", err, r.all())
+	}
+	b, _ := os.ReadFile(filepath.Join(proj, "hooks.log"))
+	if got, want := string(b), "pre web\npost web my_app-site-2.3.4.zip\ndone 1\n"; got != want {
+		t.Fatalf("hooks.log = %q, want %q", got, want)
+	}
+}

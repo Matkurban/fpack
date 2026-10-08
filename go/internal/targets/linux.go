@@ -235,12 +235,22 @@ func stageLinuxRoot(c *Context, bundle, root string) ([]string, error) {
 	if h := c.Config.App.Homepage; h != "" {
 		cp += "Source: " + h + "\n"
 	}
-	cp += fmt.Sprintf("\nFiles: *\nCopyright: %s\nLicense: %s\n", strings.TrimPrefix(strings.TrimPrefix(c.Copyright(), "©"), "(c)"), c.License())
+	cp += fmt.Sprintf("\nFiles: *\nCopyright: %s\nLicense: %s\n", debCopyright(c.Copyright()), c.License())
 	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(doc)), []byte(cp), 0o644); err != nil {
 		return nil, err
 	}
 	files = append(files, doc)
 	return files, nil
+}
+
+// debCopyright turns "© 2026 Name" / "Copyright (c) 2026 Name" into the
+// "2026 Name" form of the DEP-5 Copyright field.
+func debCopyright(s string) string {
+	s = strings.TrimSpace(s)
+	for _, p := range []string{"Copyright", "copyright", "©", "(c)", "(C)"} {
+		s = strings.TrimSpace(strings.TrimPrefix(s, p))
+	}
+	return s
 }
 
 func dirSizeKB(dir string) int64 {
@@ -536,7 +546,7 @@ func (*AppImage) Package(c *Context, in Inputs) (*Plan, error) {
 		args = append(args, "--updateinformation", u)
 	}
 	args = append(append(args, ai.ExtraArgs...), appdir, tmp)
-	return &Plan{Ops: []Op{
+	ops := []Op{
 		resetDirOp(c, stage),
 		{Desc: i18n.S("stage AppDir", "准备 AppDir"), Fn: func() error {
 			if err := pack.CopyDir(bundle, appdir); err != nil {
@@ -567,7 +577,22 @@ func (*AppImage) Package(c *Context, in Inputs) (*Plan, error) {
 			entry := c.desktopEntry(bin, pkg, "X-AppImage-Version="+debVersion(c))
 			return os.WriteFile(filepath.Join(appdir, pkg+".desktop"), []byte(entry), 0o644)
 		}},
-		{Desc: i18n.S("build AppImage", "构建 AppImage"), Cmd: &runner.Cmd{Name: appimagetoolOrName(c), Args: args, Env: []string{"ARCH=" + arch, "APPIMAGE_EXTRACT_AND_RUN=1"}}},
+		// Run in the staging directory: appimagetool writes the .zsync file
+		// (with update information) into its working directory, which must
+		// never be the project.
+		{Desc: i18n.S("build AppImage", "构建 AppImage"), Cmd: &runner.Cmd{Name: appimagetoolOrName(c), Args: args, Dir: stage, Env: []string{"ARCH=" + arch, "APPIMAGE_EXTRACT_AND_RUN=1"}}},
 		moveOp(c, tmp, dst),
-	}, Artifacts: []Artifact{{Path: dst, Kind: "AppImage", Arch: linuxArch(c)}}}, nil
+	}
+	arts := []Artifact{{Path: dst, Kind: "AppImage", Arch: linuxArch(c)}}
+	if ai.UpdateInformation != "" {
+		zs := dst + ".zsync"
+		ops = append(ops, Op{Desc: i18n.F("move to %s", "移动到 %s", c.Rel(zs)), Fn: func() error {
+			if !exists(tmp + ".zsync") {
+				return nil // appimagetool without zsyncmake: no .zsync
+			}
+			return pack.MoveFile(tmp+".zsync", zs)
+		}})
+		arts = append(arts, Artifact{Path: zs, Kind: "AppImage zsync (update information)", Arch: linuxArch(c), Optional: true})
+	}
+	return &Plan{Ops: ops, Artifacts: arts}, nil
 }

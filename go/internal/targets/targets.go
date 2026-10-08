@@ -126,6 +126,9 @@ type Artifact struct {
 	Kind    string `json:"kind"`
 	Arch    string `json:"arch,omitempty"`
 	Variant string `json:"variant,omitempty"`
+	// Optional artifacts may legitimately be missing (e.g. a .zsync file
+	// from an appimagetool without zsyncmake); they are then left out.
+	Optional bool `json:"-"`
 }
 
 // Issue is a preflight finding.
@@ -254,7 +257,7 @@ func (c *Context) ArtifactPath(p host.Platform, arch, variant, ext string) (stri
 	}
 	name, err := pack.Render(tmpl, pack.Fields{
 		App: c.AppName, Version: c.BuildName, Build: c.BuildNumber, Platform: string(p),
-		Arch: arch, Variant: variant, Mode: c.Mode(), Flavor: c.Flavor(),
+		Arch: arch, Variant: variant, Mode: c.Mode(), Flavor: nameFlavor(c, p),
 		Target: c.CurrentTarget, Date: started.Format("20060102"),
 	})
 	if err != nil {
@@ -328,6 +331,18 @@ func ForPlatform(p host.Platform) []Target {
 
 // ---- shared flutter args ----
 
+// nameFlavor is {flavor} in file names: empty where Flutter ignores flavors.
+func nameFlavor(c *Context, p host.Platform) string {
+	if supportsFlavor(p) {
+		return c.Flavor()
+	}
+	return ""
+}
+
+// NotePrefix marks step messages that are informational (shown once, not
+// repeated as target warnings).
+const NotePrefix = "NOTE:"
+
 // supportsFlavor reports platforms where `flutter build --flavor` works.
 func supportsFlavor(p host.Platform) bool {
 	return p == host.Android || p == host.IOS || p == host.MacOS
@@ -341,7 +356,7 @@ func CommonArgs(c *Context, p host.Platform, sub string) ([]string, []string) {
 		if supportsFlavor(p) {
 			args = append(args, "--flavor", f)
 		} else {
-			warns = append(warns, i18n.F("--flavor is not supported for %s builds by Flutter; building without flavor.", "Flutter 的 %s 构建不支持 --flavor，将忽略 flavor。", p))
+			warns = append(warns, NotePrefix+i18n.F("flavor %q is not used for %s (Flutter supports flavors on Android, iOS and macOS only)", "%[2]s 构建不使用 flavor %[1]q（Flutter 只在 Android、iOS、macOS 上支持 flavor）", f, p))
 		}
 	}
 	if t := c.Config.Build.Target; t != "" {

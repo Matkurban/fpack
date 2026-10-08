@@ -78,9 +78,7 @@ func printPlan(c *targets.Context, u *ui.UI, s *Summary, steps map[string]*stepS
 			printOps(u, st.step.Prepare)
 			u.Info("$ " + flutterCmd(c, st.step).String())
 			printOps(u, st.step.After)
-			for _, w := range st.step.Warnings {
-				u.Warn(w)
-			}
+			printStepWarnings(u, st.step.Warnings)
 		}
 		in, err := tr.target.Locate(c, true, time.Time{})
 		if err == nil {

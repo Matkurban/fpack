@@ -574,7 +574,7 @@ func TestDesktopAndWebPlans(t *testing.T) {
 	if strings.Join(s[0].Args, " ") != "build windows --release" || len(s[0].Warnings) != 1 {
 		t.Fatalf("flavor must be dropped with a warning on windows: %+v", s[0])
 	}
-	if names(plan(t, &WinZip{}, c2))[0] != "xue_hua_im-prod-1.0.0+1-windows-x64-portable.zip" {
+	if names(plan(t, &WinZip{}, c2))[0] != "xue_hua_im-1.0.0+1-windows-x64-portable.zip" { // no {flavor}: not a flavored build
 		t.Fatal(names(plan(t, &WinZip{}, c2)))
 	}
 	if issues := (&Msix{}).Preflight(c2); len(issues) == 0 || !strings.Contains(issues[len(issues)-1].Fix, "flutter pub add --dev msix") {
@@ -741,5 +741,13 @@ func TestMsixNeverPromptsForCertificate(t *testing.T) {
 	p = plan(t, &Msix{}, c)
 	if cs := strings.Join(cmds(p), "\n"); strings.Contains(cs, "--install-certificate") || len(p.Notes) != 0 {
 		t.Fatal(cs, p.Notes)
+	}
+}
+
+func TestDebCopyright(t *testing.T) {
+	for in, want := range map[string]string{"© 2026 Matkurban": "2026 Matkurban", "Copyright (c) 2026 A": "2026 A", "2026 B": "2026 B", "Copyright © 2026 C": "2026 C"} {
+		if got := debCopyright(in); got != want {
+			t.Errorf("debCopyright(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
