@@ -41,7 +41,7 @@
 
 - **列表类参数是追加，不是替换**：`--dart-define`、`--dart-define-from-file` 会追加到 `fpack.yaml` 中已有的值之后。
 - **`extra_args` 的拼接顺序**：`build.extra_args` → 平台的 `extra_args`（如 `android.extra_args`）→ 命令行 `--` 之后的参数。都会原样追加到 `flutter build …` 的末尾。
-- **macOS 签名的联动规则**：设置了证书（`identity`）即视为启用签名；设置了公证配置名（`notary_profile`）即视为启用公证；关闭签名（`--no-sign` / `enabled: false`）会同时关闭公证；`enabled: false` 与 `notarize: true` 同时出现是配置错误。
+- **macOS 签名的联动规则**：设置了证书（`identity`）即视为启用签名；设置了任一公证凭证（`notary_profile`、API 密钥或 Apple ID）即视为启用公证；关闭签名（`--no-sign` / `enabled: false`）会同时关闭公证；`enabled: false` 与 `notarize: true` 同时出现是配置错误。
 - **macOS 签名只来自 fpack 自己的配置**：fpack 不读取 `pubspec.yaml` 中其他插件的配置（例如 [`dmg`](https://pub.dev/packages/dmg) 包的 `dmg:` 段）。什么都不配置时，.app 保留 Xcode 工程自己的签名，DMG 不签名。
 - **`fpack.yaml` 中的环境变量引用**：任何字符串值都可以写 `${VAR}` 或 `${VAR:-默认值}`。未设置且没有默认值的变量会被替换为空字符串，并在运行时给出警告。
 - **路径**：`fpack.yaml` 中的相对路径都相对于 **项目根目录**（`pubspec.yaml` 所在目录）；支持 `~/`。
@@ -417,9 +417,17 @@ Web：web（zip）。
 
 **macOS 公证凭证**（三选一，优先级从高到低）：`notary_profile`（钥匙串配置，推荐本机使用）→ `notary_api_key` + `notary_api_key_id` (+ `notary_api_issuer`)（App Store Connect API 密钥，推荐 CI）→ `notary_apple_id` + `notary_team_id` + `notary_password`（App 专用密码，会被隐藏）。设置了任意一种凭证即视为开启公证（前提是已签名）。`hardened_runtime: false` 只适合不公证的内部分发。
 
+**公证等待**（`macos.notarize`）：Apple 公证通常需要几分钟。fpack 先执行 `xcrun notarytool submit <文件> … --output-format json`（不带 `--wait`），拿到提交 ID 后立即写入 `<输出目录>/NOTARIZATION.md`（语言随 `--lang`）和 `notarization.json`，并打印路径。记录内容：产物与 SHA-256、提交 ID、提交时间、使用的凭证（钥匙串配置名 / API 密钥 ID / Apple ID；**不会写入任何密码**，Apple ID 方式的命令中密码写作 `$FPACK_NOTARY_PASSWORD`）、可直接复制的命令（`xcrun notarytool info/wait/log`、`xcrun stapler staple/validate`、`spctl -a -vv`）以及对应的 `fpack notarize status/finish`。
+
+- `wait: true`（默认）：执行 `xcrun notarytool wait <ID>`，每 30 秒显示一次已等待时间，并提示「公证通常需要几分钟。可以按 Ctrl-C 停止等待 —— Apple 端会继续处理；之后可用 <路径> 中的命令查询。」。Ctrl-C 时打印同样的提示，已上传的文件保留在产物路径（尚未装订），退出码 130。结果为 Accepted 时继续装订、`spctl` 评估，记录更新为 `stapled`；结果为 Invalid 时下载 Apple 的日志到 `notary-log-<文件>.json`，总结问题（未用 Developer ID 签名、未启用 Hardened Runtime、缺少安全时间戳、带 `get-task-allow`、内嵌代码未签名……）并给出修复建议。
+- `wait: false`（`FPACK_NOTARIZE_WAIT=false`、`--notarize-no-wait`）：提交并写入记录后就结束。汇总表中该产物标注「已提交公证」，`--json` 中 `notarization.state` 为 `submitted`；产物尚未装订（用户首次打开时 Gatekeeper 会联网验证）。
+- `fpack notarize status [目录|ID]`：读取记录（默认使用 `dist/` 下最新的 `notarization.json`），用 `notarytool info` 查询每个未完成提交的状态并更新记录。
+- `fpack notarize finish [目录]`：等待未完成的提交；Accepted 的 DMG/pkg 直接装订，App zip 会解压、装订 .app、校验后重新压缩；启用校验和时重写 `SHA256SUMS`；Invalid 的下载并总结日志。退出码：0 全部完成，1 有提交被拒绝或查询失败，3 找不到记录，130 被中断。
+- `NOTARIZATION.md`、`notarization.json`、`notary-log-*.json` 不会写入校验和文件。
+
 **DMG 布局**：`background`、`volume_icon`、`window_position`、`window_size`、`icon_size`、`app_position`、`applications_position`、`license` 需要 [create-dmg](https://github.com/create-dmg/create-dmg)（`brew install create-dmg`）；`tool: auto` 时装了 create-dmg 就会使用，没装则用 `hdiutil` 并警告这些设置被忽略。`format` / `filesystem` 两种工具都支持。
 
-**pkg 安装包**（`fpack build pkg`）：复制 .app →（配置了 `identity` 时）Developer ID 重新签名 → `pkgbuild --root … --component-plist …`（安装到 `install_location`；`relocatable: false` 时升级总是覆盖该位置；`preinstall`/`postinstall` 会放入 `--scripts` 目录并设为可执行）→ `productbuild --distribution …`（支持 arm64 + x86_64，不提示 Rosetta；`min_os` 写入 `allowed-os-versions`，`require_restart` 写入 `onConclusion="RequireRestart"`；`installer_identity` 存在时 `--sign … --timestamp`）→ `pkgutil --check-signature` →（签名且开启公证时）`notarytool submit --wait` → `stapler staple` → `spctl --assess --type install`。同一次运行中 `macos`、`dmg`、`pkg` 共享一次 `flutter build macos`。
+**pkg 安装包**（`fpack build pkg`）：复制 .app →（配置了 `identity` 时）Developer ID 重新签名 → `pkgbuild --root … --component-plist …`（安装到 `install_location`；`relocatable: false` 时升级总是覆盖该位置；`preinstall`/`postinstall` 会放入 `--scripts` 目录并设为可执行）→ `productbuild --distribution …`（支持 arm64 + x86_64，不提示 Rosetta；`min_os` 写入 `allowed-os-versions`，`require_restart` 写入 `onConclusion="RequireRestart"`；`installer_identity` 存在时 `--sign … --timestamp`）→ `pkgutil --check-signature` →（签名且开启公证时）`notarytool submit` → 等待 → `stapler staple` → `spctl --assess --type install`（公证流程见下文「公证等待」）。同一次运行中 `macos`、`dmg`、`pkg` 共享一次 `flutter build macos`。
 
 fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 `dmg:` 段；需要签名/公证时请在 `fpack.yaml` 的 `macos.sign` 中配置（或使用 `FPACK_MACOS_*` 环境变量、命令行参数）。
 
@@ -569,6 +577,7 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 | `--installer-identity ID` | string | `macos.sign.installer_identity` | pkg | pkg 签名证书（Developer ID Installer）。 |
 | `--notarize` | 开关 | `macos.sign.notarize: true` | macos, dmg, pkg | 公证并装订（zip、DMG 与已签名的 pkg）。 |
 | `--no-notarize` | 开关 | `macos.sign.notarize: false` | macos, dmg, pkg | 跳过公证（不上传到 Apple，本地构建更快）。 |
+| `--notarize-no-wait` | 开关 | `macos.notarize.wait: false` | macos, dmg, pkg | 提交公证后不等待结果（之后用 `fpack notarize finish`）。 |
 | `--notary-profile NAME` | string | `macos.sign.notary_profile` | macos, dmg, pkg | notarytool 钥匙串配置名。 |
 | `--dmg-tool T` | string | `macos.dmg.tool` | dmg | `auto` / `hdiutil` / `create-dmg`。 |
 | `--base-href PATH` | string | `web.base_href` | web | base href。 |
@@ -583,6 +592,8 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 | `fpack list`（`ls`、`targets`） | — | 列出所有目标、产物格式，以及本机能否构建。 |
 | `fpack init` | `-f`, `--force`：覆盖已有的 fpack.yaml；`-y`：不提问，使用检测到的默认值；`--lang zh\|en`：注释语言 | 生成带注释的 `fpack.yaml`：列出**所有**键（可选的保持注释），每个键都有说明、可选值、默认值和示例，并预填从项目检测到的值（应用 ID、flavor、版本、团队 ID、GUID…）。只问几个问题（默认目标、显示名、APK 拆分、keystore、iOS 导出方式、输出目录）。`fpack.yaml` 已存在且没有 `--force` 时不会覆盖，而是写入 `fpack.yaml.new` 并显示差异。 |
 | `fpack schema` | `-o FILE`：写入文件 | 输出 fpack.yaml 的 JSON Schema（编辑器补全/校验）。 |
+| `fpack notarize status [目录\|ID]` | `--json`：输出记录 | 查询 macOS 公证提交的状态并更新 `notarization.json` / `NOTARIZATION.md`。参数可以是输出目录、`notarization.json` 路径或提交 ID；省略时使用 `dist/` 下最新的记录。 |
+| `fpack notarize finish [目录]` | `--json` | 等待未完成的提交，装订通过的 DMG/pkg/App zip，重写 SHA256SUMS，被拒绝时下载并总结 Apple 日志。可在 `--notarize-no-wait` 或 Ctrl-C 之后使用。 |
 | `fpack clean` | `--dist`：同时删除输出目录（会先确认，`-y` 跳过确认）；`--flutter-clean`：同时运行 `flutter clean`；`--all`：等同 `--dist --flutter-clean`；`-n`, `--dry-run`：只显示将删除什么 | 默认只删除 fpack 的工作目录 `build/fpack/`（临时文件与日志）。 |
 | `fpack version` | — | 显示 fpack、原生核心与启动器的版本。 |
 
@@ -591,10 +602,10 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 | 码 | 含义 |
 | --- | --- |
 | 0 | 全部成功（`--dry-run`：计划生成成功） |
-| 1 | 至少一个目标在构建/打包时失败 |
+| 1 | 至少一个目标在构建/打包时失败，或钩子失败；`fpack notarize`：有提交被拒绝或查询失败 |
 | 2 | 用法或配置错误（未知参数、未知目标、fpack.yaml 有误） |
-| 3 | 前置条件不满足 / 产物已存在 / 没有可构建的目标 / 找不到 Flutter |
-| 130 | 被 Ctrl-C 中断 |
+| 3 | 前置条件不满足 / 产物已存在 / 没有可构建的目标 / 找不到 Flutter；`fpack notarize`：找不到公证记录 |
+| 130 | 被 Ctrl-C 中断（公证等待被中断时，Apple 端仍会继续处理） |
 
 ---
 
@@ -634,6 +645,7 @@ dist/1.0.0+1/xue_hua_im-1.0.0+1-macos-universal-profile.dmg # --profile
 下面是一个 IM 应用（Android + iOS + macOS）的完整 `fpack.yaml`，每一项都有注释。只需保留你要改的项——删除的项会使用默认值。
 
 ```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Matkurban/fpack/main/schema/fpack.schema.json
 # fpack.yaml —— 放在项目根目录（与 pubspec.yaml 同级）
 # 所有键都可选；字符串中可用 ${VAR} / ${VAR:-默认值} 引用环境变量。
 
@@ -641,7 +653,7 @@ app:
   name: xue_hua_im                 # 产物文件名前缀（默认：pubspec 的 name）
   display_name: 雪花IM              # 安装程序 / 菜单中显示的名称
   description: 雪花即时通讯          # deb/rpm/.desktop 描述（默认：pubspec 的 description）
-  publisher: XueHua                # Windows 安装程序发布者
+  publisher: XueHua                # 安装程序发布者（默认：windows/runner/Runner.rc 的 CompanyName）
   identifier: com.kurban.im        # 反向域名标识（默认：从 Android/iOS 工程读取）
   homepage: https://example.com
 
@@ -662,6 +674,12 @@ output:
   name: "{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}"
   overwrite: false                 # 产物已存在时跳过（--force 覆盖）
   checksums: true                  # 写入 SHA256SUMS
+  # checksum_algorithm: sha512     # 改为写入 SHA512SUMS
+  # names: { web: "{app}-web" }    # 按目标单独设置文件名模板
+
+hooks:
+  pre_build: [dart run build_runner build --delete-conflicting-outputs]
+  # post_package: { dmg: ['./scripts/upload.sh "$FPACK_ARTIFACT"'] }
 
 android:
   split_per_abi: both              # 通用 APK + 每个 ABI 一个 APK
@@ -690,10 +708,14 @@ macos:
     entitlements: macos/Runner/Release.entitlements
     notarize: true                 # 提交 Apple 公证并装订；本地测试时用 --no-notarize
     notary_profile: XueHua         # xcrun notarytool store-credentials XueHua …
+    # CI 中可改用 API 密钥：notary_api_key / notary_api_key_id / notary_api_issuer
     # pkg 的签名证书（与上面的 Developer ID Application 是两张不同的证书）
     installer_identity: "Developer ID Installer: Your Name (TEAMID)"
+  notarize:
+    wait: true                     # false：只提交，之后 fpack notarize finish（或 --notarize-no-wait）
   pkg:
     # identifier: com.xuehua.im      # 默认取 macOS 工程的 bundle id
+    min_os: "11.0"                 # 低于此版本的 macOS 拒绝安装
     install_location: /Applications
     title: 雪花IM
     # license: macos/installer/license.rtf
@@ -713,6 +735,9 @@ fpack build apk aab                            # Android
 fpack build ipa --export-method ad-hoc         # 测试分发的 IPA
 fpack build macos dmg --no-notarize            # 本地签名 DMG，不上传公证
 fpack build dmg                                # 签名 + 公证 + 装订（发布用）
+fpack build dmg --notarize-no-wait             # 只提交公证，立即结束
+fpack notarize status                          # 查询最新一次的公证状态
+fpack notarize finish                          # 等待结果、装订、更新 SHA256SUMS
 fpack build macos dmg pkg                      # zip + DMG + pkg，只跑一次 flutter build
 fpack build --all --json > result.json         # CI：本机能构建的全部目标
 ```
