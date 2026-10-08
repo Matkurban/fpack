@@ -14,7 +14,7 @@ fpack build --all                 # 本机能打的全部打出来，打不了�
 ```
 
 - **零配置可用**：直接读取 `pubspec.yaml`、Gradle、Xcode 工程中的信息；`fpack init` 生成的 `fpack.yaml` 完全可选。
-- **绝不修改你的项目文件**：只调用 Flutter 工具链和打包工具。签名信息通过环境变量注入，不改 Gradle；`pubspec.yaml` 中 `dmg:` 段只读复用。唯一会写入的文件是 `fpack init` 生成的 `fpack.yaml`，产物写到 `dist/`，临时文件写到 `build/fpack/`。
+- **绝不修改你的项目文件**：只调用 Flutter 工具链和打包工具。签名信息通过环境变量注入，不改 Gradle。唯一会写入的文件是 `fpack init` 生成的 `fpack.yaml`，产物写到 `dist/`，临时文件写到 `build/fpack/`。
 - **原生核心**：核心用 Go 编写并编译为原生二进制（启动约 10 ms，无运行时依赖）；Dart 包只是一个很薄的启动器，负责找到/准备与之版本完全一致的二进制。
 - **为人设计**：彩色输出与进度动画（CI 中自动降级为纯文本）、失败时给出关键错误摘录 + 修复建议 + 完整日志路径、`--dry-run` 精确展示每一条将执行的命令、`--json` 机器可读输出、中英文自动切换。
 
@@ -136,13 +136,13 @@ fpack build apk aab --flavor prod --dart-define-from-file env/prod.json
 fpack build apk --split-per-abi=both
 fpack build ipa --export-method ad-hoc
 fpack build ipa --no-codesign                # 未签名 IPA（Payload 结构）
-fpack build macos dmg                        # 自动使用 pubspec.yaml 中 dmg: 的签名/公证配置
+fpack build macos dmg                        # 按 fpack.yaml 的 macos.sign 签名/公证（未配置则不签名）
 fpack build dmg --no-notarize                # 本地快速出包
 fpack build --all --json > result.json
 fpack -C apps/client build web --base-href /app/
 ```
 
-**优先级**：命令行参数 > `FPACK_*` 环境变量 > `fpack.yaml` > 项目中已有的配置（如 pubspec `dmg:`）> 默认值。
+**优先级**：命令行参数 > `FPACK_*` 环境变量 > `fpack.yaml` > 默认值。
 
 **中断**：按一次 Ctrl-C 会优雅停止正在运行的 flutter/gradle/xcodebuild（整个进程组），再按一次强制结束；退出码 130。
 
@@ -288,14 +288,20 @@ fpack build ipa --no-codesign                     # 未签名 IPA，用于后续
 
 ### macOS 签名与公证
 
-用于 App Store 之外的分发（Developer ID）。配置来源（低 → 高）：
+用于 App Store 之外的分发（Developer ID）。**只**通过 fpack 自己的配置开启（低 → 高）：
 
-1. `pubspec.yaml` 的 `dmg:` 段（与 [`dmg`](https://pub.dev/packages/dmg) 包相同的格式，**只读**）：`sign`、`notarization`、`sign-certificate`、`notary-profile`，以及 `dmg_<flavor>:` 覆盖
-2. `fpack.yaml` 的 `macos.sign`
-3. 环境变量 `FPACK_MACOS_SIGN`、`FPACK_MACOS_SIGN_IDENTITY`、`FPACK_MACOS_NOTARIZE`、`FPACK_MACOS_NOTARY_PROFILE`
-4. 命令行 `--sign/--no-sign`、`--sign-identity`、`--notarize/--no-notarize`、`--notary-profile`
+1. `fpack.yaml` 的 `macos.sign`（`fpack init` 会生成带占位符的注释段，并在注释中列出本机钥匙串里的 Developer ID 证书）
+2. 环境变量 `FPACK_MACOS_SIGN`、`FPACK_MACOS_SIGN_IDENTITY`、`FPACK_MACOS_NOTARIZE`、`FPACK_MACOS_NOTARY_PROFILE`
+3. 命令行 `--sign/--no-sign`、`--sign-identity`、`--notarize/--no-notarize`、`--notary-profile`
 
-规则：设置了证书即启用签名；设置了公证配置名即启用公证；关闭签名同时关闭公证。未指定证书时自动选用钥匙串中第一个 “Developer ID Application” 证书；指定的证书不存在时会列出可用证书。
+```yaml
+macos:
+  sign:
+    identity: "Developer ID Application: Your Name (TEAMID)"   # 设置后即启用签名
+    notary_profile: XueHua                                     # 设置后即启用公证
+```
+
+规则：设置了证书即启用签名；设置了公证配置名即启用公证；关闭签名同时关闭公证；`--sign` 不带证书时自动选用钥匙串中第一个 “Developer ID Application” 证书；指定的证书不存在时会列出可用证书。**什么都不配置时**，.app 保留 Xcode 工程自己的签名、DMG 不签名，产物说明中会提示如何配置。fpack 不读取 `pubspec.yaml` 中其他插件（如 [`dmg`](https://pub.dev/packages/dmg) 包的 `dmg:` 段）的配置。
 
 DMG 流程：复制 .app → `codesign --deep` 签名内嵌代码 → 用 Hardened Runtime + `macos/Runner/Release.entitlements` 重新签名 App → 校验 → `hdiutil`（或 `create-dmg`）制作 DMG（带「应用程序」快捷方式）→ 签名 DMG → `xcrun notarytool submit --wait` → `stapler staple` → `spctl` 评估。
 
@@ -305,7 +311,7 @@ DMG 流程：复制 .app → `codesign --deep` 签名内嵌代码 → 用 Harden
 xcrun notarytool store-credentials XueHua --apple-id you@example.com --team-id ABCDE12345
 ```
 
-`fpack build macos` 产出签名的 zip；pubspec `dmg:` 的公证设置只作用于 DMG，要同时公证 zip 请加 `--notarize`（流程：提交 zip → 装订到 .app → 重新压缩）。
+`fpack build macos` 产出签名的 zip；开启公证时 zip 也会公证（流程：提交 zip → 装订到 .app → 重新压缩）。
 
 ---
 

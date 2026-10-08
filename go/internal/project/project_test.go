@@ -98,9 +98,9 @@ dependencies:
     path: ../../packages/xue_hua_sdk
 dev_dependencies:
   msix: ^3.16.0
-dmg:
-  sign-certificate: "Developer ID Application: Acme (TEAM123)"
-  notary-profile: XueHua
+msix_config:
+  display_name: XueHua
+  publisher_display_name: Acme
 `)
 	write(t, filepath.Join(app, "android", "app", "build.gradle.kts"), kts+"\n// applicationId = \"com.xuehua.im\"\n")
 	write(t, filepath.Join(app, "macos", "Runner", "Configs", "AppInfo.xcconfig"), "PRODUCT_NAME = 雪花IM\nPRODUCT_BUNDLE_IDENTIFIER = com.x\n")
@@ -135,7 +135,7 @@ dmg:
 	if miss := p.MissingPathDeps(); len(miss) != 1 || miss[0].Name != "xue_hua_sdk" {
 		t.Fatalf("missing path deps: %v", miss)
 	}
-	if p.Section("dmg")["notary-profile"] != "XueHua" {
+	if p.Section("msix_config")["publisher_display_name"] != "Acme" {
 		t.Fatal("dmg section")
 	}
 

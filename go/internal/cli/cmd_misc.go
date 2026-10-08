@@ -316,9 +316,6 @@ func runInit(e *Env, p *parsed) int {
 			u.Info(fmt.Sprintf("%s flavors: %s", pl, strings.Join(fl, ", ")))
 		}
 	}
-	if proj.Section("dmg") != nil {
-		u.Info(i18n.S("found pubspec.yaml dmg: section – its signing/notarization settings are used by default (read-only)", "发现 pubspec.yaml 中的 dmg: 段 —— 默认沿用其中的签名/公证设置（只读）"))
-	}
 	u.Blank()
 
 	// Suggested default targets: what this project + host can build.
@@ -386,11 +383,25 @@ func runInit(e *Env, p *parsed) int {
 			exportMethod = ""
 		}
 	}
+	// Developer ID identities in the keychain, listed as a hint in the
+	// generated macos.sign section.
+	var devIDs []string
+	keychainSeen := false
+	if proj.Platforms[host.MacOS] && h.OS == "darwin" {
+		if ids, ok := targets.CodesignIdentities(ctxT.Tools); ok {
+			keychainSeen = true
+			for _, id := range ids {
+				if strings.HasPrefix(id, "Developer ID Application") {
+					devIDs = append(devIDs, id)
+				}
+			}
+		}
+	}
 	outDir := pr.ask(i18n.S("Output directory", "输出目录"), config.DefaultOutputDir)
 
 	content := renderInitYAML(initValues{
 		Targets: tlist, Display: display, Split: split, Keystore: keystore, Alias: alias,
-		ExportMethod: exportMethod, OutDir: outDir, HasDMG: proj.Section("dmg") != nil, Proj: proj,
+		ExportMethod: exportMethod, OutDir: outDir, DevIDs: devIDs, KeychainSeen: keychainSeen, Proj: proj,
 	})
 	var check config.Config
 	if err := config.Parse([]byte(content), &check); err != nil {

@@ -374,11 +374,11 @@ func TestMacAppUnsigned(t *testing.T) {
 	}
 }
 
-func TestMacSigningFromPubspecDMG(t *testing.T) {
+func TestMacSigningFromConfig(t *testing.T) {
 	posixPaths(t)
-	c := newCtx(t, "darwin", "", "dmg:\n  sign-certificate: \""+devID+"\"\n  notary-profile: XueHua\n  sign: true\n  notarization: true\n")
+	c := newCtx(t, "darwin", "macos:\n  sign:\n    identity: \""+devID+"\"\n    notary_profile: XueHua\n", "")
 	m := c.Mac
-	if !m.Enabled || !m.Notarize || m.Identity != devID || m.Profile != "XueHua" || m.Source != "pubspec.yaml dmg:" {
+	if !m.Enabled || !m.Notarize || m.Identity != devID || m.Profile != "XueHua" || !m.Configured || m.TurnedOff {
 		t.Fatalf("%+v", m)
 	}
 	if issues := (&DMG{}).Preflight(c); len(issues) != 0 {
@@ -405,27 +405,28 @@ func TestMacSigningFromPubspecDMG(t *testing.T) {
 	if !reflect.DeepEqual(cs, want) {
 		t.Fatalf("dmg commands:\n%s\nwant:\n%s", strings.Join(cs, "\n"), strings.Join(want, "\n"))
 	}
-	if p.Artifacts[0].Kind != "DMG (signed, notarized)" || names(p)[0] != "xue_hua_im-1.0.0+1-macos-universal.dmg" {
-		t.Fatalf("%+v", p.Artifacts)
-	}
-	// macos zip uses the same signing
-	mp := plan(t, &MacApp{}, c)
-	if mc := cmds(mp); len(mc) != 5 || !strings.HasPrefix(mc[1], "codesign --force --deep") {
-		t.Fatalf("%q", mc)
-	}
-	// ...but the zip is not notarized just because of the pubspec dmg: section.
-	if mp.Artifacts[0].Kind != "macOS app (zip, Developer ID signed)" || len(mp.Notes) == 0 || !strings.Contains(mp.Notes[0], "--notarize") {
-		t.Fatalf("%+v %v", mp.Artifacts, mp.Notes)
+	if p.Artifacts[0].Kind != "DMG (signed, notarized)" || names(p)[0] != "xue_hua_im-1.0.0+1-macos-universal.dmg" || len(p.Notes) != 0 {
+		t.Fatalf("%+v %v", p.Artifacts, p.Notes)
 	}
 }
 
-func TestMacZipNotarizedWhenRequested(t *testing.T) {
-	posixPaths(t)
-	pub := "dmg:\n  sign-certificate: \"" + devID + "\"\n  notary-profile: XueHua\n"
-	c := newCtx(t, "darwin", "macos:\n  sign:\n    notarize: true\n", pub)
-	if !c.Mac.NotarizeZip {
+// fpack never reads the pubspec `dmg:` section (it belongs to the dmg package).
+func TestPubspecDMGSectionIsIgnored(t *testing.T) {
+	c := newCtx(t, "darwin", "", "dmg:\n  sign-certificate: \""+devID+"\"\n  notary-profile: XueHua\n  sign: true\n  notarization: true\n")
+	if c.Mac.Enabled || c.Mac.Notarize || c.Mac.Configured || c.Mac.Identity != "" {
 		t.Fatalf("%+v", c.Mac)
 	}
+	p := plan(t, &DMG{}, c)
+	if strings.Contains(strings.Join(cmds(p), "\n"), "codesign") {
+		t.Fatal(cmds(p))
+	}
+	if n := strings.Join(p.Notes, "\n"); !strings.Contains(n, "macos.sign.identity") || strings.Contains(n, "pubspec") {
+		t.Fatal(n)
+	}
+}
+func TestMacZipSignedAndNotarized(t *testing.T) {
+	posixPaths(t)
+	c := newCtx(t, "darwin", "macos:\n  sign:\n    identity: \""+devID+"\"\n    notary_profile: XueHua\n", "")
 	p := plan(t, &MacApp{}, c)
 	cs := cmds(p)
 	staged := filepath.Join(c.WorkDir, "stage", "macos", "XueHua.app")
@@ -447,17 +448,16 @@ func TestMacZipNotarizedWhenRequested(t *testing.T) {
 		t.Fatal(p.Artifacts[0].Kind)
 	}
 	// --no-sign wins over everything
-	c = newCtx(t, "darwin", "macos:\n  sign:\n    enabled: false\n", pub)
-	if c.Mac.NotarizeZip || c.Mac.Notarize {
+	c = newCtx(t, "darwin", "macos:\n  sign:\n    enabled: false\n    identity: \""+devID+"\"\n    notary_profile: XueHua\n", "")
+	if c.Mac.Enabled || c.Mac.Notarize || !c.Mac.TurnedOff {
 		t.Fatalf("%+v", c.Mac)
 	}
 }
-
 func TestMacSigningOverrides(t *testing.T) {
-	pub := "dmg:\n  sign-certificate: \"" + devID + "\"\n  notary-profile: XueHua\n"
-	// fpack.yaml disables notarization only
-	c := newCtx(t, "darwin", "macos:\n  sign:\n    notarize: false\n", pub)
-	if !c.Mac.Enabled || c.Mac.Notarize || !strings.Contains(c.Mac.Source, "fpack.yaml") {
+	id := "    identity: \"" + devID + "\"\n    notary_profile: XueHua\n"
+	// notarization off, signing stays on (--no-notarize)
+	c := newCtx(t, "darwin", "macos:\n  sign:\n    notarize: false\n"+id, "")
+	if !c.Mac.Enabled || c.Mac.Notarize {
 		t.Fatalf("%+v", c.Mac)
 	}
 	for _, s := range cmds(plan(t, &DMG{}, c)) {
@@ -465,16 +465,22 @@ func TestMacSigningOverrides(t *testing.T) {
 			t.Fatal("notarize should be off")
 		}
 	}
-	// disabling signing disables notarization
-	c = newCtx(t, "darwin", "macos:\n  sign:\n    enabled: false\n", pub)
+	// disabling signing disables notarization and says so
+	c = newCtx(t, "darwin", "macos:\n  sign:\n    enabled: false\n"+id, "")
 	if c.Mac.Enabled || c.Mac.Notarize {
 		t.Fatalf("%+v", c.Mac)
 	}
 	if n := strings.Join(plan(t, &DMG{}, c).Notes, "\n"); !strings.Contains(n, "(--no-sign)") {
 		t.Fatal(n)
 	}
-	if n := strings.Join(newCtxPlanNotes(t), "\n"); strings.Contains(n, "--no-sign") {
+	// nothing configured: unsigned, with a pointer to macos.sign
+	if n := strings.Join(newCtxPlanNotes(t), "\n"); strings.Contains(n, "--no-sign") || !strings.Contains(n, "macos.sign.identity") {
 		t.Fatal(n)
+	}
+	// notary profile alone means nothing to notarize without signing
+	c = newCtx(t, "darwin", "macos:\n  sign:\n    notary_profile: XueHua\n", "")
+	if c.Mac.Enabled || c.Mac.Notarize {
+		t.Fatalf("%+v", c.Mac)
 	}
 	// conflicting explicit config is an error
 	p, _ := project.Load(c.Project.Root)
@@ -482,11 +488,6 @@ func TestMacSigningOverrides(t *testing.T) {
 	config.Parse([]byte("macos:\n  sign:\n    enabled: false\n    notarize: true\n"), cfg)
 	if _, err := ResolveMacSigning(p, cfg); err == nil {
 		t.Fatal("expected conflict error")
-	}
-	// dmg_<flavor> overrides dmg
-	c = newCtx(t, "darwin", "build:\n  flavor: dev\n", pub+"dmg_dev:\n  notarization: false\n")
-	if !c.Mac.Enabled || c.Mac.Notarize {
-		t.Fatalf("flavor override: %+v", c.Mac)
 	}
 	// identity in fpack.yaml implies signing
 	c = newCtx(t, "darwin", "macos:\n  sign:\n    identity: \"Developer ID Application: Other\"\n", "")
@@ -498,7 +499,6 @@ func TestMacSigningOverrides(t *testing.T) {
 		t.Fatalf("identity not found must list available: %+v", issues)
 	}
 }
-
 func TestMacAutoIdentity(t *testing.T) {
 	c := newCtx(t, "darwin", "macos:\n  sign:\n    enabled: true\n", "")
 	if c.Mac.Identity != "" {
@@ -662,35 +662,28 @@ func TestParseIdentitiesDedupesAndFlagsRevoked(t *testing.T) {
 }
 
 func TestMacSigningNoDeveloperIDCertificate(t *testing.T) {
-	c := newCtx(t, "darwin", "", "dmg:\n  sign-certificate: \""+devID+"\"\n  notary-profile: XueHua\n")
+	c := newCtx(t, "darwin", "macos:\n  sign:\n    identity: \""+devID+"\"\n    notary_profile: XueHua\n", "")
 	c.Tools.(*fakeTools).probes["security find-identity -v -p codesigning"] = macIdentitiesNoDevID
 	issues := (&DMG{}).Preflight(c)
 	if len(issues) != 1 || !issues[0].Fatal {
 		t.Fatalf("%+v", issues)
 	}
 	msg := issues[0].Msg
-	for _, want := range []string{"no \"Developer ID Application\" certificate", devID, "Apple Development ×2, Apple Distribution ×1", "pubspec.yaml dmg:"} {
+	for _, want := range []string{"no \"Developer ID Application\" certificate", devID, "Apple Development ×2, Apple Distribution ×1", "fpack.yaml macos.sign"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("message lacks %q:\n%s", want, msg)
 		}
 	}
-	if strings.Contains(msg, "Former") || !strings.Contains(issues[0].Fix, "--no-sign") || !strings.Contains(issues[0].Fix, ".p12") {
+	if strings.Contains(msg, "Former") || strings.Contains(msg, "pubspec") || !strings.Contains(issues[0].Fix, "--no-sign") || !strings.Contains(issues[0].Fix, ".p12") {
 		t.Fatalf("%+v", issues[0])
 	}
-	// --no-notarize only touches notarization: signing is still "from pubspec.yaml dmg:"
-	c = newCtx(t, "darwin", "macos:\n  sign:\n    notarize: false\n", "dmg:\n  sign-certificate: \""+devID+"\"\n")
-	c.Tools.(*fakeTools).probes["security find-identity -v -p codesigning"] = macIdentitiesNoDevID
-	if is := macSigningPreflight(c); len(is) != 1 || !strings.Contains(is[0].Msg, "(from pubspec.yaml dmg:)") || strings.Contains(is[0].Msg, "fpack.yaml") {
-		t.Fatalf("%+v", is)
-	}
 	// --no-sign: no signing preflight at all
-	c = newCtx(t, "darwin", "macos:\n  sign:\n    enabled: false\n", "dmg:\n  sign-certificate: \""+devID+"\"\n")
+	c = newCtx(t, "darwin", "macos:\n  sign:\n    enabled: false\n    identity: \""+devID+"\"\n", "")
 	c.Tools.(*fakeTools).probes["security find-identity -v -p codesigning"] = macIdentitiesNoDevID
 	if issues := macSigningPreflight(c); len(issues) != 0 {
 		t.Fatalf("%+v", issues)
 	}
 }
-
 func TestIPADistributionCertificateForOtherTeamOnly(t *testing.T) {
 	c := newCtx(t, "darwin", "", "")
 	c.Tools.(*fakeTools).probes["security find-identity -v -p codesigning"] = macIdentitiesNoDevID

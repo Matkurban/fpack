@@ -14,7 +14,7 @@ fpack build --all                 # everything this machine can build; the rest 
 ```
 
 - **Zero config**: reads `pubspec.yaml`, Gradle and Xcode projects. `fpack init` writes an optional, commented `fpack.yaml`.
-- **Never edits your project**: fpack only runs the Flutter toolchain and packaging tools. Android signing is injected through environment variables (no Gradle edits); the pubspec `dmg:` section is reused read-only. The only file it writes in your project is `fpack.yaml` (on `init`); artifacts go to `dist/`, temporary files to `build/fpack/`.
+- **Never edits your project**: fpack only runs the Flutter toolchain and packaging tools. Android signing is injected through environment variables (no Gradle edits). The only file it writes in your project is `fpack.yaml` (on `init`); artifacts go to `dist/`, temporary files to `build/fpack/`.
 - **Native core**: written in Go and compiled to a native binary (~10 ms startup, no runtime deps). The Dart package is a thin launcher that finds or provisions the exact matching binary.
 - **Built for humans**: colors and a spinner (plain output in CI), error excerpt + concrete fix + log path on failure, `--dry-run` showing every exact command, `--json` output, Chinese/English auto-detection.
 
@@ -76,13 +76,13 @@ fpack build apk aab --flavor prod --dart-define-from-file env/prod.json
 fpack build apk --split-per-abi=both
 fpack build ipa --export-method ad-hoc
 fpack build ipa --no-codesign
-fpack build macos dmg              # uses the pubspec.yaml dmg: signing settings if present
+fpack build macos dmg              # signs/notarizes per fpack.yaml macos.sign (unsigned if not configured)
 fpack build dmg --no-notarize      # fast local build
 fpack build --all --json > result.json
 fpack -C apps/client build web --base-href /app/
 ```
 
-**Precedence**: flags > `FPACK_*` env vars > `fpack.yaml` > existing project settings (e.g. pubspec `dmg:`) > defaults.
+**Precedence**: flags > `FPACK_*` env vars > `fpack.yaml` > defaults.
 **Ctrl-C** stops flutter/gradle/xcodebuild gracefully (whole process group); a second Ctrl-C forces; exit code 130.
 **Monorepos**: fpack walks up to the nearest `pubspec.yaml`; at a repo root it lists the Flutter projects it found — pick one with `-C`.
 **Flutter SDK lookup**: `--flutter` → `FPACK_FLUTTER` → `flutter.sdk` in fpack.yaml → FVM (`.fvm/flutter_sdk`, `.fvmrc`) → `FLUTTER_ROOT` → `PATH` → common locations (`~/develop/flutter`, `~/flutter`, …).
@@ -134,9 +134,9 @@ fpack build apk aab
 `--export-method` (app-store-connect, release-testing, ad-hoc, development, enterprise), `--export-options-plist` (wins), or `--no-codesign` for an unsigned IPA. `doctor` checks Xcode, CocoaPods, `DEVELOPMENT_TEAM` and certificates; Xcode errors (certificates, profiles, team, pods) are mapped to concrete fixes.
 
 ### macOS (Developer ID)
-Sources, low → high: the pubspec `dmg:` section (same format as the [`dmg`](https://pub.dev/packages/dmg) package, read-only, including `dmg_<flavor>:`), `macos.sign` in fpack.yaml, `FPACK_MACOS_*` env vars, flags. An identity implies signing, a notary profile implies notarization, disabling signing disables notarization. Without an identity the first "Developer ID Application" certificate is used; an unknown identity lists the available ones.
+Configured only the fpack way, low → high: `macos.sign` in fpack.yaml (`fpack init` writes a commented section with placeholders and lists the Developer ID identities in your keychain), `FPACK_MACOS_*` env vars, flags. Nothing configured → the .app keeps Xcode's signature and the DMG is unsigned (the result notes say how to configure it). fpack does not read other plugins' pubspec sections such as the [`dmg`](https://pub.dev/packages/dmg) package's `dmg:`. An identity implies signing, a notary profile implies notarization, disabling signing disables notarization. Without an identity the first "Developer ID Application" certificate is used; an unknown identity lists the available ones.
 
-DMG flow: copy .app → `codesign --deep` → re-sign with hardened runtime + `macos/Runner/Release.entitlements` → verify → `hdiutil` (or `create-dmg`) with an Applications link → sign DMG → `notarytool submit --wait` → `stapler staple` → `spctl`. Create the notary profile once: `xcrun notarytool store-credentials <profile> --apple-id … --team-id …`. `fpack build macos` produces a signed zip; add `--notarize` to notarize it too (pubspec `dmg:` notarization only applies to the DMG).
+DMG flow: copy .app → `codesign --deep` → re-sign with hardened runtime + `macos/Runner/Release.entitlements` → verify → `hdiutil` (or `create-dmg`) with an Applications link → sign DMG → `notarytool submit --wait` → `stapler staple` → `spctl`. Create the notary profile once: `xcrun notarytool store-credentials <profile> --apple-id … --team-id …`. `fpack build macos` produces a signed zip, notarized too when notarization is on.
 
 ## Environment variables, exit codes
 

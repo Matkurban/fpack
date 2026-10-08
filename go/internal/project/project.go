@@ -391,7 +391,7 @@ func (p *Project) MissingPathDeps() []Dep {
 	return out
 }
 
-// Section returns a top-level pubspec map (e.g. "dmg").
+// Section returns a top-level pubspec map (e.g. "msix_config").
 func (p *Project) Section(name string) map[string]any {
 	m, _ := p.Pubspec[name].(map[string]any)
 	return m

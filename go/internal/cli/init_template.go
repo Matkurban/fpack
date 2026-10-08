@@ -16,7 +16,8 @@ type initValues struct {
 	Alias        string
 	ExportMethod string
 	OutDir       string
-	HasDMG       bool
+	DevIDs       []string // "Developer ID Application" identities found in the keychain (hint only)
+	KeychainSeen bool     // the keychain was checked (running on macOS)
 	Proj         *project.Project
 }
 
@@ -34,7 +35,7 @@ func renderInitYAML(v initValues) string {
 	S := i18n.S
 	var b strings.Builder
 	w := func(format string, a ...any) { fmt.Fprintf(&b, format+"\n", a...) }
-	w("# fpack configuration – %s", S("https://github.com/Matkurban/fpack#configuration", "https://github.com/Matkurban/fpack#配置参考"))
+	w("# fpack configuration – %s", "https://github.com/Matkurban/fpack/blob/main/doc/configuration.md")
 	w("# %s", S("Precedence: command-line flags > FPACK_* environment variables > this file > defaults.", "优先级：命令行参数 > FPACK_* 环境变量 > 本文件 > 默认值。"))
 	w("# %s", S("Every key is optional. ${VAR} and ${VAR:-default} read environment variables.", "所有键都是可选的。${VAR} 与 ${VAR:-默认值} 会读取环境变量。"))
 	w("# %s", S("fpack never edits your project files; it only reads them.", "fpack 只读取项目文件，绝不修改。"))
@@ -109,17 +110,26 @@ func renderInitYAML(v initValues) string {
 	if v.Proj.Platforms["macos"] {
 		w("")
 		w("macos:")
-		if v.HasDMG {
-			w("  # %s", S("Signing defaults come from the `dmg:` section of pubspec.yaml (read-only).", "签名默认沿用 pubspec.yaml 中 `dmg:` 段的设置（只读）。"))
-			w("  # %s", S("Uncomment to override, e.g. notarize: false for quick local builds (or --no-notarize).", "取消注释即可覆盖，例如本地快速构建时 notarize: false（或用 --no-notarize）。"))
-		} else {
-			w("  # %s", S("Developer ID signing + notarization for distribution outside the App Store.", "用于 App Store 以外分发的 Developer ID 签名 + 公证。"))
+		w("  # %s", S("Developer ID signing + notarization for distribution outside the App Store.", "用于 App Store 以外分发的 Developer ID 签名 + 公证。"))
+		w("  # %s", S("Without it, the .app keeps Xcode's signature and the DMG is unsigned.", "不配置时 .app 保留 Xcode 的签名，DMG 不签名。"))
+		w("  # %s", S("Flags/env override this: --sign/--no-sign, --sign-identity, --notarize/--no-notarize, --notary-profile, FPACK_MACOS_*.", "命令行/环境变量可覆盖：--sign/--no-sign、--sign-identity、--notarize/--no-notarize、--notary-profile、FPACK_MACOS_*。"))
+		if len(v.DevIDs) > 0 {
+			w("  # %s", S("Developer ID identities found in this Mac's keychain:", "本机钥匙串中的 Developer ID 证书："))
+			for _, id := range v.DevIDs {
+				w("  #   %s", id)
+			}
+		} else if v.KeychainSeen {
+			w("  # %s", S("(no Developer ID Application certificate found in this keychain; list them with: security find-identity -v -p codesigning)", "（本机钥匙串中没有 Developer ID Application 证书；查看：security find-identity -v -p codesigning）"))
+		}
+		identity := "Developer ID Application: Your Name (TEAMID)"
+		if len(v.DevIDs) > 0 {
+			identity = v.DevIDs[0]
 		}
 		w("  # sign:")
-		w("  #   enabled: true")
-		w("  #   identity: \"Developer ID Application: Your Name (TEAMID)\"")
-		w("  #   notarize: true")
-		w("  #   notary_profile: NotaryProfile    # xcrun notarytool store-credentials NotaryProfile ...")
+		w("  #   identity: %s   # %s", yq(identity), S("setting it turns signing on", "设置后即启用签名"))
+		w("  #   entitlements: macos/Runner/Release.entitlements")
+		w("  #   notary_profile: NotaryProfile    # %s", S("xcrun notarytool store-credentials NotaryProfile …; setting it turns notarization on", "xcrun notarytool store-credentials NotaryProfile …；设置后即启用公证"))
+		w("  #   # notarize: false              # %s", S("keep signing, skip notarization (same as --no-notarize)", "只签名不公证（等同 --no-notarize）"))
 		w("  # dmg:")
 		w("  #   tool: auto                   # auto | hdiutil | create-dmg")
 		w("  #   volume_name: %s", yq(v.Display))

@@ -19,126 +19,65 @@ import (
 // ------------------------------------------------------------ mac signing --
 
 // MacSigning is the resolved Developer ID signing / notarization setup for
-// the macOS .app (zip) and .dmg targets.
+// the macOS .app (zip) and .dmg targets. It comes only from fpack's own
+// configuration: fpack.yaml `macos.sign`, FPACK_MACOS_* and the command line.
 type MacSigning struct {
 	Enabled      bool
 	Identity     string // "" = pick the first "Developer ID Application" identity
 	Entitlements string // explicit entitlements file (absolute); "" = project default
 	Notarize     bool
 	Profile      string // notarytool keychain profile
-	Source       string // where the settings came from (for messages)
-	SignSource   string // where the decision to sign (and the identity) came from
-	// NotarizeZip: notarization was requested through fpack (config, env or
-	// flags), not only by the pubspec `dmg:` section, so the macOS zip is
-	// notarized too. The `dmg:` section is about the DMG only.
-	NotarizeZip bool
+	// Configured: an identity or notary profile is set somewhere.
+	Configured bool
+	// TurnedOff: signing was switched off explicitly (--no-sign,
+	// FPACK_MACOS_SIGN=false, macos.sign.enabled: false).
+	TurnedOff bool
 }
 
-// signingTurnedOff: signing is configured (pubspec dmg: / fpack.yaml) but
-// was switched off for this run (--no-sign, FPACK_MAC_SIGN=false, enabled: false).
-func (m MacSigning) signingTurnedOff() bool {
-	return !m.Enabled && m.SignSource == "fpack.yaml/env/flags" && strings.Contains(m.Source, "pubspec.yaml dmg:")
-}
+// Source names where macOS signing settings come from (for messages).
+const macSignSource = "fpack.yaml macos.sign / FPACK_MACOS_* / flags"
 
-// DefaultNotaryProfile matches the `dmg` pub package default.
+// DefaultNotaryProfile is used when notarization is on without a profile name.
 const DefaultNotaryProfile = "NotaryProfile"
 
-// ResolveMacSigning merges, from lowest to highest priority: the `dmg:`
-// section of pubspec.yaml (+ `dmg_<flavor>:`), used by the `dmg` pub
-// package, read-only; then fpack.yaml macos.sign (which already carries env
-// and command-line overrides).
+// ResolveMacSigning reads fpack.yaml macos.sign, which already carries the
+// FPACK_MACOS_* and command-line overrides.
 func ResolveMacSigning(p *project.Project, cfg *config.Config) (MacSigning, error) {
-	var m MacSigning
-	var sources []string
-	if sec := mergedDMGSection(p, cfg.Build.Flavor); sec != nil {
-		sources = append(sources, "pubspec.yaml dmg:")
-		m.SignSource = "pubspec.yaml dmg:"
-		m.Enabled = boolOr(sec["sign"], true)
-		m.Notarize = boolOr(sec["notarization"], true)
-		m.Identity, _ = sec["sign-certificate"].(string)
-		m.Profile, _ = sec["notary-profile"].(string)
-		if m.Profile == "" {
-			m.Profile = DefaultNotaryProfile
-		}
-	}
 	s := cfg.MacOS.Sign
-	touched := false
-	if s.Identity != "" || s.Enabled != nil {
-		m.SignSource = "fpack.yaml/env/flags"
-	}
-	if s.Identity != "" {
-		m.Identity = s.Identity
-		if s.Enabled == nil {
-			m.Enabled = true
-		}
-		touched = true
-	}
-	if s.NotaryProfile != "" {
-		m.Profile = s.NotaryProfile
-		if s.Notarize == nil {
-			m.Notarize = true
-		}
-		touched = true
-	}
-	if s.Enabled != nil {
+	m := MacSigning{Identity: s.Identity, Profile: s.NotaryProfile}
+	m.Configured = s.Identity != "" || s.NotaryProfile != ""
+	switch {
+	case s.Enabled != nil:
 		m.Enabled = *s.Enabled
-		touched = true
+		m.TurnedOff = !*s.Enabled
+	default:
+		m.Enabled = s.Identity != ""
 	}
-	if s.Notarize != nil {
+	switch {
+	case s.Notarize != nil:
 		m.Notarize = *s.Notarize
-		touched = true
+	default:
+		m.Notarize = s.NotaryProfile != ""
 	}
 	if s.Entitlements != "" {
 		m.Entitlements = p.Abs(s.Entitlements)
-		touched = true
-	}
-	if touched {
-		sources = append(sources, "fpack.yaml/env/flags")
-	}
-	m.Source = strings.Join(sources, " + ")
-	m.NotarizeZip = (s.Notarize != nil && *s.Notarize) || (s.Notarize == nil && s.NotaryProfile != "")
-	if !m.Enabled {
-		m.Notarize = false // nothing to notarize without a Developer ID signature
-		m.NotarizeZip = false
-	}
-	if m.Notarize && m.Profile == "" {
-		m.Profile = DefaultNotaryProfile
 	}
 	if s.Notarize != nil && *s.Notarize && s.Enabled != nil && !*s.Enabled {
 		return m, fmt.Errorf("%s", i18n.S("macos.sign: notarization requires signing (enabled: false with notarize: true)", "macos.sign：公证需要先签名（enabled: false 与 notarize: true 冲突）"))
 	}
+	if !m.Enabled {
+		m.Notarize = false // nothing to notarize without a Developer ID signature
+	}
+	if m.Notarize && m.Profile == "" {
+		m.Profile = DefaultNotaryProfile
+	}
 	return m, nil
 }
 
-func mergedDMGSection(p *project.Project, flavor string) map[string]any {
-	base := p.Section("dmg")
-	var fl map[string]any
-	if flavor != "" {
-		fl = p.Section("dmg_" + flavor)
-	}
-	if base == nil && fl == nil {
-		return nil
-	}
-	out := map[string]any{}
-	for k, v := range base {
-		out[k] = v
-	}
-	for k, v := range fl {
-		out[k] = v
-	}
-	return out
-}
-
-func boolOr(v any, d bool) bool {
-	switch b := v.(type) {
-	case bool:
-		return b
-	case string:
-		if x, err := config.ParseBool(b); err == nil {
-			return x
-		}
-	}
-	return d
+// unsignedHowTo explains how to turn on Developer ID signing in fpack.yaml.
+func unsignedHowTo() string {
+	return i18n.S("to sign + notarize, set macos.sign.identity (\"Developer ID Application: …\") and macos.sign.notary_profile in fpack.yaml (see doc/configuration.md)",
+		"如需签名 + 公证，请在 fpack.yaml 中设置 macos.sign.identity（“Developer ID Application: …”）和 macos.sign.notary_profile（见 doc/configuration.md）")
 }
 
 // IdentityLabel is the identity as shown/passed to codesign.
@@ -246,10 +185,7 @@ func macSigningPreflight(c *Context) []Issue {
 			devIDs = append(devIDs, id.Name)
 		}
 	}
-	src := ""
-	if c.Mac.SignSource != "" {
-		src = i18n.F(" (from %s)", "（来自 %s）", c.Mac.SignSource)
-	}
+	src := i18n.F(" (from %s)", "（来自 %s）", macSignSource)
 	if len(devIDs) == 0 {
 		// Revoked Developer ID certificates are worth calling out.
 		for _, id := range all {
@@ -595,15 +531,15 @@ func (*MacApp) Package(c *Context, in Inputs) (*Plan, error) {
 		pl.Ops = append(pl.Ops, Op{Desc: i18n.S("copy app for signing", "复制 App 以便签名"), Cmd: cmd("ditto", app, src)})
 		pl.Ops = append(pl.Ops, signAppOps(c, src)...)
 		kind = "macOS app (zip, Developer ID signed)"
-	} else if c.Mac.signingTurnedOff() {
+	} else if c.Mac.TurnedOff {
 		pl.Notes = append(pl.Notes, i18n.S("not re-signed (--no-sign): keeps Xcode's own signature, which Gatekeeper rejects on other Macs", "未重新签名（--no-sign）：保留 Xcode 的签名，在其他 Mac 上会被 Gatekeeper 拒绝"))
 	} else {
-		pl.Notes = append(pl.Notes, i18n.S("not re-signed (Xcode project signing is used); enable macos.sign for distribution outside the App Store", "未重新签名（使用 Xcode 工程中的签名）；如需在 App Store 外分发请启用 macos.sign"))
+		pl.Notes = append(pl.Notes, i18n.S("not Developer ID signed (keeps Xcode's own signature, which Gatekeeper rejects on other Macs); ", "未使用 Developer ID 签名（保留 Xcode 的签名，在其他 Mac 上会被 Gatekeeper 拒绝）；")+unsignedHowTo())
 	}
 	zip := Op{Desc: i18n.S("zip app (ditto keeps symlinks & metadata)", "压缩 App（ditto 保留符号链接与元数据）"), Cmd: cmd("ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", src, tmp)}
 	pl.Ops = append(pl.Ops, zip)
 	switch {
-	case c.Mac.Enabled && c.Mac.NotarizeZip:
+	case c.Mac.Enabled && c.Mac.Notarize:
 		// Apple notarizes the zip, but the ticket is stapled to the .app,
 		// so the app is zipped again afterwards.
 		pl.Ops = append(pl.Ops, notarizeOps(c, tmp)[0],
@@ -611,8 +547,6 @@ func (*MacApp) Package(c *Context, in Inputs) (*Plan, error) {
 			Op{Desc: i18n.S("re-zip stapled app", "重新压缩已装订的 App"), Fn: func() error { return os.Remove(tmp) }},
 			zip)
 		kind = "macOS app (zip, signed, notarized)"
-	case c.Mac.Enabled && c.Mac.Notarize:
-		pl.Notes = append(pl.Notes, i18n.S("the zip is signed but not notarized (pubspec dmg: notarization applies to the DMG); add --notarize to notarize it too", "zip 已签名但未公证（pubspec 的 dmg: 公证设置只作用于 DMG）；加 --notarize 可同时公证 zip"))
 	}
 	pl.Ops = append(pl.Ops, moveOp(c, tmp, dst))
 	pl.Artifacts = []Artifact{{Path: dst, Kind: kind, Arch: "universal"}}
@@ -720,12 +654,10 @@ func (*DMG) Package(c *Context, in Inputs) (*Plan, error) {
 	}
 	pl.Ops = append(pl.Ops, moveOp(c, tmp, dst))
 	pl.Artifacts = []Artifact{{Path: dst, Kind: kind, Arch: "universal"}}
-	if c.Mac.signingTurnedOff() {
+	if c.Mac.TurnedOff {
 		pl.Notes = append(pl.Notes, i18n.S("unsigned DMG (--no-sign): Gatekeeper will warn users; drop --no-sign once a Developer ID certificate is installed", "未签名 DMG（--no-sign）：用户打开时 Gatekeeper 会警告；安装 Developer ID 证书后去掉 --no-sign 即可"))
 	} else if !c.Mac.Enabled {
-		pl.Notes = append(pl.Notes, i18n.S("unsigned DMG: Gatekeeper will warn users. Configure macos.sign (or a pubspec dmg: section) to sign and notarize.", "未签名 DMG：用户打开时 Gatekeeper 会警告。配置 macos.sign（或 pubspec 的 dmg: 段）即可签名并公证。"))
-	} else if c.Mac.Source != "" {
-		pl.Notes = append(pl.Notes, i18n.F("signing settings from %s", "签名配置来源：%s", c.Mac.Source))
+		pl.Notes = append(pl.Notes, i18n.S("unsigned DMG: Gatekeeper will warn users; ", "未签名 DMG：用户打开时 Gatekeeper 会警告；")+unsignedHowTo())
 	}
 	return pl, nil
 }

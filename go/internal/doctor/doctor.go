@@ -319,16 +319,13 @@ func platformInfo(pl host.Platform, in Input) []Line {
 		} else if in.Ctx != nil {
 			m := in.Ctx.Mac
 			if m.Enabled {
-				src := ""
-				if m.Source != "" {
-					src = "  [" + m.Source + "]"
-				}
-				out = append(out, Line{Info, i18n.S("Developer ID signing configured: ", "已配置 Developer ID 签名：") + m.IdentityLabel() + src, ""})
+				out = append(out, Line{Info, i18n.S("Developer ID signing configured: ", "已配置 Developer ID 签名：") + m.IdentityLabel(), ""})
 				if m.Notarize {
 					out = append(out, Line{Info, i18n.F("notarization: keychain profile %q (check: xcrun notarytool history --keychain-profile %s)", "公证：钥匙串配置 %q（检查：xcrun notarytool history --keychain-profile %s）", m.Profile, m.Profile), ""})
 				}
 			} else {
-				out = append(out, Line{Info, i18n.S("Developer ID signing: off (Xcode signing is used; DMG will be unsigned)", "Developer ID 签名：关闭（使用 Xcode 签名；DMG 不签名）"), ""})
+				out = append(out, Line{Info, i18n.S("Developer ID signing: off (Xcode signing is used; DMG will be unsigned)", "Developer ID 签名：关闭（使用 Xcode 签名；DMG 不签名）"),
+					i18n.S("for distribution outside the App Store set macos.sign.identity and macos.sign.notary_profile in fpack.yaml", "如需在 App Store 外分发，请在 fpack.yaml 中设置 macos.sign.identity 与 macos.sign.notary_profile")})
 			}
 			if t.Find("create-dmg") != "" {
 				out = append(out, Line{OK, "create-dmg", ""})

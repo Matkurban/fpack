@@ -64,7 +64,7 @@ func buildCommand() *command {
   fpack build apk --split-per-abi=both
   fpack build ipa --export-method ad-hoc
   fpack build ipa --no-codesign
-  fpack build macos dmg                 # `+i18n.S("uses pubspec.yaml dmg: signing settings if present", "如存在，使用 pubspec.yaml 中 dmg: 的签名配置")+`
+  fpack build macos dmg                 # `+i18n.S("Developer ID signing/notarization from fpack.yaml macos.sign", "使用 fpack.yaml 中 macos.sign 的 Developer ID 签名/公证配置")+`
   fpack build dmg --no-notarize
   fpack build --all --json > result.json
   fpack build web --base-href /app/ -- --no-web-resources-cdn

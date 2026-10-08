@@ -34,7 +34,7 @@
 | 配置文件位置 | 项目根目录的 `fpack.yaml` / `fpack.yml` → `FPACK_CONFIG` → `--config` |
 | 版本号 / 构建号 | `pubspec.yaml` 的 `version:` → `build.build_name` / `build.build_number` → `FPACK_BUILD_NAME` / `FPACK_BUILD_NUMBER` → `--build-name` / `--build-number` |
 | Android release 签名 | 项目自己的 `android/key.properties` + `signingConfigs`（fpack 不配置签名时使用）→ `android.signing` → `FPACK_ANDROID_*` → （没有命令行参数，密码不应出现在命令行中） |
-| macOS Developer ID 签名 / 公证 | `pubspec.yaml` 的 `dmg:` 段（及 `dmg_<flavor>:`，**只读**）→ `macos.sign` → `FPACK_MACOS_*` → `--sign/--no-sign`、`--sign-identity`、`--notarize/--no-notarize`、`--notary-profile` |
+| macOS Developer ID 签名 / 公证 | `macos.sign` → `FPACK_MACOS_*` → `--sign/--no-sign`、`--sign-identity`、`--notarize/--no-notarize`、`--notary-profile` |
 | 输出语言 | 系统语言（`LC_ALL` → `LC_MESSAGES` → `LANG` → macOS/Windows 系统设置）→ `FPACK_LANG` → `--lang` |
 
 补充规则：
@@ -42,7 +42,7 @@
 - **列表类参数是追加，不是替换**：`--dart-define`、`--dart-define-from-file` 会追加到 `fpack.yaml` 中已有的值之后。
 - **`extra_args` 的拼接顺序**：`build.extra_args` → 平台的 `extra_args`（如 `android.extra_args`）→ 命令行 `--` 之后的参数。都会原样追加到 `flutter build …` 的末尾。
 - **macOS 签名的联动规则**：设置了证书（`identity`）即视为启用签名；设置了公证配置名（`notary_profile`）即视为启用公证；关闭签名（`--no-sign` / `enabled: false`）会同时关闭公证；`enabled: false` 与 `notarize: true` 同时出现是配置错误。
-- **pubspec `dmg:` 段只作用于 DMG 的公证**：`fpack build macos`（zip）只有在通过 fpack 自己的配置（`fpack.yaml` / 环境变量 / `--notarize`）开启公证时才会公证 zip。
+- **macOS 签名只来自 fpack 自己的配置**：fpack 不读取 `pubspec.yaml` 中其他插件的配置（例如 [`dmg`](https://pub.dev/packages/dmg) 包的 `dmg:` 段）。什么都不配置时，.app 保留 Xcode 工程自己的签名，DMG 不签名。
 - **`fpack.yaml` 中的环境变量引用**：任何字符串值都可以写 `${VAR}` 或 `${VAR:-默认值}`。未设置且没有默认值的变量会被替换为空字符串，并在运行时给出警告。
 - **路径**：`fpack.yaml` 中的相对路径都相对于 **项目根目录**（`pubspec.yaml` 所在目录）；支持 `~/`。
 - **未知键是错误**：拼错的键会报错并提示「你是不是想写 …」，不会被静默忽略。
@@ -78,7 +78,7 @@
 | --- | --- | --- | --- | --- |
 | `build.targets` | list | 无 | — | 执行 `fpack build` 且不带目标时要构建的目标，例如 `[apk, aab, ipa, dmg]`。命令行给了目标或 `--all` 时忽略。 |
 | `build.mode` | `release` \| `profile` \| `debug` | `release` | 全部 | 构建模式。非 release 时文件名会带上 `-profile` / `-debug`。 |
-| `build.flavor` | string | 无 | apk, aab, ipa, macos, dmg（Flutter 支持 flavor 的平台） | 对应 `flutter build --flavor`：Android productFlavor / Xcode scheme。文件名中出现 `-<flavor>`。同时会读取 pubspec 的 `dmg_<flavor>:` 段。 |
+| `build.flavor` | string | 无 | apk, aab, ipa, macos, dmg（Flutter 支持 flavor 的平台） | 对应 `flutter build --flavor`：Android productFlavor / Xcode scheme。文件名中出现 `-<flavor>`。 |
 | `build.target` | path | `lib/main.dart` | 全部 | 入口文件（`flutter build -t`），例如 `lib/main_prod.dart`。 |
 | `build.dart_define` | map 或 `KEY=VALUE` 列表 | 无 | 全部 | 编译期常量（`--dart-define`）。写成 map：`{ API_URL: https://… }`，或列表：`[API_URL=https://…]`。 |
 | `build.dart_define_from_file` | list | 无 | 全部 | JSON / `.env` 文件（`--dart-define-from-file`），可多个。 |
@@ -124,25 +124,17 @@
 
 | 键 | 类型 | 默认值 | 目标 | 说明 |
 | --- | --- | --- | --- | --- |
-| `macos.sign.enabled` | bool | pubspec `dmg:` 段存在时为其 `sign`（默认 `true`）；否则 `false`；设置了 `identity` 时为 `true` | macos, dmg | 是否用 Developer ID 重新签名 .app（Hardened Runtime + entitlements）和 DMG。关闭时 .app 保留 Xcode 工程自己的签名，DMG 不签名。 |
-| `macos.sign.identity` | string | pubspec `dmg:` 段的 `sign-certificate`；都没有则自动选钥匙串中第一个 “Developer ID Application” 证书 | macos, dmg | codesign 证书全名，例如 `Developer ID Application: Your Name (TEAMID)`。证书不存在、已吊销或钥匙串中没有 Developer ID 时，构建前就会报错并说明如何导入 .p12。 |
+| `macos.sign.enabled` | bool | 设置了 `identity` 时为 `true`，否则 `false` | macos, dmg | 是否用 Developer ID 重新签名 .app（Hardened Runtime + entitlements）和 DMG。为 `true` 但没有 `identity` 时，自动使用钥匙串中第一个 “Developer ID Application” 证书。为 `false`（或 `--no-sign`）时 .app 保留 Xcode 工程自己的签名，DMG 不签名，同时关闭公证。 |
+| `macos.sign.identity` | string | 无 | macos, dmg | codesign 证书全名，例如 `Developer ID Application: Your Name (TEAMID)`。**设置后即启用签名**。证书不存在、已吊销或钥匙串中没有 Developer ID 时，构建前就会报错并说明如何导入 .p12。`fpack init` 会在注释中列出本机钥匙串里的 Developer ID 证书。 |
 | `macos.sign.entitlements` | path | `macos/Runner/Release.entitlements`（非 release 模式用 `DebugProfile.entitlements`） | macos, dmg | 重新签名 .app 时使用的 entitlements 文件。 |
-| `macos.sign.notarize` | bool | pubspec `dmg:` 段的 `notarization`（默认 `true`）；设置了 `notary_profile` 时为 `true`；否则 `false` | macos, dmg | 是否提交 Apple 公证（`xcrun notarytool submit --wait`）并装订（`stapler staple`）。会把文件上传到 Apple。本地测试可用 `--no-notarize`。 |
-| `macos.sign.notary_profile` | string | pubspec `dmg:` 段的 `notary-profile`，再没有则 `NotaryProfile` | macos, dmg | `xcrun notarytool store-credentials <名字>` 创建的钥匙串配置名。 |
+| `macos.sign.notarize` | bool | 设置了 `notary_profile` 时为 `true`，否则 `false` | macos, dmg | 是否提交 Apple 公证（`xcrun notarytool submit --wait`）并装订（`stapler staple`），zip 与 DMG 都会公证。会把文件上传到 Apple。需要签名；本地测试可用 `--no-notarize`。 |
+| `macos.sign.notary_profile` | string | 无（开启公证但未设置时为 `NotaryProfile`） | macos, dmg | `xcrun notarytool store-credentials <名字>` 创建的钥匙串配置名。**设置后即启用公证**（前提是已启用签名）。 |
 | `macos.dmg.tool` | `auto` \| `hdiutil` \| `create-dmg` | `auto` | dmg | 制作 DMG 的工具。`auto`：装了 [create-dmg](https://github.com/create-dmg/create-dmg) 就用它（窗口布局更好看），否则用系统自带的 `hdiutil`。 |
 | `macos.dmg.volume_name` | string | .app 名称（如 `XueHua`） | dmg | 挂载 DMG 后显示的卷名。 |
 | `macos.dmg.background` | path | 无 | dmg | DMG 窗口背景图，仅 `create-dmg` 支持。 |
 | `macos.extra_args` | list | 无 | macos, dmg | 只追加到 `flutter build macos`。 |
 
-pubspec.yaml 中 `dmg:` 段（[`dmg`](https://pub.dev/packages/dmg) 包的格式）会被**只读**地用作默认值：
-
-| pubspec `dmg:` 键 | 对应 fpack 设置 |
-| --- | --- |
-| `sign` | `macos.sign.enabled` |
-| `sign-certificate` | `macos.sign.identity` |
-| `notarization` | `macos.sign.notarize` |
-| `notary-profile` | `macos.sign.notary_profile` |
-| `dmg_<flavor>:` | 使用 `--flavor <flavor>` 时覆盖 `dmg:` 的同名键 |
+fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 `dmg:` 段；需要签名/公证时请在 `fpack.yaml` 的 `macos.sign` 中配置（或使用 `FPACK_MACOS_*` 环境变量、命令行参数）。
 
 ### 2.8 `windows`
 
@@ -201,10 +193,10 @@ pubspec.yaml 中 `dmg:` 段（[`dmg`](https://pub.dev/packages/dmg) 包的格式
 | `FPACK_IOS_EXPORT_METHOD` | string | `ios.export_method` | ipa | 导出方式。 |
 | `FPACK_IOS_EXPORT_OPTIONS_PLIST` | path | `ios.export_options_plist` | ipa | ExportOptions.plist。 |
 | `FPACK_IOS_CODESIGN` | bool | `ios.codesign` | ipa | `false` = 未签名 IPA。 |
-| `FPACK_MACOS_SIGN` | bool | `macos.sign.enabled` | macos, dmg | 是否 Developer ID 签名。 |
-| `FPACK_MACOS_SIGN_IDENTITY` | string | `macos.sign.identity` | macos, dmg | codesign 证书名。 |
-| `FPACK_MACOS_NOTARIZE` | bool | `macos.sign.notarize` | macos, dmg | 是否公证。 |
-| `FPACK_MACOS_NOTARY_PROFILE` | string | `macos.sign.notary_profile` | macos, dmg | notarytool 钥匙串配置名。 |
+| `FPACK_MACOS_SIGN` | bool | `macos.sign.enabled` | bool | 设置了 `identity` 时为 `true`，否则 `false` | macos, dmg | 是否用 Developer ID 重新签名 .app（Hardened Runtime + entitlements）和 DMG。为 `true` 但没有 `identity` 时，自动使用钥匙串中第一个 “Developer ID Application” 证书。为 `false`（或 `--no-sign`）时 .app 保留 Xcode 工程自己的签名，DMG 不签名，同时关闭公证。 |
+| `FPACK_MACOS_SIGN_IDENTITY` | string | `macos.sign.identity` | string | 无 | macos, dmg | codesign 证书全名，例如 `Developer ID Application: Your Name (TEAMID)`。**设置后即启用签名**。证书不存在、已吊销或钥匙串中没有 Developer ID 时，构建前就会报错并说明如何导入 .p12。`fpack init` 会在注释中列出本机钥匙串里的 Developer ID 证书。 |
+| `FPACK_MACOS_NOTARIZE` | bool | `macos.sign.notarize` | bool | 设置了 `notary_profile` 时为 `true`，否则 `false` | macos, dmg | 是否提交 Apple 公证（`xcrun notarytool submit --wait`）并装订（`stapler staple`），zip 与 DMG 都会公证。会把文件上传到 Apple。需要签名；本地测试可用 `--no-notarize`。 |
+| `FPACK_MACOS_NOTARY_PROFILE` | string | `macos.sign.notary_profile` | string | 无（开启公证但未设置时为 `NotaryProfile`） | macos, dmg | `xcrun notarytool store-credentials <名字>` 创建的钥匙串配置名。**设置后即启用公证**（前提是已启用签名）。 |
 | `FPACK_DMG_TOOL` | `auto`\|`hdiutil`\|`create-dmg` | `macos.dmg.tool` | dmg | DMG 工具。 |
 
 ### 3.2 输出与界面
@@ -284,10 +276,10 @@ pubspec.yaml 中 `dmg:` 段（[`dmg`](https://pub.dev/packages/dmg) 包的格式
 | `--no-codesign` | 开关 | `ios.codesign: false` | ipa | 未签名 IPA。 |
 | `--sign` | 开关 | `macos.sign.enabled: true` | macos, dmg | Developer ID 签名。 |
 | `--no-sign` | 开关 | `macos.sign.enabled: false` | macos, dmg | 不签名（同时关闭公证）。 |
-| `--sign-identity ID` | string | `macos.sign.identity` | macos, dmg | codesign 证书名。 |
+| `--sign-identity ID` | string | `macos.sign.identity` | string | 无 | macos, dmg | codesign 证书全名，例如 `Developer ID Application: Your Name (TEAMID)`。**设置后即启用签名**。证书不存在、已吊销或钥匙串中没有 Developer ID 时，构建前就会报错并说明如何导入 .p12。`fpack init` 会在注释中列出本机钥匙串里的 Developer ID 证书。 |
 | `--notarize` | 开关 | `macos.sign.notarize: true` | macos, dmg | 公证并装订（zip 与 DMG）。 |
 | `--no-notarize` | 开关 | `macos.sign.notarize: false` | macos, dmg | 跳过公证（不上传到 Apple，本地构建更快）。 |
-| `--notary-profile NAME` | string | `macos.sign.notary_profile` | macos, dmg | notarytool 钥匙串配置名。 |
+| `--notary-profile NAME` | string | `macos.sign.notary_profile` | string | 无（开启公证但未设置时为 `NotaryProfile`） | macos, dmg | `xcrun notarytool store-credentials <名字>` 创建的钥匙串配置名。**设置后即启用公证**（前提是已启用签名）。 |
 | `--dmg-tool T` | string | `macos.dmg.tool` | dmg | `auto` / `hdiutil` / `create-dmg`。 |
 | `--base-href PATH` | string | `web.base_href` | web | base href。 |
 | `--wasm` | 开关 | `web.wasm: true` | web | WebAssembly 构建。 |
@@ -395,8 +387,8 @@ ios:
   codesign: true                   # false = 未签名 IPA（用于之后重签名）
 
 macos:
-  # 如果 pubspec.yaml 已有 dmg: 段（sign-certificate / notary-profile），
-  # fpack 会直接沿用；这里的设置会覆盖它。
+  # 只有这里（以及 FPACK_MACOS_* / 命令行参数）决定是否签名和公证；
+  # 不配置时 .app 保留 Xcode 的签名，DMG 不签名。
   sign:
     enabled: true                  # 用 Developer ID 重新签名 .app 和 DMG
     identity: "Developer ID Application: Your Name (TEAMID)"   # 留空则自动选择
