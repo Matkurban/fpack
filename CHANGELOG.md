@@ -9,5 +9,5 @@
 - macOS signing defaults read from the pubspec `dmg:` section (read-only).
 - `--dry-run`, `--json`, zh/en output, CI-friendly output, Ctrl-C handling, SHA256SUMS.
 - Dart launcher with verified bundled binaries, Go build fallback and checksum-verified downloads.
-- Complete configuration reference: [docs/configuration.md](docs/configuration.md).
+- Complete configuration reference: [doc/configuration.md](doc/configuration.md).
 - Tested end to end on a real app (Android apk/aab, iOS ipa, macOS app/dmg) and in CI on Windows, macOS and Linux.
