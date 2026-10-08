@@ -2,8 +2,8 @@
 .dart_tool/
 .packages
 pubspec.lock
-build/
-doc/api/
+/build/
+/doc/api/
 
 # Prebuilt Go binaries are produced by scripts/build_binaries.sh and shipped
 # in release archives / pub.dev, not committed to git.
