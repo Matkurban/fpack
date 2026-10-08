@@ -27,6 +27,10 @@ type MacSigning struct {
 	Notarize     bool
 	Profile      string // notarytool keychain profile
 	Source       string // where the settings came from (for messages)
+	// NotarizeZip: notarization was requested through fpack (config, env or
+	// flags), not only by the pubspec `dmg:` section, so the macOS zip is
+	// notarized too. The `dmg:` section is about the DMG only.
+	NotarizeZip bool
 }
 
 // DefaultNotaryProfile matches the `dmg` pub package default.
@@ -81,8 +85,10 @@ func ResolveMacSigning(p *project.Project, cfg *config.Config) (MacSigning, erro
 		sources = append(sources, "fpack.yaml/env/flags")
 	}
 	m.Source = strings.Join(sources, " + ")
+	m.NotarizeZip = (s.Notarize != nil && *s.Notarize) || (s.Notarize == nil && s.NotaryProfile != "")
 	if !m.Enabled {
 		m.Notarize = false // nothing to notarize without a Developer ID signature
+		m.NotarizeZip = false
 	}
 	if m.Notarize && m.Profile == "" {
 		m.Profile = DefaultNotaryProfile
@@ -491,9 +497,21 @@ func (*MacApp) Package(c *Context, in Inputs) (*Plan, error) {
 	} else {
 		pl.Notes = append(pl.Notes, i18n.S("not re-signed (Xcode project signing is used); enable macos.sign for distribution outside the App Store", "未重新签名（使用 Xcode 工程中的签名）；如需在 App Store 外分发请启用 macos.sign"))
 	}
-	pl.Ops = append(pl.Ops,
-		Op{Desc: i18n.S("zip app (ditto keeps symlinks & metadata)", "压缩 App（ditto 保留符号链接与元数据）"), Cmd: cmd("ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", src, tmp)},
-		moveOp(c, tmp, dst))
+	zip := Op{Desc: i18n.S("zip app (ditto keeps symlinks & metadata)", "压缩 App（ditto 保留符号链接与元数据）"), Cmd: cmd("ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", src, tmp)}
+	pl.Ops = append(pl.Ops, zip)
+	switch {
+	case c.Mac.Enabled && c.Mac.NotarizeZip:
+		// Apple notarizes the zip, but the ticket is stapled to the .app,
+		// so the app is zipped again afterwards.
+		pl.Ops = append(pl.Ops, notarizeOps(c, tmp)[0],
+			Op{Desc: i18n.S("staple ticket to the app", "将票据装订到 App"), Cmd: cmd("xcrun", "stapler", "staple", src)},
+			Op{Desc: i18n.S("re-zip stapled app", "重新压缩已装订的 App"), Fn: func() error { return os.Remove(tmp) }},
+			zip)
+		kind = "macOS app (zip, signed, notarized)"
+	case c.Mac.Enabled && c.Mac.Notarize:
+		pl.Notes = append(pl.Notes, i18n.S("the zip is signed but not notarized (pubspec dmg: notarization applies to the DMG); add --notarize to notarize it too", "zip 已签名但未公证（pubspec 的 dmg: 公证设置只作用于 DMG）；加 --notarize 可同时公证 zip"))
+	}
+	pl.Ops = append(pl.Ops, moveOp(c, tmp, dst))
 	pl.Artifacts = []Artifact{{Path: dst, Kind: kind, Arch: "universal"}}
 	return pl, nil
 }

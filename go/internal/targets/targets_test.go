@@ -409,6 +409,43 @@ func TestMacSigningFromPubspecDMG(t *testing.T) {
 	if mc := cmds(mp); len(mc) != 5 || !strings.HasPrefix(mc[1], "codesign --force --deep") {
 		t.Fatalf("%q", mc)
 	}
+	// ...but the zip is not notarized just because of the pubspec dmg: section.
+	if mp.Artifacts[0].Kind != "macOS app (zip, Developer ID signed)" || len(mp.Notes) == 0 || !strings.Contains(mp.Notes[0], "--notarize") {
+		t.Fatalf("%+v %v", mp.Artifacts, mp.Notes)
+	}
+}
+
+func TestMacZipNotarizedWhenRequested(t *testing.T) {
+	pub := "dmg:\n  sign-certificate: \"" + devID + "\"\n  notary-profile: XueHua\n"
+	c := newCtx(t, "darwin", "macos:\n  sign:\n    notarize: true\n", pub)
+	if !c.Mac.NotarizeZip {
+		t.Fatalf("%+v", c.Mac)
+	}
+	p := plan(t, &MacApp{}, c)
+	cs := cmds(p)
+	staged := filepath.Join(c.WorkDir, "stage", "macos", "XueHua.app")
+	zip := filepath.Join(c.WorkDir, "stage", "macos", "xue_hua_im-1.0.0+1-macos-universal.zip")
+	want := []string{
+		"ditto " + filepath.Join(c.Project.Root, "build/macos/Build/Products/Release/XueHua.app") + " " + staged,
+		"codesign --force --deep --options runtime --timestamp --sign '" + devID + "' " + staged,
+		"codesign --force --options runtime --timestamp --entitlements " + filepath.Join(c.Project.Root, "macos/Runner/Release.entitlements") + " --sign '" + devID + "' " + staged,
+		"codesign --verify --deep --strict --verbose=2 " + staged,
+		"ditto -c -k --sequesterRsrc --keepParent " + staged + " " + zip,
+		"xcrun notarytool submit " + zip + " --keychain-profile XueHua --wait --output-format json",
+		"xcrun stapler staple " + staged,
+		"ditto -c -k --sequesterRsrc --keepParent " + staged + " " + zip,
+	}
+	if !reflect.DeepEqual(cs, want) {
+		t.Fatalf("zip commands:\n%s\nwant:\n%s", strings.Join(cs, "\n"), strings.Join(want, "\n"))
+	}
+	if p.Artifacts[0].Kind != "macOS app (zip, signed, notarized)" {
+		t.Fatal(p.Artifacts[0].Kind)
+	}
+	// --no-sign wins over everything
+	c = newCtx(t, "darwin", "macos:\n  sign:\n    enabled: false\n", pub)
+	if c.Mac.NotarizeZip || c.Mac.Notarize {
+		t.Fatalf("%+v", c.Mac)
+	}
 }
 
 func TestMacSigningOverrides(t *testing.T) {
