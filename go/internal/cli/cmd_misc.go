@@ -385,7 +385,7 @@ func runInit(e *Env, p *parsed) int {
 	}
 	// Developer ID identities in the keychain, listed as a hint in the
 	// generated macos.sign section.
-	var devIDs []string
+	var devIDs, installerIDs []string
 	keychainSeen := false
 	if proj.Platforms[host.MacOS] && h.OS == "darwin" {
 		if ids, ok := targets.CodesignIdentities(ctxT.Tools); ok {
@@ -396,12 +396,19 @@ func runInit(e *Env, p *parsed) int {
 				}
 			}
 		}
+		if ids, ok := targets.InstallerIdentities(ctxT.Tools); ok {
+			for _, id := range ids {
+				if strings.HasPrefix(id, "Developer ID Installer") {
+					installerIDs = append(installerIDs, id)
+				}
+			}
+		}
 	}
 	outDir := pr.ask(i18n.S("Output directory", "输出目录"), config.DefaultOutputDir)
 
 	content := renderInitYAML(initValues{
 		Targets: tlist, Display: display, Split: split, Keystore: keystore, Alias: alias,
-		ExportMethod: exportMethod, OutDir: outDir, DevIDs: devIDs, KeychainSeen: keychainSeen, Proj: proj,
+		ExportMethod: exportMethod, OutDir: outDir, DevIDs: devIDs, KeychainSeen: keychainSeen, InstallerIDs: installerIDs, Proj: proj,
 	})
 	var check config.Config
 	if err := config.Parse([]byte(content), &check); err != nil {

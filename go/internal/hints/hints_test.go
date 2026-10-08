@@ -22,6 +22,7 @@ func TestMatch(t *testing.T) {
 		"error: exportArchive: No profiles for 'com.x.app' were found":                    "ios-profile",
 		"Encountered error while creating the IPA:":                                       "ios-export",
 		"  status: Invalid": "notary-invalid",
+		"productbuild: error: Could not find appropriate signing identity for “Developer ID Installer: Acme (TEAM123456)”.":           "pkg-identity",
 		"Error: No Keychain password item found for profile: XueHua":                                                                  "notary-auth",
 		"hdiutil: create failed - Resource busy":                                                                                      "hdiutil-busy",
 		"CMake Error: CMake was unable to find a build program corresponding to \"Ninja\".":                                           "linux-ninja",

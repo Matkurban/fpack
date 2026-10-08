@@ -108,6 +108,7 @@ type IOS struct {
 type MacOS struct {
 	Sign      MacSign `yaml:"sign"`
 	DMG       DMG     `yaml:"dmg"`
+	Pkg       Pkg     `yaml:"pkg"`
 	ExtraArgs List    `yaml:"extra_args"`
 }
 
@@ -118,6 +119,20 @@ type MacSign struct {
 	Entitlements  string `yaml:"entitlements"` // default macos/Runner/Release.entitlements
 	Notarize      *bool  `yaml:"notarize"`
 	NotaryProfile string `yaml:"notary_profile"` // xcrun notarytool keychain profile
+	// InstallerIdentity signs the .pkg: "Developer ID Installer: Name (TEAMID)".
+	InstallerIdentity string `yaml:"installer_identity"`
+}
+
+// Pkg options (macOS installer package built with pkgbuild + productbuild).
+type Pkg struct {
+	Identifier      string `yaml:"identifier"`       // package id; default: macOS bundle id
+	InstallLocation string `yaml:"install_location"` // default /Applications
+	Title           string `yaml:"title"`            // installer window title; default: app name
+	Welcome         string `yaml:"welcome"`          // .html/.rtf/.txt shown first
+	Readme          string `yaml:"readme"`
+	License         string `yaml:"license"` // the user must agree to it
+	Conclusion      string `yaml:"conclusion"`
+	Background      string `yaml:"background"` // image (png/jpg/tiff)
 }
 
 // DMG options.
@@ -541,9 +556,10 @@ var EnvVars = [][2]string{
 	{"FPACK_IOS_EXPORT_METHOD", "IPA export method"},
 	{"FPACK_IOS_EXPORT_OPTIONS_PLIST", "ExportOptions.plist path"},
 	{"FPACK_IOS_CODESIGN", "false = unsigned IPA"},
-	{"FPACK_MACOS_SIGN", "true/false: codesign .app/.dmg"},
-	{"FPACK_MACOS_SIGN_IDENTITY", "codesign identity"},
-	{"FPACK_MACOS_NOTARIZE", "true/false: notarize the .dmg"},
+	{"FPACK_MACOS_SIGN", "true/false: codesign .app/.dmg/.pkg"},
+	{"FPACK_MACOS_SIGN_IDENTITY", "codesign identity (Developer ID Application)"},
+	{"FPACK_MACOS_INSTALLER_IDENTITY", "pkg signing identity (Developer ID Installer)"},
+	{"FPACK_MACOS_NOTARIZE", "true/false: notarize the zip/.dmg/.pkg"},
 	{"FPACK_MACOS_NOTARY_PROFILE", "notarytool keychain profile"},
 	{"FPACK_DMG_TOOL", "auto | hdiutil | create-dmg"},
 	{"FPACK_LANG", "zh | en"},
@@ -598,6 +614,7 @@ func ApplyEnv(c *Config, getenv func(string) string) error {
 	boolean("FPACK_IOS_CODESIGN", &c.IOS.Codesign)
 	boolean("FPACK_MACOS_SIGN", &c.MacOS.Sign.Enabled)
 	str("FPACK_MACOS_SIGN_IDENTITY", &c.MacOS.Sign.Identity)
+	str("FPACK_MACOS_INSTALLER_IDENTITY", &c.MacOS.Sign.InstallerIdentity)
 	boolean("FPACK_MACOS_NOTARIZE", &c.MacOS.Sign.Notarize)
 	str("FPACK_MACOS_NOTARY_PROFILE", &c.MacOS.Sign.NotaryProfile)
 	str("FPACK_DMG_TOOL", &c.MacOS.DMG.Tool)
@@ -706,6 +723,9 @@ func (c *Config) Validate() []string {
 	}
 	if m := c.IOS.ExportMethod; m != "" && !contains(ExportMethods, m) {
 		p = append(p, fmt.Sprintf("ios.export_method must be one of %s (got %q)", strings.Join(ExportMethods, ", "), m))
+	}
+	if l := c.MacOS.Pkg.InstallLocation; l != "" && !strings.HasPrefix(l, "/") {
+		p = append(p, fmt.Sprintf("macos.pkg.install_location must be an absolute path (got %q)", l))
 	}
 	if t := c.MacOS.DMG.Tool; t != "" && !contains(DMGTools, t) {
 		p = append(p, fmt.Sprintf("macos.dmg.tool must be one of %s (got %q)", strings.Join(DMGTools, ", "), t))

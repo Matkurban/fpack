@@ -18,6 +18,7 @@ type initValues struct {
 	OutDir       string
 	DevIDs       []string // "Developer ID Application" identities found in the keychain (hint only)
 	KeychainSeen bool     // the keychain was checked (running on macOS)
+	InstallerIDs []string // "Developer ID Installer" identities (hint only)
 	Proj         *project.Project
 }
 
@@ -130,6 +131,18 @@ func renderInitYAML(v initValues) string {
 		w("  #   entitlements: macos/Runner/Release.entitlements")
 		w("  #   notary_profile: NotaryProfile    # %s", S("xcrun notarytool store-credentials NotaryProfile …; setting it turns notarization on", "xcrun notarytool store-credentials NotaryProfile …；设置后即启用公证"))
 		w("  #   # notarize: false              # %s", S("keep signing, skip notarization (same as --no-notarize)", "只签名不公证（等同 --no-notarize）"))
+		installer := "Developer ID Installer: Your Name (TEAMID)"
+		if len(v.InstallerIDs) > 0 {
+			installer = v.InstallerIDs[0]
+			w("  #   # %s %s", S("installer identities in this keychain:", "本机钥匙串中的安装包证书："), strings.Join(v.InstallerIDs, "; "))
+		}
+		w("  #   installer_identity: %s   # %s", yq(installer), S("signs the .pkg (a separate certificate from the app's)", "签名 .pkg（与 App 的证书不同）"))
+		w("  # pkg:                           # %s", S("fpack build pkg: installer that puts the app into /Applications", "fpack build pkg：把 App 安装到 /Applications 的安装包"))
+		w("  #   identifier: %s", yq(v.Proj.Identifier()))
+		w("  #   install_location: /Applications")
+		w("  #   title: %s", yq(v.Display))
+		w("  #   welcome: macos/installer/welcome.html     # %s", S(".html/.rtf/.txt; also readme, license, conclusion", ".html/.rtf/.txt；另有 readme、license、conclusion"))
+		w("  #   background: macos/installer/background.png")
 		w("  # dmg:")
 		w("  #   tool: auto                   # auto | hdiutil | create-dmg")
 		w("  #   volume_name: %s", yq(v.Display))

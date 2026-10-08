@@ -39,6 +39,7 @@ type Project struct {
 	IOSBundleID               string
 	IOSTeam                   string
 	MacProductName            string
+	MacBundleID               string // PRODUCT_BUNDLE_IDENTIFIER in macos/Runner/Configs/AppInfo.xcconfig
 	LinuxBinary               string
 	LinuxAppID                string
 	WindowsBinary             string
@@ -184,7 +185,9 @@ func Load(root string) (*Project, error) {
 		p.IOSTeam = firstMatch(pbx, `DEVELOPMENT_TEAM = "?([A-Z0-9]+)"?;`)
 		p.IOSBundleID = firstMatch(pbx, `PRODUCT_BUNDLE_IDENTIFIER = "?([A-Za-z0-9.\-]+)"?;`)
 	}
-	p.MacProductName = firstMatch(readFile(filepath.Join(root, "macos", "Runner", "Configs", "AppInfo.xcconfig")), `(?m)^\s*PRODUCT_NAME\s*=\s*(.+?)\s*$`)
+	appInfo := readFile(filepath.Join(root, "macos", "Runner", "Configs", "AppInfo.xcconfig"))
+	p.MacProductName = firstMatch(appInfo, `(?m)^\s*PRODUCT_NAME\s*=\s*(.+?)\s*$`)
+	p.MacBundleID = firstMatch(appInfo, `(?m)^\s*PRODUCT_BUNDLE_IDENTIFIER\s*=\s*([A-Za-z0-9.\-]+)\s*$`)
 	linuxCM := readFile(filepath.Join(root, "linux", "CMakeLists.txt"))
 	p.LinuxBinary = firstMatch(linuxCM, `set\(BINARY_NAME\s+"([^"]+)"\)`)
 	p.LinuxAppID = firstMatch(linuxCM, `set\(APPLICATION_ID\s+"([^"]+)"\)`)

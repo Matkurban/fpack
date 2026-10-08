@@ -3,7 +3,7 @@
 [English](README.en.md) · 中文
 
 **一条命令，把 Flutter 项目打包成所有平台的发布文件。**
-Android（APK / 按 ABI 拆分 APK / AAB）、iOS（IPA）、macOS（.app zip / DMG，可签名 + 公证）、Windows（zip / Inno Setup 安装包 / MSIX）、Linux（tar.gz / deb / rpm / AppImage）、Web（zip）。
+Android（APK / 按 ABI 拆分 APK / AAB）、iOS（IPA）、macOS（.app zip / DMG / pkg 安装包，可签名 + 公证）、Windows（zip / Inno Setup 安装包 / MSIX）、Linux（tar.gz / deb / rpm / AppImage）、Web（zip）。
 
 ```bash
 dart pub global activate fpack    # 安装（也支持 git / 本地路径，见下文）
@@ -89,6 +89,7 @@ dist/1.0.0+1/
   my_app-1.0.0+1-android.aab
   my_app-1.0.0+1-ios-arm64.ipa
   my_app-1.0.0+1-macos-universal.dmg
+  my_app-1.0.0+1-macos.pkg
   SHA256SUMS
 ```
 
@@ -125,7 +126,7 @@ fpack help <命令>     查看命令帮助
 | `--obfuscate` / `--split-debug-info DIR` | 混淆；符号默认保存到 `<输出目录>/debug-info/<平台>` |
 | `-o, --output DIR` / `-f, --force` | 输出目录 / 允许覆盖 |
 | `--export-method M` / `--export-options-plist FILE` / `--no-codesign` | iOS 导出 |
-| `--sign` `--no-sign` `--sign-identity ID` `--notarize` `--no-notarize` `--notary-profile NAME` `--dmg-tool T` | macOS 签名、公证、DMG 工具 |
+| `--sign` `--no-sign` `--sign-identity ID` `--installer-identity ID` `--notarize` `--no-notarize` `--notary-profile NAME` `--dmg-tool T` | macOS 签名（App / pkg）、公证、DMG 工具 |
 | `--base-href PATH` / `--wasm` | Web |
 | `-- …` | 之后的参数原样传给 `flutter build`，例如 `-- --no-tree-shake-icons` |
 
@@ -138,6 +139,7 @@ fpack build ipa --export-method ad-hoc
 fpack build ipa --no-codesign                # 未签名 IPA（Payload 结构）
 fpack build macos dmg                        # 按 fpack.yaml 的 macos.sign 签名/公证（未配置则不签名）
 fpack build dmg --no-notarize                # 本地快速出包
+fpack build macos dmg pkg                    # zip + DMG + pkg 安装包，只跑一次 flutter build
 fpack build --all --json > result.json
 fpack -C apps/client build web --base-href /app/
 ```
@@ -163,6 +165,7 @@ fpack -C apps/client build web --base-href /app/
 | `ipa` | macOS | `-ios-arm64.ipa`（未签名：`-ios-arm64-unsigned.ipa`） | flutter/xcodebuild，`--no-codesign` 时用 ditto |
 | `macos` | macOS | `-macos-universal.zip` | flutter、codesign、ditto、notarytool |
 | `dmg` | macOS | `-macos-universal.dmg` | hdiutil 或 create-dmg、codesign、notarytool、stapler |
+| `pkg` | macOS | `-macos.pkg` | pkgbuild + productbuild（安装到 /Applications）、Developer ID Installer 签名、notarytool、stapler |
 | `windows` | Windows | `-windows-x64-portable.zip` | flutter |
 | `exe` | Windows | `-windows-x64-setup.exe` | Inno Setup（ISCC） |
 | `msix` | Windows | `-windows-x64.msix` | `msix` dev 依赖（`dart run msix:create`） |
@@ -174,7 +177,7 @@ fpack -C apps/client build web --base-href /app/
 
 Flutter 不能跨系统编译 iOS/macOS/Windows/Linux 桌面应用。`fpack build --all` 会跳过本机不能构建的目标并说明原因；显式指定时（如在 Linux 上 `fpack build ipa`）会报错并提示用对应系统的 CI 机器。`--dry-run` 下仍会显示这类目标的参考计划。
 
-同一次运行中共享 flutter 构建：`macos` + `dmg` 只构建一次，`linux` + `deb` + `rpm` + `appimage` 只构建一次，`windows` + `exe` + `msix` 只构建一次。
+同一次运行中共享 flutter 构建：`macos` + `dmg` + `pkg` 只构建一次，`linux` + `deb` + `rpm` + `appimage` 只构建一次，`windows` + `exe` + `msix` 只构建一次。
 
 ---
 
@@ -231,6 +234,11 @@ macos:
     entitlements: macos/Runner/Release.entitlements
     notarize: true
     notary_profile: XueHua
+    installer_identity: "Developer ID Installer: Your Name (TEAMID)"   # 签名 .pkg
+  pkg:
+    identifier: com.example.myapp       # 默认：macOS 工程的 bundle id
+    install_location: /Applications
+    license: macos/installer/license.rtf
   dmg:
     tool: auto                # auto | hdiutil | create-dmg
     volume_name: 雪花IM
@@ -291,8 +299,8 @@ fpack build ipa --no-codesign                     # 未签名 IPA，用于后续
 用于 App Store 之外的分发（Developer ID）。**只**通过 fpack 自己的配置开启（低 → 高）：
 
 1. `fpack.yaml` 的 `macos.sign`（`fpack init` 会生成带占位符的注释段，并在注释中列出本机钥匙串里的 Developer ID 证书）
-2. 环境变量 `FPACK_MACOS_SIGN`、`FPACK_MACOS_SIGN_IDENTITY`、`FPACK_MACOS_NOTARIZE`、`FPACK_MACOS_NOTARY_PROFILE`
-3. 命令行 `--sign/--no-sign`、`--sign-identity`、`--notarize/--no-notarize`、`--notary-profile`
+2. 环境变量 `FPACK_MACOS_SIGN`、`FPACK_MACOS_SIGN_IDENTITY`、`FPACK_MACOS_INSTALLER_IDENTITY`、`FPACK_MACOS_NOTARIZE`、`FPACK_MACOS_NOTARY_PROFILE`
+3. 命令行 `--sign/--no-sign`、`--sign-identity`、`--installer-identity`、`--notarize/--no-notarize`、`--notary-profile`
 
 ```yaml
 macos:
@@ -312,6 +320,15 @@ xcrun notarytool store-credentials XueHua --apple-id you@example.com --team-id A
 ```
 
 `fpack build macos` 产出签名的 zip；开启公证时 zip 也会公证（流程：提交 zip → 装订到 .app → 重新压缩）。
+
+### macOS 安装包（pkg）
+
+`fpack build pkg` 用 `pkgbuild` 生成把 App 安装到 `/Applications` 的组件包（不可重定位，升级时总是覆盖 /Applications 中的版本），再用 `productbuild` 生成分发包（支持 Apple silicon 与 Intel，不会提示安装 Rosetta）。可在 `macos.pkg` 中设置 `identifier`、`install_location`、`title` 以及安装界面的 `welcome` / `readme` / `license` / `conclusion`（.html/.rtf/.txt）和 `background`（图片）。
+
+- **签名**：pkg 需要单独的 **“Developer ID Installer”** 证书（与签名 App 的 “Developer ID Application” 不同），通过 `macos.sign.installer_identity` / `FPACK_MACOS_INSTALLER_IDENTITY` / `--installer-identity` 配置；签名后自动用 `pkgutil --check-signature` 校验。未配置时生成未签名 pkg 并给出说明；`--no-sign` 同样关闭 pkg 签名。
+- **App 签名**：配置了 `macos.sign.identity` 时，pkg 中的 App 与 zip/DMG 一样先用 Developer ID 重新签名。
+- **公证**：与 DMG 共用公证配置；只有已签名的 pkg 才会提交公证并 `stapler staple`，最后用 `spctl --assess --type install` 评估。
+- `doctor` 会检查 pkgbuild/productbuild，并列出钥匙串中的安装包证书。
 
 ---
 
@@ -372,7 +389,7 @@ jobs:
 | `FPACK_OUTPUT_DIR` `FPACK_OVERWRITE` `FPACK_SPLIT_PER_ABI` `FPACK_OBFUSCATE` | 输出 / Android / 混淆 |
 | `FPACK_ANDROID_KEYSTORE` `FPACK_ANDROID_KEYSTORE_BASE64` `FPACK_ANDROID_KEYSTORE_PASSWORD` `FPACK_ANDROID_KEY_ALIAS` `FPACK_ANDROID_KEY_PASSWORD` | Android 签名 |
 | `FPACK_IOS_EXPORT_METHOD` `FPACK_IOS_EXPORT_OPTIONS_PLIST` `FPACK_IOS_CODESIGN` | iOS 导出 |
-| `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_DMG_TOOL` | macOS |
+| `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_DMG_TOOL` | macOS |
 | `FPACK_LANG` | `zh` / `en`（默认依次读取 `LC_ALL`、`LC_MESSAGES`、`LANG`、macOS/Windows 系统语言） |
 | `NO_COLOR` / `FPACK_NO_COLOR` / `FORCE_COLOR` | 颜色控制 |
 | `FPACK_CORE` | 指定原生核心二进制（开发用） |

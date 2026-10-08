@@ -3,7 +3,7 @@
 English · [中文](README.md)
 
 **Package a Flutter app into release files for every platform with one command.**
-Android (APK / per-ABI APKs / AAB), iOS (IPA), macOS (.app zip / DMG with signing + notarization), Windows (zip / Inno Setup installer / MSIX), Linux (tar.gz / deb / rpm / AppImage) and Web (zip).
+Android (APK / per-ABI APKs / AAB), iOS (IPA), macOS (.app zip / DMG / .pkg installer with signing + notarization), Windows (zip / Inno Setup installer / MSIX), Linux (tar.gz / deb / rpm / AppImage) and Web (zip).
 
 ```bash
 dart pub global activate fpack    # install (git and local path work too, see below)
@@ -69,7 +69,7 @@ fpack help <command>
 
 Global options: `-C, --project DIR`, `--config FILE`, `--flutter SDK`, `--lang zh|en`, `-v, --verbose`, `--json`, `--no-color`, `-y, --yes`.
 
-Build options: `--all`, `--dry-run`, `--mode`/`--release`/`--profile`/`--debug`, `--flavor`, `-t/--target`, `--dart-define K=V` (repeatable), `--dart-define-from-file`, `--build-name`, `--build-number`, `--split-per-abi[=true|both]`, `--abis`, `--obfuscate`, `--split-debug-info`, `-o/--output`, `-f/--force`, iOS `--export-method`, `--export-options-plist`, `--no-codesign`, macOS `--sign`, `--no-sign`, `--sign-identity`, `--notarize`, `--no-notarize`, `--notary-profile`, `--dmg-tool`, web `--base-href`, `--wasm`, and anything after `--` is passed to `flutter build`.
+Build options: `--all`, `--dry-run`, `--mode`/`--release`/`--profile`/`--debug`, `--flavor`, `-t/--target`, `--dart-define K=V` (repeatable), `--dart-define-from-file`, `--build-name`, `--build-number`, `--split-per-abi[=true|both]`, `--abis`, `--obfuscate`, `--split-debug-info`, `-o/--output`, `-f/--force`, iOS `--export-method`, `--export-options-plist`, `--no-codesign`, macOS `--sign`, `--no-sign`, `--sign-identity`, `--installer-identity`, `--notarize`, `--no-notarize`, `--notary-profile`, `--dmg-tool`, web `--base-href`, `--wasm`, and anything after `--` is passed to `flutter build`.
 
 ```bash
 fpack build apk aab --flavor prod --dart-define-from-file env/prod.json
@@ -78,6 +78,7 @@ fpack build ipa --export-method ad-hoc
 fpack build ipa --no-codesign
 fpack build macos dmg              # signs/notarizes per fpack.yaml macos.sign (unsigned if not configured)
 fpack build dmg --no-notarize      # fast local build
+fpack build macos dmg pkg          # zip + DMG + .pkg from one flutter build
 fpack build --all --json > result.json
 fpack -C apps/client build web --base-href /app/
 ```
@@ -98,6 +99,7 @@ Name template: `{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mo
 | `ipa` | macOS | `-ios-arm64.ipa` (unsigned: `-ios-arm64-unsigned.ipa`) | flutter/xcodebuild, ditto |
 | `macos` | macOS | `-macos-universal.zip` | flutter, codesign, ditto, notarytool |
 | `dmg` | macOS | `-macos-universal.dmg` | hdiutil or create-dmg, codesign, notarytool, stapler |
+| `pkg` | macOS | `-macos.pkg` | pkgbuild + productbuild (installs into /Applications), Developer ID Installer signing, notarytool, stapler |
 | `windows` | Windows | `-windows-x64-portable.zip` | flutter |
 | `exe` | Windows | `-windows-x64-setup.exe` | Inno Setup (ISCC) |
 | `msix` | Windows | `-windows-x64.msix` | `msix` dev dependency |
@@ -107,7 +109,7 @@ Name template: `{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mo
 | `appimage` | Linux | `-linux-x64.AppImage` | appimagetool (skipped by `--all` when missing) |
 | `web` | any | `-web.zip` | flutter |
 
-Flutter cannot cross-compile desktop/iOS apps: `--all` skips what the host can't build (with the reason); naming such a target explicitly fails with a hint to use a matching CI runner, while `--dry-run` still shows its reference plan. One flutter build is shared per platform in a run (`macos`+`dmg`, `linux`+`deb`+`rpm`+`appimage`, `windows`+`exe`+`msix`).
+Flutter cannot cross-compile desktop/iOS apps: `--all` skips what the host can't build (with the reason); naming such a target explicitly fails with a hint to use a matching CI runner, while `--dry-run` still shows its reference plan. One flutter build is shared per platform in a run (`macos`+`dmg`+`pkg`, `linux`+`deb`+`rpm`+`appimage`, `windows`+`exe`+`msix`).
 
 ## Configuration
 
@@ -137,6 +139,9 @@ fpack build apk aab
 Configured only the fpack way, low → high: `macos.sign` in fpack.yaml (`fpack init` writes a commented section with placeholders and lists the Developer ID identities in your keychain), `FPACK_MACOS_*` env vars, flags. Nothing configured → the .app keeps Xcode's signature and the DMG is unsigned (the result notes say how to configure it). fpack does not read other plugins' pubspec sections such as the [`dmg`](https://pub.dev/packages/dmg) package's `dmg:`. An identity implies signing, a notary profile implies notarization, disabling signing disables notarization. Without an identity the first "Developer ID Application" certificate is used; an unknown identity lists the available ones.
 
 DMG flow: copy .app → `codesign --deep` → re-sign with hardened runtime + `macos/Runner/Release.entitlements` → verify → `hdiutil` (or `create-dmg`) with an Applications link → sign DMG → `notarytool submit --wait` → `stapler staple` → `spctl`. Create the notary profile once: `xcrun notarytool store-credentials <profile> --apple-id … --team-id …`. `fpack build macos` produces a signed zip, notarized too when notarization is on.
+
+### macOS installer (.pkg)
+`fpack build pkg`: `pkgbuild` makes a component package installing the app into `/Applications` (not relocatable, so upgrades always replace the /Applications copy), `productbuild` wraps it in a distribution package (Apple silicon + Intel, no Rosetta prompt). `macos.pkg` sets `identifier` (default: the macOS bundle id), `install_location`, `title`, the installer pages `welcome`/`readme`/`license`/`conclusion` (.html/.rtf/.txt) and a `background` image. The pkg is signed with a separate **"Developer ID Installer"** identity (`macos.sign.installer_identity`, `FPACK_MACOS_INSTALLER_IDENTITY`, `--installer-identity`) and checked with `pkgutil --check-signature`; without one it is built unsigned with a note (`--no-sign` also leaves it unsigned). The app inside is Developer ID signed like the zip/DMG when `macos.sign.identity` is set. Notarization shares the DMG settings and applies to signed pkgs only (submit → staple → `spctl --assess --type install`). `doctor` checks pkgbuild/productbuild and lists installer identities.
 
 ## Environment variables, exit codes
 

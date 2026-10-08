@@ -32,6 +32,9 @@ type MacSigning struct {
 	// TurnedOff: signing was switched off explicitly (--no-sign,
 	// FPACK_MACOS_SIGN=false, macos.sign.enabled: false).
 	TurnedOff bool
+	// Installer signs the .pkg ("Developer ID Installer: …", a separate
+	// certificate from the app's); "" = unsigned pkg. Cleared by --no-sign.
+	Installer string
 }
 
 // Source names where macOS signing settings come from (for messages).
@@ -64,6 +67,9 @@ func ResolveMacSigning(p *project.Project, cfg *config.Config) (MacSigning, erro
 	}
 	if s.Notarize != nil && *s.Notarize && s.Enabled != nil && !*s.Enabled {
 		return m, fmt.Errorf("%s", i18n.S("macos.sign: notarization requires signing (enabled: false with notarize: true)", "macos.sign：公证需要先签名（enabled: false 与 notarize: true 冲突）"))
+	}
+	if !m.TurnedOff {
+		m.Installer = s.InstallerIdentity
 	}
 	if !m.Enabled {
 		m.Notarize = false // nothing to notarize without a Developer ID signature

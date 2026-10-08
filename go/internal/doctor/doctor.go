@@ -327,6 +327,30 @@ func platformInfo(pl host.Platform, in Input) []Line {
 				out = append(out, Line{Info, i18n.S("Developer ID signing: off (Xcode signing is used; DMG will be unsigned)", "Developer ID 签名：关闭（使用 Xcode 签名；DMG 不签名）"),
 					i18n.S("for distribution outside the App Store set macos.sign.identity and macos.sign.notary_profile in fpack.yaml", "如需在 App Store 外分发，请在 fpack.yaml 中设置 macos.sign.identity 与 macos.sign.notary_profile")})
 			}
+			if in.Host.OS == "darwin" {
+				if t.Find("pkgbuild") != "" && t.Find("productbuild") != "" {
+					out = append(out, Line{OK, "pkgbuild / productbuild", ""})
+				} else {
+					out = append(out, Line{Warn, i18n.S("pkgbuild/productbuild not found (needed for pkg)", "找不到 pkgbuild/productbuild（pkg 需要）"), "xcode-select --install"})
+				}
+			}
+			inst, _ := targets.InstallerIdentities(t)
+			var devInst []string
+			for _, id := range inst {
+				if strings.HasPrefix(id, "Developer ID Installer") {
+					devInst = append(devInst, id)
+				}
+			}
+			switch {
+			case m.Installer != "":
+				out = append(out, Line{Info, i18n.S("pkg signing configured: ", "已配置 pkg 签名：") + m.Installer, ""})
+			case m.TurnedOff:
+			case len(devInst) > 0:
+				out = append(out, Line{Info, i18n.F("pkg: unsigned (keychain has %s; set macos.sign.installer_identity to use it)", "pkg：不签名（钥匙串中有 %s；设置 macos.sign.installer_identity 即可使用）", strings.Join(devInst, ", ")), ""})
+			case in.Host.OS == "darwin":
+				out = append(out, Line{Info, i18n.S("pkg: unsigned (no \"Developer ID Installer\" certificate in the keychain)", "pkg：不签名（钥匙串中没有 “Developer ID Installer” 证书）"),
+					i18n.S("to sign pkgs: Xcode → Settings → Accounts → Manage Certificates → + → Developer ID Installer, then set macos.sign.installer_identity", "如需签名 pkg：Xcode → 设置 → Accounts → Manage Certificates → + → Developer ID Installer，然后设置 macos.sign.installer_identity")})
+			}
 			if t.Find("create-dmg") != "" {
 				out = append(out, Line{OK, "create-dmg", ""})
 			} else if in.Host.OS == "darwin" {

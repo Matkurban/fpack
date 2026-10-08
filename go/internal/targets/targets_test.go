@@ -52,7 +52,7 @@ func newCtx(t *testing.T, goos, cfgYAML, pubspecExtra string) *Context {
 	write("ios/Podfile", "")
 	write("ios/Runner.xcodeproj/project.pbxproj", "DEVELOPMENT_TEAM = ABCDE12345;\n")
 	write("macos/Podfile", "")
-	write("macos/Runner/Configs/AppInfo.xcconfig", "PRODUCT_NAME = XueHua\n")
+	write("macos/Runner/Configs/AppInfo.xcconfig", "PRODUCT_NAME = XueHua\nPRODUCT_BUNDLE_IDENTIFIER = com.xuehua.im\n")
 	write("macos/Runner/Release.entitlements", "<plist/>")
 	write("linux/CMakeLists.txt", `set(BINARY_NAME "xue_hua_im")`)
 	write("web/icons/Icon-512.png", "png")

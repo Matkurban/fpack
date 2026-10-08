@@ -1,12 +1,12 @@
 // Package targets implements one packaging target per output format (apk,
-// aab, ipa, macos, dmg, windows, exe, msix, linux, deb, rpm, appimage, web)
+// aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage, web)
 // behind a common interface.
 //
 // A target is planned in three phases so that --dry-run shows exactly what a
 // real run would do:
 //
 //  1. Steps:   the `flutter build …` invocations it needs (shared by key, so
-//     macos+dmg or linux+deb+rpm run Flutter only once).
+//     macos+dmg+pkg or linux+deb+rpm run Flutter only once).
 //  2. Locate:  where Flutter put its output (predicted in dry-run).
 //  3. Package: a list of Ops (external commands or internal file actions)
 //     producing the final artifacts in the output directory.
@@ -228,7 +228,7 @@ func (c *Context) SetAndroidEnv(e *AndroidEnv) { c.androidEnv = e }
 // ---- registry ----
 
 var registry = []Target{
-	&APK{}, &AAB{}, &IPA{}, &MacApp{}, &DMG{}, &WinZip{}, &WinExe{}, &Msix{},
+	&APK{}, &AAB{}, &IPA{}, &MacApp{}, &DMG{}, &Pkg{}, &WinZip{}, &WinExe{}, &Msix{},
 	&LinuxTar{}, &Deb{}, &Rpm{}, &AppImage{}, &WebZip{},
 }
 

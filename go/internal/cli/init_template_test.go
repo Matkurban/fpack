@@ -23,6 +23,9 @@ func TestInitMacSigningIsCommentedPlaceholders(t *testing.T) {
 		if !strings.Contains(out, "\nmacos:\n") || !strings.Contains(out, "  # sign:\n") || !strings.Contains(out, "notary_profile: NotaryProfile") {
 			t.Fatalf("missing commented macos.sign section:\n%s", out)
 		}
+		if !strings.Contains(out, "  #   installer_identity: \"Developer ID Installer: Your Name (TEAMID)\"") || !strings.Contains(out, "  # pkg:") || !strings.Contains(out, "  #   install_location: /Applications") {
+			t.Fatalf("missing pkg placeholders:\n%s", out)
+		}
 		if ids != nil && !strings.Contains(out, "  #   identity: \"Developer ID Application: Keychain Person (BBBBBBBBBB)\"") {
 			t.Fatalf("keychain identity not offered:\n%s", out)
 		}
@@ -30,7 +33,7 @@ func TestInitMacSigningIsCommentedPlaceholders(t *testing.T) {
 		if err := config.Parse([]byte(out), &c); err != nil {
 			t.Fatal(err)
 		}
-		if c.MacOS.Sign.Identity != "" || c.MacOS.Sign.Enabled != nil || c.MacOS.Sign.NotaryProfile != "" {
+		if c.MacOS.Sign.Identity != "" || c.MacOS.Sign.Enabled != nil || c.MacOS.Sign.NotaryProfile != "" || c.MacOS.Sign.InstallerIdentity != "" {
 			t.Fatalf("signing must stay off until the user uncomments it: %+v", c.MacOS.Sign)
 		}
 	}

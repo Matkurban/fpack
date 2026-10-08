@@ -41,8 +41,9 @@ var buildFlags = []flagSpec{
 	{names: []string{"--no-codesign"}, kind: kBool, en: "iOS: build an unsigned IPA", zh: "iOS：构建未签名 IPA"},
 	{names: []string{"--sign"}, kind: kBool, en: "macOS: Developer ID sign the app/DMG", zh: "macOS：使用 Developer ID 签名 App/DMG"},
 	{names: []string{"--no-sign"}, kind: kBool, en: "macOS: do not sign (also disables notarization)", zh: "macOS：不签名（同时关闭公证）"},
-	{names: []string{"--sign-identity"}, kind: kString, metavar: "ID", en: "macOS: codesign identity", zh: "macOS：codesign 证书名"},
-	{names: []string{"--notarize"}, kind: kBool, en: "macOS: notarize + staple the DMG", zh: "macOS：公证并装订 DMG"},
+	{names: []string{"--sign-identity"}, kind: kString, metavar: "ID", en: "macOS: codesign identity (Developer ID Application)", zh: "macOS：codesign 证书名（Developer ID Application）"},
+	{names: []string{"--installer-identity"}, kind: kString, metavar: "ID", en: "macOS: .pkg signing identity (Developer ID Installer)", zh: "macOS：.pkg 签名证书（Developer ID Installer）"},
+	{names: []string{"--notarize"}, kind: kBool, en: "macOS: notarize + staple the zip/DMG/pkg", zh: "macOS：公证并装订 zip/DMG/pkg"},
 	{names: []string{"--no-notarize"}, kind: kBool, en: "macOS: skip notarization (faster local builds)", zh: "macOS：跳过公证（本地构建更快）"},
 	{names: []string{"--notary-profile"}, kind: kString, metavar: "NAME", en: "macOS: notarytool keychain profile", zh: "macOS：notarytool 钥匙串配置名"},
 	{names: []string{"--dmg-tool"}, kind: kString, metavar: "T", en: "macOS: auto | hdiutil | create-dmg", zh: "macOS：auto | hdiutil | create-dmg"},
@@ -66,6 +67,7 @@ func buildCommand() *command {
   fpack build ipa --no-codesign
   fpack build macos dmg                 # `+i18n.S("Developer ID signing/notarization from fpack.yaml macos.sign", "使用 fpack.yaml 中 macos.sign 的 Developer ID 签名/公证配置")+`
   fpack build dmg --no-notarize
+  fpack build macos dmg pkg             # `+i18n.S("one flutter build, three artifacts", "一次 flutter 构建，三个产物")+`
   fpack build --all --json > result.json
   fpack build web --base-href /app/ -- --no-web-resources-cdn
 `) + "\n" + i18n.S("Targets:", "目标：") + "\n" + fmtRows(rows)
@@ -116,6 +118,7 @@ func applyBuildFlags(p *parsed) (func(*config.Config) error, error) {
 		set("export-method", &c.IOS.ExportMethod)
 		set("export-options-plist", &c.IOS.ExportOptionsPlist)
 		set("sign-identity", &c.MacOS.Sign.Identity)
+		set("installer-identity", &c.MacOS.Sign.InstallerIdentity)
 		set("notary-profile", &c.MacOS.Sign.NotaryProfile)
 		set("dmg-tool", &c.MacOS.DMG.Tool)
 		set("base-href", &c.Web.BaseHref)

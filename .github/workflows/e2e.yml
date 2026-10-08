@@ -88,17 +88,35 @@ jobs:
           fpack --wrapper-info
           fpack doctor
           fpack list
-          fpack build macos dmg ipa --no-sign --no-codesign --dry-run
-      - name: fpack build macos dmg ipa (unsigned)
+          fpack build macos dmg pkg ipa --no-sign --no-codesign --dry-run
+      - name: fpack build macos dmg pkg ipa (unsigned)
         working-directory: ${{ runner.temp }}/sample
         run: |
           set +e
-          fpack build macos dmg ipa --no-sign --no-codesign --json > result.json
+          fpack build macos dmg pkg ipa --no-sign --no-codesign --json > result.json
           code=$?
-          python3 "$GITHUB_WORKSPACE/scripts/e2e_check.py" result.json macos dmg ipa || code=1
+          python3 "$GITHUB_WORKSPACE/scripts/e2e_check.py" result.json macos dmg pkg ipa || code=1
           ls -la dist/*/
           [ $code -eq 0 ] || { cat result.json; exit 1; }
           hdiutil verify dist/*/*.dmg
+      - name: verify pkg (unsigned, installs into /Applications)
+        working-directory: ${{ runner.temp }}/sample
+        run: |
+          set -eu
+          pkg=$(ls dist/*/*-macos.pkg)
+          echo "== $pkg"
+          sig=$(pkgutil --check-signature "$pkg" || true)
+          echo "$sig"
+          echo "$sig" | grep -q "no signature"
+          installer -pkginfo -pkg "$pkg"
+          pkgutil --expand-full "$pkg" "$RUNNER_TEMP/pkgx"
+          grep -q 'hostArchitectures="arm64,x86_64"' "$RUNNER_TEMP/pkgx/Distribution"
+          test -x "$RUNNER_TEMP/pkgx/app.pkg/Payload/sample.app/Contents/MacOS/sample"
+          grep -q 'install-location="/Applications"' "$RUNNER_TEMP/pkgx/app.pkg/PackageInfo"
+          sudo installer -pkg "$pkg" -target /
+          test -x /Applications/sample.app/Contents/MacOS/sample
+          pkgutil --pkgs | grep dev.fpack.e2e
+          pkgutil --files dev.fpack.e2e.sample | head
       - uses: actions/upload-artifact@v7
         if: always()
         with:
