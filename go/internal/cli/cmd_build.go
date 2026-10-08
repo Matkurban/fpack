@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/Matkurban/fpack/go/internal/build"
 	"github.com/Matkurban/fpack/go/internal/config"
@@ -183,9 +184,16 @@ func signalContext(u *ui.UI) (context.Context, func()) {
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		n := 0
+		var first time.Time
 		for range ch {
+			// The Dart wrapper forwards signals it receives, and a terminal
+			// Ctrl-C reaches both processes: treat a burst as one press.
+			if n == 1 && time.Since(first) < 500*time.Millisecond {
+				continue
+			}
 			n++
 			if n == 1 {
+				first = time.Now()
 				u.Blank()
 				u.Warn(i18n.S("stopping… (press Ctrl-C again to force)", "正在停止…（再按一次 Ctrl-C 强制退出）"))
 				cancel()
