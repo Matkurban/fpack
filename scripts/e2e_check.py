@@ -15,6 +15,10 @@ import sys
 
 
 def main() -> int:
+    # Windows consoles default to cp1252, which can't print ✓/✗.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     path, want = sys.argv[1], sys.argv[2:]
     text = open(path, encoding="utf-8-sig").read()
     start = text.find("{")
