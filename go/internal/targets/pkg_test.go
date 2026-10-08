@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -201,7 +202,7 @@ func TestPkgOptions(t *testing.T) {
 	}
 	sc, err := os.ReadFile(filepath.Join(stage, "scripts", "postinstall"))
 	st, _ := os.Stat(filepath.Join(stage, "scripts", "postinstall"))
-	if err != nil || !strings.HasPrefix(string(sc), "#!/bin/sh") || strings.Contains(string(sc), "\r") || st.Mode()&0o111 == 0 {
+	if err != nil || !strings.HasPrefix(string(sc), "#!/bin/sh") || strings.Contains(string(sc), "\r") || (runtime.GOOS != "windows" && st.Mode()&0o111 == 0) {
 		t.Fatalf("%q %v", sc, err)
 	}
 }

@@ -142,7 +142,8 @@ func TestSchemaUpToDate(t *testing.T) {
 		}
 	}
 	want, err := os.ReadFile(path)
-	if err != nil || string(want) != string(got) {
+	// git may check files out with CRLF line endings on Windows.
+	if err != nil || strings.ReplaceAll(string(want), "\r\n", "\n") != string(got) {
 		t.Fatalf("schema/fpack.schema.json is out of date: run FPACK_UPDATE=1 go test ./internal/config (%v)", err)
 	}
 	var v map[string]any
@@ -158,7 +159,8 @@ func TestDocsUpToDate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	doc := string(b)
+	orig := strings.ReplaceAll(string(b), "\r\n", "\n") // CRLF checkouts on Windows
+	doc := orig
 	for name, content := range map[string]string{"KEYS": Markdown("zh"), "ENV": EnvMarkdown("zh")} {
 		var ok bool
 		doc, ok = ReplaceGenerated(doc, name, content)
@@ -168,7 +170,7 @@ func TestDocsUpToDate(t *testing.T) {
 	}
 	if os.Getenv("FPACK_UPDATE") == "1" {
 		os.WriteFile(path, []byte(doc), 0o644)
-	} else if doc != string(b) {
+	} else if doc != orig {
 		t.Fatal("doc/configuration.md is out of date: run FPACK_UPDATE=1 go test ./internal/config")
 	}
 }
