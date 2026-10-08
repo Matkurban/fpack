@@ -118,6 +118,14 @@ func printPlan(c *targets.Context, u *ui.UI, s *Summary, steps map[string]*stepS
 func finish(c *targets.Context, u *ui.UI, s *Summary, start time.Time, checksums, logDir string) *Summary {
 	s.DurationMs = time.Since(start).Milliseconds()
 	s.Checksums = checksums
+	if !s.DryRun {
+		// Planned paths of targets that did not finish were never produced.
+		for _, t := range s.Targets {
+			if t.Status != Success {
+				t.Artifacts = []ArtifactResult{}
+			}
+		}
+	}
 	var ok, failed, skipped, planned, reference int
 	attemptedFail := false
 	for _, t := range s.Targets {

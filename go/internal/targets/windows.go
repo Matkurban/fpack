@@ -239,8 +239,23 @@ func (*Msix) Package(c *Context, in Inputs) (*Plan, error) {
 	stage := c.Stage("msix")
 	base := strings.TrimSuffix(filepath.Base(dst), ".msix")
 	args := []string{"run", "msix:create", "--build-windows", "false", "--output-path", stage, "--output-name", base, "--version", MsixVersion(c.BuildName)}
+	cfg := c.Project.Section("msix_config")
+	extra := strings.Join(c.Config.Windows.Msix.ExtraArgs, " ")
+	// msix:create asks "Do you want to install the certificate?" when it signs
+	// with its test certificate; with no terminal (CI, fpack's own runner) that
+	// prompt crashes. Installing certificates is not packaging's job.
+	if _, set := cfg["install_certificate"]; !set && !strings.Contains(extra, "--install-certificate") {
+		args = append(args, "--install-certificate", "false")
+	}
 	args = append(args, c.Config.Windows.Msix.ExtraArgs...)
-	return &Plan{Ops: []Op{
+	var notes []string
+	_, hasCert := cfg["certificate_path"]
+	_, hasOpts := cfg["signtool_options"]
+	if !hasCert && !hasOpts && cfg["store"] != true && cfg["sign_msix"] != false &&
+		!strings.Contains(extra, "--certificate-path") && !strings.Contains(extra, "--signtool-options") && !strings.Contains(extra, "--store") {
+		notes = append(notes, i18n.S("signed with the msix package's self-signed test certificate: fine for testing; set msix_config certificate_path (or store: true) for distribution", "使用 msix 包自带的自签名测试证书签名：仅适合测试；正式分发请在 msix_config 中设置 certificate_path（或 store: true）"))
+	}
+	return &Plan{Notes: notes, Ops: []Op{
 		resetDirOp(c, stage),
 		{Desc: i18n.S("create MSIX (msix package)", "创建 MSIX（msix 包）"), Cmd: &runner.Cmd{Name: c.SDK.Dart, Args: args, Dir: c.Project.Root}},
 		moveOp(c, filepath.Join(stage, base+".msix"), dst),

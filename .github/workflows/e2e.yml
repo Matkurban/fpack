@@ -12,10 +12,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
       - uses: subosito/flutter-action@v2
         with:
@@ -54,7 +54,7 @@ jobs:
           python "$env:GITHUB_WORKSPACE\scripts\e2e_check.py" result.json windows exe msix
           if ($code -ne 0 -or $LASTEXITCODE -ne 0) { Get-Content result.json; exit 1 }
           Get-ChildItem -Recurse dist | Format-Table FullName, Length
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: windows-dist
@@ -67,10 +67,10 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
       - uses: subosito/flutter-action@v2
         with:
@@ -99,7 +99,7 @@ jobs:
           ls -la dist/*/
           [ $code -eq 0 ] || { cat result.json; exit 1; }
           hdiutil verify dist/*/*.dmg
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: macos-dist
@@ -112,12 +112,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -151,7 +151,7 @@ jobs:
           [ $code -eq 0 ] || { cat result.json; exit 1; }
           dpkg-deb --info dist/*/*.deb
           rpm -qip dist/*/*.rpm
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: linux-dist

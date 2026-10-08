@@ -13,6 +13,13 @@ cd "$ROOT"
 "$ROOT/scripts/check_versions.sh" >/dev/null
 
 GO="${GO:-$(command -v go || echo /usr/local/go/bin/go)}"
+# Release binaries are built with exactly the toolchain pinned in go.mod.
+want="$(sed -n 's/^toolchain //p' go/go.mod)"
+have="$("$GO" env GOVERSION)"
+if [ -n "$want" ] && [ "$have" != "$want" ] && [ "${ALLOW_GO_MISMATCH:-}" != 1 ]; then
+  echo "error: go.mod pins $want but $GO is $have (set GO=/path/to/$want/bin/go, or ALLOW_GO_MISMATCH=1)" >&2
+  exit 1
+fi
 VERSION="$(sed -n 's/^const Version = "\(.*\)"/\1/p' go/internal/version/version.go)"
 TARGETS=("$@")
 if [ ${#TARGETS[@]} -eq 0 ]; then

@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -72,7 +73,8 @@ func TestArchivesAndChecksums(t *testing.T) {
 		names[f.Name] = f.Mode()
 	}
 	zr.Close()
-	if names["bundle/app"]&0o100 == 0 || names["bundle/link"]&os.ModeSymlink == 0 {
+	// Windows has no executable bit to carry over.
+	if (runtime.GOOS != "windows" && names["bundle/app"]&0o100 == 0) || names["bundle/link"]&os.ModeSymlink == 0 {
 		t.Fatalf("zip entries: %v", names)
 	}
 

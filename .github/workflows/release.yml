@@ -14,10 +14,10 @@ jobs:
   binaries:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
       - name: check tag
         run: scripts/check_versions.sh "${GITHUB_REF_NAME}"
@@ -25,7 +25,7 @@ jobs:
         run: OUT=release scripts/build_binaries.sh
       - name: self-contained archive (offline path install)
         run: scripts/package_dist.sh "release/fpack-${GITHUB_REF_NAME}.tar.gz"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: prebuilt
           path: prebuilt/
@@ -42,7 +42,7 @@ jobs:
           fi
       - name: GitHub release
         if: steps.existing.outputs.exists != 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: release/*
           generate_release_notes: true
@@ -56,9 +56,9 @@ jobs:
     if: ${{ vars.PUB_PUBLISH == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dart-lang/setup-dart@v1
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: ${{ vars.BUNDLE_BINARIES == 'true' }}
         with:
           name: prebuilt

@@ -14,10 +14,10 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
       - uses: dart-lang/setup-dart@v1
         with:
@@ -29,7 +29,10 @@ jobs:
 
       - name: go vet + test
         working-directory: go
+        shell: bash
         run: |
+          go version
+          test "$(go env GOVERSION)" = "$(sed -n 's/^toolchain //p' go.mod)" || { echo "::error::Go $(go env GOVERSION) != go.mod toolchain"; exit 1; }
           go vet ./...
           go test ./...
 

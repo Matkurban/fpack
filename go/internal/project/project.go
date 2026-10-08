@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/Matkurban/fpack/go/internal/host"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Project is a detected Flutter application.

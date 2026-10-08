@@ -162,7 +162,7 @@ android:
 	if len(s) != 2 || s[0].Key != "apk" || s[1].Key != "apk-split" {
 		t.Fatalf("keys: %+v", s)
 	}
-	want := "build apk --release --flavor paidPro --target lib/main_prod.dart --build-name 2.0.0 --build-number 37 --obfuscate --split-debug-info=dist/1.0.0+1/debug-info/android --dart-define=API=https://x --dart-define-from-file=env/prod.json --target-platform android-arm64,android-arm"
+	want := "build apk --release --flavor paidPro --target lib/main_prod.dart --build-name 2.0.0 --build-number 37 --obfuscate --split-debug-info=" + filepath.FromSlash("dist/1.0.0+1/debug-info/android") + " --dart-define=API=https://x --dart-define-from-file=env/prod.json --target-platform android-arm64,android-arm"
 	if got := strings.Join(s[0].Args, " "); got != want+" --no-tree-shake-icons" {
 		t.Fatalf("universal args:\n got %s\nwant %s", got, want)
 	}
@@ -737,4 +737,22 @@ func TestKeytoolOutputIsLocaleIndependent(t *testing.T) {
 // newCtxPlanNotes: DMG notes for a project with no signing configured at all.
 func newCtxPlanNotes(t *testing.T) []string {
 	return plan(t, &DMG{}, newCtx(t, "darwin", "", "")).Notes
+}
+
+func TestMsixNeverPromptsForCertificate(t *testing.T) {
+	c := newCtx(t, "windows", "", "")
+	p := plan(t, &Msix{}, c)
+	cs := strings.Join(cmds(p), "\n")
+	if !strings.Contains(cs, "msix:create") || !strings.Contains(cs, "--install-certificate false") {
+		t.Fatal(cs)
+	}
+	if len(p.Notes) != 1 || !strings.Contains(p.Notes[0], "test certificate") {
+		t.Fatal(p.Notes)
+	}
+	// the project decides explicitly → fpack doesn't override it
+	c = newCtx(t, "windows", "", "msix_config:\n  install_certificate: true\n  certificate_path: C:\\certs\\app.pfx\n")
+	p = plan(t, &Msix{}, c)
+	if cs := strings.Join(cmds(p), "\n"); strings.Contains(cs, "--install-certificate") || len(p.Notes) != 0 {
+		t.Fatal(cs, p.Notes)
+	}
 }
