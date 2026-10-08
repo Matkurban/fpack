@@ -210,6 +210,7 @@ func TestAPKFileName(t *testing.T) {
 }
 
 func TestAndroidSigningInjectionAndRedaction(t *testing.T) {
+	posixPaths(t)
 	c := newCtx(t, "linux", "android:\n  signing:\n    store_file: keys/upload.jks\n    store_password: s3cr3t-pw\n    key_alias: upload\n", "")
 	if !c.Signing.Enabled || c.Signing.KeyPassword != "s3cr3t-pw" || !filepath.IsAbs(c.Signing.StoreFile) {
 		t.Fatalf("%+v", c.Signing)
@@ -320,6 +321,7 @@ func TestIPAExportMethodAndPlist(t *testing.T) {
 }
 
 func TestIPAUnsigned(t *testing.T) {
+	posixPaths(t)
 	c := newCtx(t, "darwin", "ios:\n  codesign: false\n", "")
 	if got := strings.Join(steps(t, &IPA{}, c)[0].Args, " "); got != "build ipa --release --no-codesign" {
 		t.Fatal(got)
@@ -356,6 +358,7 @@ func TestIPANoTeamWarning(t *testing.T) {
 // -------------------------------------------------------------------- macOS
 
 func TestMacAppUnsigned(t *testing.T) {
+	posixPaths(t)
 	c := newCtx(t, "darwin", "", "")
 	if c.Mac.Enabled {
 		t.Fatal("signing must be off without config")
@@ -372,6 +375,7 @@ func TestMacAppUnsigned(t *testing.T) {
 }
 
 func TestMacSigningFromPubspecDMG(t *testing.T) {
+	posixPaths(t)
 	c := newCtx(t, "darwin", "", "dmg:\n  sign-certificate: \""+devID+"\"\n  notary-profile: XueHua\n  sign: true\n  notarization: true\n")
 	m := c.Mac
 	if !m.Enabled || !m.Notarize || m.Identity != devID || m.Profile != "XueHua" || m.Source != "pubspec.yaml dmg:" {
@@ -416,6 +420,7 @@ func TestMacSigningFromPubspecDMG(t *testing.T) {
 }
 
 func TestMacZipNotarizedWhenRequested(t *testing.T) {
+	posixPaths(t)
 	pub := "dmg:\n  sign-certificate: \"" + devID + "\"\n  notary-profile: XueHua\n"
 	c := newCtx(t, "darwin", "macos:\n  sign:\n    notarize: true\n", pub)
 	if !c.Mac.NotarizeZip {
@@ -508,6 +513,7 @@ func TestMacAutoIdentity(t *testing.T) {
 }
 
 func TestDMGCreateDMGAndFlavorProfile(t *testing.T) {
+	posixPaths(t)
 	c := newCtx(t, "darwin", "build:\n  flavor: prod\n  mode: profile\nmacos:\n  dmg:\n    tool: create-dmg\n    volume_name: XueHua Installer\n", "")
 	c.Tools.(*fakeTools).bins["create-dmg"] = "/opt/homebrew/bin/create-dmg"
 	if got := strings.Join(steps(t, &DMG{}, c)[0].Args, " "); got != "build macos --profile --flavor prod" {
@@ -548,6 +554,7 @@ func TestParseNotary(t *testing.T) {
 // ------------------------------------------------------------ other targets
 
 func TestDesktopAndWebPlans(t *testing.T) {
+	posixPaths(t)
 	c := newCtx(t, "linux", "", "")
 	if got := strings.Join(steps(t, &WebZip{}, c)[0].Args, " "); got != "build web --release" {
 		t.Fatal(got)
