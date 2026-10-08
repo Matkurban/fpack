@@ -54,6 +54,123 @@ jobs:
           python "$env:GITHUB_WORKSPACE\scripts\e2e_check.py" result.json windows exe msix
           if ($code -ne 0 -or $LASTEXITCODE -ne 0) { Get-Content result.json; exit 1 }
           Get-ChildItem -Recurse dist | Format-Table FullName, Length
+      # Custom configuration: Chinese display name, a Chinese + English Inno
+      # Setup installer for the current user, MSIX metadata and signtool
+      # signing with a throwaway self-signed certificate.
+      - name: custom-config app + self-signed code signing certificate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          flutter create --platforms=windows --org dev.fpack.e2e --project-name aurora_notes "$env:RUNNER_TEMP\aurora"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          cd "$env:RUNNER_TEMP\aurora"
+          flutter pub add --dev msix
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          # throwaway test certificate, created on the runner (never stored anywhere)
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=fpack E2E, O=Matkurban, C=CN" -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(2)
+          $pw = ConvertTo-SecureString -String "fpack-e2e-only" -Force -AsPlainText
+          Export-PfxCertificate -Cert $cert -FilePath "$env:RUNNER_TEMP\e2e-codesign.pfx" -Password $pw | Out-Null
+          Export-Certificate -Cert $cert -FilePath "$env:RUNNER_TEMP\e2e-codesign.cer" | Out-Null
+          Import-Certificate -FilePath "$env:RUNNER_TEMP\e2e-codesign.cer" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+          Import-Certificate -FilePath "$env:RUNNER_TEMP\e2e-codesign.cer" -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+          "E2E_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+          "MIT License`n`nCopyright (c) 2026 Matkurban" | Set-Content LICENSE.txt -Encoding utf8NoBOM
+          @'
+          app:
+            display_name: 极光笔记
+            publisher: Matkurban
+            homepage: https://github.com/Matkurban/fpack
+            copyright: © 2026 Matkurban
+          output:
+            names:
+              exe: "{app}-setup-{version}"
+          windows:
+            sign:
+              certificate: ${RUNNER_TEMP}/e2e-codesign.pfx
+            inno_setup:
+              app_id: 8D3B5E6A-1C2D-4E5F-8A9B-0C1D2E3F4A5B
+              languages: [zh-CN, en]
+              privileges: user
+              desktop_icon: checked
+              license_file: LICENSE.txt
+              group_name: 极光笔记
+              publisher_url: https://github.com/Matkurban
+              run_after_install: false
+            msix:
+              display_name: 极光笔记
+              publisher_display_name: Matkurban
+              identity_name: dev.fpack.e2e.aurora
+              publisher: "CN=fpack E2E, O=Matkurban, C=CN"
+              capabilities: [internetClient]
+              version: 1.0.0.0
+          '@ | Set-Content fpack.yaml -Encoding utf8NoBOM
+          git init -q; git add -A; git -c user.name=e2e -c user.email=e2e@fpack.dev commit -qm init
+      - name: fpack build windows exe msix (signed, custom config)
+        shell: pwsh
+        working-directory: ${{ runner.temp }}/aurora
+        env:
+          FPACK_WINDOWS_CERTIFICATE_PASSWORD: fpack-e2e-only
+        run: |
+          fpack build windows exe msix --dry-run
+          fpack build windows exe msix --json > result.json
+          $code = $LASTEXITCODE
+          python "$env:GITHUB_WORKSPACE\scripts\e2e_check.py" result.json windows exe msix
+          if ($code -ne 0 -or $LASTEXITCODE -ne 0) { Get-Content result.json; exit 1 }
+          Get-ChildItem -Recurse dist | Format-Table FullName, Length
+          if (Select-String -Path result.json -Pattern "fpack-e2e-only" -Quiet) { "password leaked into result.json"; exit 1 }
+          if (Select-String -Path build\fpack\logs\* -Pattern "fpack-e2e-only" -Quiet) { "password leaked into logs"; exit 1 }
+          $changed = git status --porcelain | Where-Object { $_ -notmatch '^\?\? (dist/|result\.json)$' }
+          if ($changed) { "project files changed:"; $changed; exit 1 }
+      - name: verify signatures, msix manifest, Chinese installer (silent install + uninstall)
+        shell: pwsh
+        working-directory: ${{ runner.temp }}/aurora
+        run: |
+          $ErrorActionPreference = 'Stop'
+          function Assert($ok, $msg) { if (-not $ok) { throw "FAILED: $msg" } else { "ok: $msg" } }
+          function Assert-Signed($file) {
+            $sig = Get-AuthenticodeSignature $file
+            "$file -> $($sig.Status) $($sig.SignerCertificate.Subject) timestamp=$([bool]$sig.TimeStamperCertificate)"
+            Assert ($sig.Status -eq 'Valid' -and $sig.SignerCertificate.Thumbprint -eq $env:E2E_THUMBPRINT) "signed by the test certificate: $file"
+          }
+          $d = (Get-ChildItem dist -Directory | Select-Object -First 1).FullName
+          $setup = Get-Item "$d\aurora_notes-setup-1.0.0.exe"
+          Assert-Signed $setup.FullName
+          $zip = Get-ChildItem $d -Filter *-portable.zip | Select-Object -First 1
+          Expand-Archive $zip.FullName "$env:RUNNER_TEMP\zipx"
+          Assert-Signed (Get-ChildItem "$env:RUNNER_TEMP\zipx" -Recurse -Filter aurora_notes.exe | Select-Object -First 1).FullName
+          $msix = Get-ChildItem $d -Filter *.msix | Select-Object -First 1
+          Assert-Signed $msix.FullName
+          Copy-Item $msix.FullName "$env:RUNNER_TEMP\app.zip"
+          Expand-Archive "$env:RUNNER_TEMP\app.zip" "$env:RUNNER_TEMP\msixx"
+          [xml]$m = Get-Content "$env:RUNNER_TEMP\msixx\AppxManifest.xml" -Encoding utf8
+          Assert ($m.Package.Identity.Name -eq 'dev.fpack.e2e.aurora') "msix identity name ($($m.Package.Identity.Name))"
+          Assert ($m.Package.Identity.Publisher -eq 'CN=fpack E2E, O=Matkurban, C=CN') "msix publisher"
+          Assert ($m.Package.Identity.Version -eq '1.0.0.0') "msix version"
+          Assert ($m.Package.Properties.DisplayName -eq '极光笔记') "msix display name ($($m.Package.Properties.DisplayName))"
+          Assert ($m.Package.Properties.PublisherDisplayName -eq 'Matkurban') "msix publisher display name"
+          Assert ((Get-Content "$env:RUNNER_TEMP\msixx\AppxManifest.xml" -Raw) -match 'internetClient') "msix capability internetClient"
+          $iss = Get-ChildItem build\fpack -Recurse -Filter installer.iss | Select-Object -First 1
+          Get-Content $iss.FullName -Encoding utf8 | Select-Object -First 60
+          Assert ((Get-Content $iss.FullName -Raw -Encoding utf8) -match 'Name: "zh_cn"') "Inno script has the Chinese language"
+          $p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER','/LANG=zh_cn',"/LOG=$env:RUNNER_TEMP\inno-install.log" -Wait -PassThru
+          Assert ($p.ExitCode -eq 0) "silent install exit code $($p.ExitCode)"
+          $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8D3B5E6A-1C2D-4E5F-8A9B-0C1D2E3F4A5B}_is1'
+          $reg = Get-ItemProperty $key
+          $reg | Format-List DisplayName, DisplayVersion, Publisher, InstallLocation, URLInfoAbout, UninstallString
+          Assert ($reg.DisplayName -eq '极光笔记') "registry DisplayName ($($reg.DisplayName))"
+          Assert ($reg.Publisher -eq 'Matkurban') "registry Publisher"
+          Assert ($reg.DisplayVersion -like '1.0.0*') "registry DisplayVersion ($($reg.DisplayVersion))"
+          Assert ($reg.InstallLocation -like "$env:LOCALAPPDATA*") "per-user install location ($($reg.InstallLocation))"
+          $installed = Join-Path $reg.InstallLocation 'aurora_notes.exe'
+          Assert (Test-Path $installed) "installed exe $installed"
+          Assert-Signed $installed
+          Assert (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\极光笔记\极光笔记.lnk") "Start menu shortcut"
+          Assert (Test-Path (Join-Path ([Environment]::GetFolderPath('Desktop')) '极光笔记.lnk')) "desktop shortcut (desktop_icon: checked)"
+          $unins = $reg.UninstallString.Trim('"')
+          Assert-Signed $unins
+          $p = Start-Process $unins -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          Start-Sleep -Seconds 5
+          Assert (-not (Test-Path $key)) "uninstalled (registry key removed)"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -62,6 +179,10 @@ jobs:
             ${{ runner.temp }}/sample/dist/
             ${{ runner.temp }}/sample/build/fpack/logs/
             ${{ runner.temp }}/sample/result.json
+            ${{ runner.temp }}/aurora/dist/
+            ${{ runner.temp }}/aurora/build/fpack/logs/
+            ${{ runner.temp }}/aurora/result.json
+            ${{ runner.temp }}/inno-install.log
 
   macos:
     runs-on: macos-latest
@@ -117,6 +238,167 @@ jobs:
           test -x /Applications/sample.app/Contents/MacOS/sample
           pkgutil --pkgs | grep dev.fpack.e2e
           pkgutil --files dev.fpack.e2e.sample | head
+      # Custom configuration: an app whose name contains a space, a create-dmg
+      # layout, pkg metadata, "Developer ID" signing and notarization through
+      # fake codesign/security/xcrun/spctl shims (scripts/fake-apple): the
+      # whole notarization flow runs without Apple credentials.
+      - name: custom-config app (name with a space, DMG layout, pkg metadata)
+        run: |
+          set -eu
+          brew list create-dmg >/dev/null 2>&1 || brew install create-dmg
+          flutter create --platforms=macos --org dev.fpack.e2e --project-name aurora_notes "$RUNNER_TEMP/aurora"
+          cd "$RUNNER_TEMP/aurora"
+          sed -i '' 's/^PRODUCT_NAME = .*/PRODUCT_NAME = Aurora Notes/' macos/Runner/Configs/AppInfo.xcconfig
+          mkdir -p packaging
+          cp macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png packaging/dmg-bg.png
+          printf '#!/bin/sh\necho "postinstall $2" > /tmp/aurora-postinstall.txt\n' > packaging/postinstall.sh
+          cat > fpack.yaml <<'YAML'
+          app:
+            publisher: Matkurban
+            copyright: © 2026 Matkurban
+          output:
+            names:
+              dmg: "{app}-{version}-mac"
+          macos:
+            sign:
+              identity: "Developer ID Application: fpack E2E (FPACKE2E01)"
+              notary_profile: fpack-e2e
+            dmg:
+              tool: create-dmg
+              volume_name: Aurora Notes Installer
+              background: packaging/dmg-bg.png
+              window_size: [640, 420]
+              icon_size: 100
+              app_position: [160, 200]
+              applications_position: [480, 200]
+              format: UDBZ
+            pkg:
+              title: Aurora Notes
+              min_os: "11.0"
+              relocatable: false
+              require_restart: false
+              postinstall: packaging/postinstall.sh
+          YAML
+          git init -q && git add -A && git -c user.name=e2e -c user.email=e2e@fpack.dev commit -qm init
+          echo "FAKE_APPLE=$GITHUB_WORKSPACE/scripts/fake-apple" >> "$GITHUB_ENV"
+          echo "FAKE_NOTARY_LOG=$RUNNER_TEMP/notary.log" >> "$GITHUB_ENV"
+      - name: signed + notarized build (wait, fake notary service)
+        working-directory: ${{ runner.temp }}/aurora
+        run: |
+          set +e
+          export PATH="$FAKE_APPLE:$PATH" FAKE_NOTARY_DELAY=3
+          fpack build macos dmg pkg --dry-run
+          fpack build macos dmg pkg --json > result.json
+          code=$?
+          python3 "$GITHUB_WORKSPACE/scripts/e2e_check.py" result.json macos dmg pkg --notarization macos=stapled --notarization dmg=stapled || code=1
+          ls -la dist/*/
+          cat "$FAKE_NOTARY_LOG"
+          [ $code -eq 0 ] || { cat result.json; exit 1; }
+          set -eu
+          d=$(ls -d dist/*/)
+          cat "$d/NOTARIZATION.md"
+          for w in "notarytool info" "notarytool log" "stapler staple" "stapler validate" "spctl" "fpack notarize finish" "--keychain-profile fpack-e2e"; do
+            grep -q -- "$w" "$d/NOTARIZATION.md" || { echo "NOTARIZATION.md lacks: $w"; exit 1; }
+          done
+          python3 - "$d" <<'PY'
+          import hashlib, json, os, sys
+          d = sys.argv[1]
+          r = json.load(open(os.path.join(d, "notarization.json")))
+          subs = r["submissions"]
+          assert {s["target"] for s in subs} == {"macos", "dmg"}, subs
+          assert len({s["id"] for s in subs}) == 2, subs
+          for s in subs:
+              assert s["status"] == "Accepted" and s["stapled"], s
+              assert s["auth"] and "fpack-e2e" in s["auth"], s
+              assert hashlib.sha256(open(s["artifact"], "rb").read()).hexdigest() == s["final_sha256"], s
+          sums = open(os.path.join(d, "SHA256SUMS")).read()
+          assert "NOTARIZATION" not in sums and "notarization.json" not in sums, sums
+          print("notarization.json ok:", [(s["target"], s["id"]) for s in subs])
+          PY
+          for w in "notarytool submit" "notarytool wait" "stapler staple"; do grep -q "$w" "$FAKE_NOTARY_LOG"; done
+          (cd "$d" && shasum -a 256 -c SHA256SUMS)
+          # nothing in the project changed (dist/ is the only new path)
+          changed=$(git status --porcelain | grep -v -E '^\?\? (dist/|[a-z]+\.(json|txt))$' || true)
+          [ -z "$changed" ] || { echo "project files changed:"; echo "$changed"; exit 1; }
+      - name: verify DMG layout and pkg metadata
+        working-directory: ${{ runner.temp }}/aurora
+        run: |
+          set -eu
+          dmg=$(ls dist/*/aurora_notes-1.0.0-mac.dmg)
+          hdiutil imageinfo "$dmg" | grep -q UDBZ
+          mnt=$(mktemp -d)
+          hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$dmg"
+          ls -la "$mnt"
+          test -x "$mnt/Aurora Notes.app/Contents/MacOS/Aurora Notes"
+          test -L "$mnt/Applications"
+          test -n "$(ls -A "$mnt/.background")"
+          diskutil info "$mnt" | grep "Aurora Notes Installer"
+          hdiutil detach "$mnt"
+          pkg=$(ls dist/*/*-macos.pkg)
+          pkgutil --expand-full "$pkg" "$RUNNER_TEMP/aurorapkg"
+          cat "$RUNNER_TEMP/aurorapkg/Distribution"
+          grep -q 'min="11.0"' "$RUNNER_TEMP/aurorapkg/Distribution"
+          grep -q '<title>Aurora Notes</title>' "$RUNNER_TEMP/aurorapkg/Distribution"
+          test -x "$RUNNER_TEMP/aurorapkg/app.pkg/Scripts/postinstall"
+          test -d "$RUNNER_TEMP/aurorapkg/app.pkg/Payload/Aurora Notes.app"
+          sudo installer -pkg "$pkg" -target /
+          test -x "/Applications/Aurora Notes.app/Contents/MacOS/Aurora Notes"
+          cat /tmp/aurora-postinstall.txt
+      - name: notarization without waiting + fpack notarize status/finish
+        working-directory: ${{ runner.temp }}/aurora
+        run: |
+          set -eu
+          export PATH="$FAKE_APPLE:$PATH" FAKE_NOTARY_DELAY=2
+          waits=$(grep -c "notarytool wait" "$FAKE_NOTARY_LOG")
+          fpack build dmg --force --notarize-no-wait --json > nowait.json
+          python3 "$GITHUB_WORKSPACE/scripts/e2e_check.py" nowait.json dmg --notarization dmg=submitted
+          [ "$(grep -c "notarytool wait" "$FAKE_NOTARY_LOG")" = "$waits" ] || { echo "--notarize-no-wait waited"; exit 1; }
+          if FPACK_NOTARIZE_WAIT=false fpack build dmg --force --dry-run | grep -q "notarytool wait"; then echo "FPACK_NOTARIZE_WAIT=false still waits"; exit 1; fi
+          fpack notarize status | tee status.txt
+          grep -q Accepted status.txt
+          fpack notarize finish
+          d=$(ls -d dist/*/)
+          python3 - "$d" <<'PY'
+          import json, os, sys
+          subs = json.load(open(os.path.join(sys.argv[1], "notarization.json")))["submissions"]
+          dmg = [s for s in subs if s["target"] == "dmg"][0]
+          assert dmg["status"] == "Accepted" and dmg["stapled"], dmg
+          print("finish ok:", dmg["id"])
+          PY
+          (cd "$d" && grep -- "-mac.dmg" SHA256SUMS | shasum -a 256 -c -)
+      - name: rejected submission (Apple log summarized)
+        working-directory: ${{ runner.temp }}/aurora
+        run: |
+          set +e
+          export PATH="$FAKE_APPLE:$PATH" FAKE_NOTARY_DELAY=1 FAKE_NOTARY_STATUS=Invalid
+          fpack build dmg --force --json > invalid.json
+          code=$?
+          set -e
+          [ $code -eq 1 ] || { echo "exit $code, want 1"; cat invalid.json; exit 1; }
+          python3 "$GITHUB_WORKSPACE/scripts/e2e_check.py" invalid.json --failed dmg
+          ls dist/*/notary-log-*.json
+          grep -i "hardened runtime" dist/*/NOTARIZATION.md
+      - name: Ctrl-C while waiting, then fpack notarize finish
+        working-directory: ${{ runner.temp }}/aurora
+        run: |
+          set +e
+          export PATH="$FAKE_APPLE:$PATH" FAKE_NOTARY_DELAY=600 FAKE_NOTARY_LOG="$RUNNER_TEMP/notary-ctrlc.log"
+          python3 "$GITHUB_WORKSPACE/scripts/e2e_interrupt.py" "$FAKE_NOTARY_LOG" "notarytool wait" -- fpack build dmg --force > ctrlc.txt 2>&1
+          code=$?
+          set -e
+          cat ctrlc.txt
+          [ $code -eq 130 ] || { echo "exit $code, want 130"; exit 1; }
+          grep -q "NOTARIZATION.md" ctrlc.txt
+          test -f dist/*/aurora_notes-1.0.0-mac.dmg
+          FAKE_NOTARY_DELAY=1 FAKE_NOTARY_STATUS=Accepted fpack notarize finish --json > finish.json
+          cat finish.json
+          python3 - dist/*/notarization.json <<'PY'
+          import json, sys
+          subs = json.load(open(sys.argv[1]))["submissions"]
+          dmg = [s for s in subs if s["target"] == "dmg"][0]
+          assert dmg["status"] == "Accepted" and dmg["stapled"], dmg
+          print("finished after Ctrl-C:", dmg["id"])
+          PY
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -125,6 +407,11 @@ jobs:
             ${{ runner.temp }}/sample/dist/
             ${{ runner.temp }}/sample/build/fpack/logs/
             ${{ runner.temp }}/sample/result.json
+            ${{ runner.temp }}/aurora/dist/
+            ${{ runner.temp }}/aurora/build/fpack/logs/
+            ${{ runner.temp }}/aurora/*.json
+            ${{ runner.temp }}/aurora/*.txt
+            ${{ runner.temp }}/notary*.log
 
   linux:
     runs-on: ubuntu-latest
@@ -169,6 +456,181 @@ jobs:
           [ $code -eq 0 ] || { cat result.json; exit 1; }
           dpkg-deb --info dist/*/*.deb
           rpm -qip dist/*/*.rpm
+      # Custom configuration like the demo project: Chinese metadata, APK
+      # v1-v4 signing with a throwaway keystore, hooks, per-target names,
+      # SHA512SUMS, deb/rpm metadata + maintainer scripts, hicolor icons,
+      # AppStream metainfo, AppImage update information, web build flags.
+      - name: appimagetool
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL -o "$HOME/.local/bin/appimagetool" https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x "$HOME/.local/bin/appimagetool"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: custom-config app
+        run: |
+          set -eu
+          flutter create --platforms=android,linux,web --org dev.fpack.e2e --project-name aurora_notes "$RUNNER_TEMP/aurora"
+          cd "$RUNNER_TEMP/aurora"
+          # throwaway keystore, created on the runner outside the project
+          keytool -genkeypair -keystore "$RUNNER_TEMP/aurora-e2e.jks" -storetype PKCS12 -alias aurora -keyalg RSA -keysize 2048 -validity 3650 \
+            -storepass e2e-store-pass -dname "CN=Aurora Notes E2E, O=Matkurban, C=CN"
+          mkdir -p packaging/linux config scripts
+          cp web/icons/Icon-512.png packaging/icon.png
+          echo '{"API_BASE": "https://api.example.com"}' > config/prod.json
+          printf '#!/bin/sh\nset -e\necho "aurora-notes installed (deb postinst)" > /tmp/aurora-postinst.txt\n' > packaging/linux/postinst
+          printf '#!/bin/sh\necho "aurora-notes removing (deb prerm)" > /tmp/aurora-prerm.txt\n' > packaging/linux/prerm
+          printf 'echo "aurora-notes installed (rpm %%post)"\n' > packaging/linux/rpm-post.sh
+          printf '#!/bin/sh\necho "[hook] $FPACK_TARGET -> $(basename "$FPACK_ARTIFACT") ($FPACK_VERSION+$FPACK_BUILD_NUMBER)" >> build/fpack-hooks.log\n' > scripts/post_package.sh
+          chmod +x scripts/post_package.sh
+          cat > packaging/linux/dev.fpack.e2e.aurora.metainfo.xml <<'XML'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <component type="desktop-application">
+            <id>dev.fpack.e2e.aurora</id>
+            <name>Aurora Notes</name>
+            <name xml:lang="zh_CN">极光笔记</name>
+            <summary>Notes packaged with fpack</summary>
+            <metadata_license>CC0-1.0</metadata_license>
+            <project_license>MIT</project_license>
+            <launchable type="desktop-id">aurora-notes.desktop</launchable>
+          </component>
+          XML
+          cat > fpack.yaml <<'YAML'
+          app:
+            display_name: 极光笔记
+            description: 极光笔记 — fpack E2E
+            publisher: Matkurban
+            homepage: https://github.com/Matkurban/fpack
+            maintainer: Matkurban <matkurban@example.com>
+            copyright: © 2026 Matkurban
+            license: MIT
+          build:
+            targets: [apk, aab, linux, deb, rpm, appimage, web]
+            dart_define_from_file: [config/prod.json]
+            dart_define:
+              BUILD_CHANNEL: ${BUILD_CHANNEL:-e2e}
+          output:
+            names:
+              web: "{app}-web-{version}"
+            checksum_algorithm: sha512
+          hooks:
+            pre_build: ['mkdir -p build && echo "[hook] pre_build $FPACK_VERSION" > build/fpack-hooks.log']
+            post_package:
+              deb: [./scripts/post_package.sh]
+              apk: [./scripts/post_package.sh]
+            post_build: ['echo "[hook] post_build success=$FPACK_SUCCESS" >> build/fpack-hooks.log']
+          android:
+            split_per_abi: both
+            signing:
+              store_file: ${RUNNER_TEMP}/aurora-e2e.jks
+              store_password: ${AURORA_KS_PASS}
+              key_alias: aurora
+              v1: true
+              v2: true
+              v3: true
+              v4: true
+          linux:
+            package_name: aurora-notes
+            icon: packaging/icon.png
+            icon_sizes: [32, 64, 128, 256, 512]
+            categories: [Office]
+            generic_name: Note Taking
+            keywords: [notes, aurora, 笔记]
+            mime_types: [x-scheme-handler/aurora]
+            metainfo: packaging/linux/dev.fpack.e2e.aurora.metainfo.xml
+            deb:
+              depends: [libgtk-3-0 | libgtk-3-0t64]
+              recommends: [xdg-utils]
+              section: editors
+              postinst: packaging/linux/postinst
+              prerm: packaging/linux/prerm
+            rpm:
+              requires: [gtk3]
+              group: Applications/Productivity
+              post: packaging/linux/rpm-post.sh
+            appimage:
+              update_information: "gh-releases-zsync|Matkurban|aurora|latest|*x86_64.AppImage.zsync"
+          web:
+            base_href: /aurora/
+            source_maps: true
+            optimization_level: 3
+            web_define:
+              APP_TITLE: 极光笔记
+          YAML
+          git init -q && git add -A && git -c user.name=e2e -c user.email=e2e@fpack.dev commit -qm init
+      - name: fpack build (custom config, all Linux/Android/Web targets)
+        working-directory: ${{ runner.temp }}/aurora
+        env:
+          AURORA_KS_PASS: e2e-store-pass
+        run: |
+          set +e
+          fpack build --dry-run
+          fpack build --json > result.json
+          code=$?
+          python3 "$GITHUB_WORKSPACE/scripts/e2e_check.py" result.json apk aab linux deb rpm appimage web || code=1
+          ls -la dist/*/
+          [ $code -eq 0 ] || { cat result.json; exit 1; }
+          set -eu
+          if grep -rq "e2e-store-pass" result.json build/fpack/logs; then echo "keystore password leaked"; exit 1; fi
+          changed=$(git status --porcelain | grep -v -E '^\?\? (dist/|result\.json)$' || true)
+          [ -z "$changed" ] || { echo "project files changed:"; echo "$changed"; exit 1; }
+      - name: verify artifacts
+        working-directory: ${{ runner.temp }}/aurora
+        run: |
+          set -eu
+          d=$(ls -d dist/*/)
+          (cd "$d" && sha512sum -c SHA512SUMS)
+          # hooks
+          cat build/fpack-hooks.log
+          grep -q "pre_build 1.0.0" build/fpack-hooks.log
+          grep -q "apk -> aurora_notes-1.0.0+1-android-universal.apk (1.0.0+1)" build/fpack-hooks.log
+          grep -q "deb -> aurora_notes-1.0.0+1-linux-x64.deb" build/fpack-hooks.log
+          grep -q "post_build success=1" build/fpack-hooks.log
+          # APK: v1-v4 + idsig, signer, label
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
+          apk="$d/aurora_notes-1.0.0+1-android-universal.apk"
+          out=$("$apksigner" verify -v --print-certs --min-sdk-version 21 --v4-signature-file "$apk.idsig" "$apk")
+          echo "$out" | head -8
+          for v in "v1 scheme (JAR signing): true" "v2 scheme (APK Signature Scheme v2): true" "v3 scheme (APK Signature Scheme v3): true" "v4 scheme (APK Signature Scheme v4): true" "CN=Aurora Notes E2E"; do
+            echo "$out" | grep -qF "$v" || { echo "apksigner: missing '$v'"; exit 1; }
+          done
+          ls "$d"/*-android-arm64-v8a.apk "$d"/*-android-arm64-v8a.apk.idsig
+          keytool -printcert -jarfile "$d/aurora_notes-1.0.0+1-android.aab" | grep "CN=Aurora Notes E2E"
+          # deb
+          deb="$d/aurora_notes-1.0.0+1-linux-x64.deb"
+          dpkg-deb -f "$deb"
+          [ "$(dpkg-deb -f "$deb" Package)" = aurora-notes ]
+          [ "$(dpkg-deb -f "$deb" Section)" = editors ]
+          [ "$(dpkg-deb -f "$deb" Recommends)" = xdg-utils ]
+          [ "$(dpkg-deb -f "$deb" Maintainer)" = "Matkurban <matkurban@example.com>" ]
+          dpkg-deb -c "$deb" | grep -E "usr/share/(applications|metainfo|icons/hicolor/256x256|doc/aurora-notes)" 
+          dpkg-deb -x "$deb" "$RUNNER_TEMP/debx"
+          cat "$RUNNER_TEMP/debx/usr/share/applications/aurora-notes.desktop"
+          grep -q "^Name=极光笔记$" "$RUNNER_TEMP/debx/usr/share/applications/aurora-notes.desktop"
+          grep -q "^MimeType=x-scheme-handler/aurora;$" "$RUNNER_TEMP/debx/usr/share/applications/aurora-notes.desktop"
+          grep -q "^Copyright: 2026 Matkurban$" "$RUNNER_TEMP/debx/usr/share/doc/aurora-notes/copyright"
+          sudo apt-get install -y "./$deb"
+          test -x /usr/bin/aurora-notes
+          cat /tmp/aurora-postinst.txt
+          sudo apt-get remove -y aurora-notes
+          cat /tmp/aurora-prerm.txt
+          # rpm
+          rpm="$d/aurora_notes-1.0.0+1-linux-x64.rpm"
+          rpm -qip "$rpm"
+          rpm -qp --queryformat '%{GROUP}|%{LICENSE}|%{URL}\n' "$rpm" | grep -qx "Applications/Productivity|MIT|https://github.com/Matkurban/fpack"
+          rpm -qp --scripts "$rpm" | grep -q "rpm %post"
+          rpm -qlp "$rpm" | grep -q /usr/share/icons/hicolor/512x512/apps/aurora-notes.png
+          # AppImage
+          ai=$(realpath "$d/aurora_notes-1.0.0+1-linux-x64.AppImage")
+          (cd "$RUNNER_TEMP" && "$ai" --appimage-extract >/dev/null)
+          cat "$RUNNER_TEMP"/squashfs-root/aurora-notes.desktop
+          grep -q "^X-AppImage-Version=1.0.0+1$" "$RUNNER_TEMP"/squashfs-root/aurora-notes.desktop
+          test -f "$RUNNER_TEMP"/squashfs-root/usr/share/metainfo/dev.fpack.e2e.aurora.metainfo.xml
+          "$ai" --appimage-updateinformation | grep -q "gh-releases-zsync|Matkurban|aurora"
+          test -s "$ai.zsync"
+          # web
+          web="$d/aurora_notes-web-1.0.0.zip"
+          unzip -p "$web" index.html | grep -q '<base href="/aurora/">'
+          unzip -l "$web" | grep -q "main.dart.js.map"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -177,3 +639,7 @@ jobs:
             ${{ runner.temp }}/sample/dist/
             ${{ runner.temp }}/sample/build/fpack/logs/
             ${{ runner.temp }}/sample/result.json
+            ${{ runner.temp }}/aurora/dist/
+            ${{ runner.temp }}/aurora/build/fpack/logs/
+            ${{ runner.temp }}/aurora/build/fpack-hooks.log
+            ${{ runner.temp }}/aurora/result.json

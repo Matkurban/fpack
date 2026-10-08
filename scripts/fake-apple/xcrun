@@ -6,6 +6,8 @@
 #   FAKE_NOTARY_INFO_STATUS  result of `notarytool info` (default: FAKE_NOTARY_STATUS)
 #   FAKE_NOTARY_DELAY        seconds `notarytool wait` takes (default 2)
 #   FAKE_NOTARY_LOG          file receiving one line per call
+#   FAKE_NOTARY_ID           submission id (default: derived from the file name,
+#                            so every uploaded file gets its own id)
 log() { if [ -n "$FAKE_NOTARY_LOG" ]; then echo "$*" >> "$FAKE_NOTARY_LOG"; fi; }
 case "$1" in
 notarytool)
@@ -17,6 +19,10 @@ notarytool)
   case "$sub" in
   submit)
     [ -f "$1" ] || { echo "Error: file not found: $1" >&2; exit 1; }
+    if [ -z "$FAKE_NOTARY_ID" ]; then
+      n=$(basename "$1" | cksum | cut -d' ' -f1)
+      id=$(printf '%08x-52ef-43a5-96dc-0797e4ca1041' "$n")
+    fi
     echo "Conducting pre-submission checks for $(basename "$1") and initiating connection to the Apple notary service..."
     printf '{"id":"%s","message":"Successfully uploaded file","path":"%s"}\n' "$id" "$1"
     ;;

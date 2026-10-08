@@ -2,9 +2,15 @@
 """Checks an `fpack build --json` result in CI.
 
     python3 scripts/e2e_check.py result.json apk web ...
+    python3 scripts/e2e_check.py result.json dmg --notarization dmg=stapled
+    python3 scripts/e2e_check.py result.json --failed dmg
+
+--notarization TARGET=STATE requires every artifact of TARGET that was sent
+to Apple to report that notarization state; --failed TARGET requires TARGET
+to have failed.
 
 Fails unless every listed target succeeded, every artifact exists with the
-reported size and SHA-256, and SHA256SUMS lists them. Leading non-JSON lines
+reported size and SHA-256/512, and SHA256SUMS/SHA512SUMS lists them. Leading non-JSON lines
 (pub prints "Resolving dependencies..." for path-activated packages) are
 ignored.
 """
@@ -19,7 +25,16 @@ def main() -> int:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")
-    path, want = sys.argv[1], sys.argv[2:]
+    path, want, notary, failed = sys.argv[1], [], {}, []
+    args = iter(sys.argv[2:])
+    for a in args:
+        if a == "--notarization":
+            t, _, st = next(args).partition("=")
+            notary[t] = st
+        elif a == "--failed":
+            failed.append(next(args))
+        else:
+            want.append(a)
     text = open(path, encoding="utf-8-sig").read()
     start = text.find("{")
     if start < 0:
@@ -28,6 +43,16 @@ def main() -> int:
     result = json.loads(text[start:])
     targets = {t["target"]: t for t in result.get("targets", [])}
     ok = True
+    for name in failed:
+        t = targets.get(name)
+        if t is None or t["status"] != "failed":
+            print(f"✗ {name}: expected to fail, got {t and t['status']}")
+            ok = False
+        else:
+            print(f"✓ {name}: failed as expected – {t.get('error')}")
+    for name in notary:
+        if name not in want:
+            want.append(name)
     for name in want:
         t = targets.get(name)
         if t is None:
@@ -49,11 +74,19 @@ def main() -> int:
                 ok = False
                 continue
             size = os.path.getsize(p)
-            sha = hashlib.sha256(open(p, "rb").read()).hexdigest()
-            good = size == a.get("size") and sha == a.get("sha256", sha)
+            data = open(p, "rb").read()
+            good = size == a.get("size")
+            algo = "sha512" if a.get("sha512") else "sha256"
+            if a.get(algo):
+                good &= hashlib.new(algo, data).hexdigest() == a[algo]
             ok &= good
-            print(f"{'✓' if good else '✗'} {name}: {a['file']}  {size / 1e6:.1f} MB  {a['kind']}")
-            sums = os.path.join(os.path.dirname(p), "SHA256SUMS")
+            state = (a.get("notarization") or {}).get("state")
+            extra = f"  notarization: {state}" if state else ""
+            if name in notary and a["file"].endswith((".dmg", ".zip", ".pkg")) and state != notary[name]:
+                print(f"✗ {name}: {a['file']}: notarization state {state!r}, want {notary[name]!r}")
+                ok = False
+            print(f"{'✓' if good else '✗'} {name}: {a['file']}  {size / 1e6:.1f} MB  {a['kind']}{extra}")
+            sums = os.path.join(os.path.dirname(p), algo.upper() + "SUMS")
             if not os.path.isfile(sums) or a["file"] not in open(sums, encoding="utf-8").read():
                 print(f"✗ {name}: {a['file']} not listed in {sums}")
                 ok = False
