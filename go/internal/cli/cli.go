@@ -108,6 +108,10 @@ func Main(args []string, e *Env) int {
 	if strings.HasPrefix(name, "-") {
 		// Global flags before the command: fpack --lang zh build apk
 		for i := 0; i < len(args); i++ {
+			if takesValue(args[i]) {
+				i++ // skip the value: fpack --lang zh build
+				continue
+			}
 			if !strings.HasPrefix(args[i], "-") {
 				if c := findCommand(args[i]); c != nil {
 					rest := append(append([]string{}, args[:i]...), args[i+1:]...)
@@ -141,6 +145,21 @@ func Main(args []string, e *Env) int {
 		return build.ExitUsage
 	}
 	return dispatch(c, args[1:], e)
+}
+
+// takesValue reports whether a (global) flag consumes the next argument.
+func takesValue(a string) bool {
+	if strings.Contains(a, "=") {
+		return false
+	}
+	for _, f := range globalFlags {
+		for _, n := range f.names {
+			if n == a {
+				return f.kind == kString || f.kind == kList
+			}
+		}
+	}
+	return false
 }
 
 func hasFlag(args []string, names ...string) bool {

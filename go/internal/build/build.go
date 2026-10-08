@@ -59,20 +59,22 @@ type ArtifactResult struct {
 
 // TargetResult is the outcome of one target.
 type TargetResult struct {
-	Target     string           `json:"target"`
-	Platform   string           `json:"platform"`
-	Status     Status           `json:"status"`
-	Reason     string           `json:"reason,omitempty"`
-	Fix        string           `json:"fix,omitempty"`
-	Error      string           `json:"error,omitempty"`
-	Hint       string           `json:"hint,omitempty"`
-	Excerpt    []string         `json:"errorExcerpt,omitempty"`
-	Log        string           `json:"log,omitempty"`
-	DurationMs int64            `json:"durationMs"`
-	Artifacts  []ArtifactResult `json:"artifacts"`
-	Warnings   []string         `json:"warnings,omitempty"`
-	Notes      []string         `json:"notes,omitempty"`
-	Commands   []string         `json:"commands,omitempty"`
+	Target   string `json:"target"`
+	Platform string `json:"platform"`
+	Status   Status `json:"status"`
+	// ReferenceOnly marks a dry-run plan for a target this host cannot build.
+	ReferenceOnly bool             `json:"referenceOnly,omitempty"`
+	Reason        string           `json:"reason,omitempty"`
+	Fix           string           `json:"fix,omitempty"`
+	Error         string           `json:"error,omitempty"`
+	Hint          string           `json:"hint,omitempty"`
+	Excerpt       []string         `json:"errorExcerpt,omitempty"`
+	Log           string           `json:"log,omitempty"`
+	DurationMs    int64            `json:"durationMs"`
+	Artifacts     []ArtifactResult `json:"artifacts"`
+	Warnings      []string         `json:"warnings,omitempty"`
+	Notes         []string         `json:"notes,omitempty"`
+	Commands      []string         `json:"commands,omitempty"`
 
 	target    targets.Target
 	steps     []string
@@ -157,6 +159,7 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 				if req.DryRun {
 					tr.Notes = append(tr.Notes, i18n.S("planned for reference only – it would be skipped on this host", "仅供参考的计划 —— 在当前系统上会被跳过"))
 					tr.Status = Planned
+					tr.ReferenceOnly = true
 				} else {
 					tr.Status = Failed
 					tr.Fix = i18n.F("run fpack on %s (e.g. a %s CI runner, see README → CI)", "请在 %s 上运行 fpack（例如 %s CI 机器，见 README → CI）", host.OSName(need), host.OSName(need))
@@ -177,7 +180,7 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 		}
 		var issues []targets.Issue
 		if hostOK {
-			issues = t.Preflight(c)
+			issues = append(projectIssues(c), t.Preflight(c)...)
 		}
 		var fatalIssue *targets.Issue
 		for i := range issues {
@@ -626,4 +629,15 @@ func firstLineOf(s string) string {
 		return s[:i]
 	}
 	return s
+}
+
+// projectIssues are problems that make every flutter build fail early.
+func projectIssues(c *targets.Context) []targets.Issue {
+	var out []targets.Issue
+	for _, d := range c.Project.MissingPathDeps() {
+		out = append(out, targets.Issue{Fatal: true,
+			Msg: i18n.F("path dependency %s → %s does not exist", "path 依赖 %s → %s 不存在", d.Name, d.Path),
+			Fix: i18n.S("clone/copy that package to the expected location (relative to the project), then rerun", "请把该包克隆/复制到对应位置（相对于项目目录）后重试")})
+	}
+	return out
 }

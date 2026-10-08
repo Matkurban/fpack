@@ -118,7 +118,7 @@ func printPlan(c *targets.Context, u *ui.UI, s *Summary, steps map[string]*stepS
 func finish(c *targets.Context, u *ui.UI, s *Summary, start time.Time, checksums, logDir string) *Summary {
 	s.DurationMs = time.Since(start).Milliseconds()
 	s.Checksums = checksums
-	var ok, failed, skipped, planned int
+	var ok, failed, skipped, planned, reference int
 	attemptedFail := false
 	for _, t := range s.Targets {
 		if t.duration > 0 {
@@ -135,7 +135,11 @@ func finish(c *targets.Context, u *ui.UI, s *Summary, start time.Time, checksums
 		case Skipped:
 			skipped++
 		case Planned:
-			planned++
+			if t.ReferenceOnly {
+				reference++
+			} else {
+				planned++
+			}
 		}
 	}
 	for _, t := range s.Targets {
@@ -161,6 +165,9 @@ func finish(c *targets.Context, u *ui.UI, s *Summary, start time.Time, checksums
 	if s.DryRun {
 		u.Blank()
 		msg := i18n.F("%d target(s) planned, %d skipped, %d would fail.", "计划 %d 个目标，跳过 %d 个，%d 个将会失败。", planned, skipped, failed)
+		if reference > 0 {
+			msg += " " + i18n.F("%d shown for reference only (needs another OS).", "另有 %d 个仅供参考（需要其他操作系统）。", reference)
+		}
 		if failed > 0 {
 			u.Println(u.Yellow(msg))
 		} else {
