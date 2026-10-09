@@ -134,7 +134,7 @@ func androidPreflight(c *Context) []Issue {
 		}
 	case debugSigningExpected(c):
 		out = append(out, warn(i18n.F("release builds are signed with the DEBUG key (%s). Fine for testing; Google Play will reject it.", "release 包将使用 DEBUG 密钥签名（%s）。测试可以，但 Google Play 会拒绝。", c.Project.AndroidGradleFile),
-			i18n.S("set android.signing in fpack.yaml or FPACK_ANDROID_KEYSTORE / _PASSWORD / _KEY_ALIAS (see README → Android signing)", "在 fpack.yaml 设置 android.signing，或设置 FPACK_ANDROID_KEYSTORE / _PASSWORD / _KEY_ALIAS 环境变量（见 README → Android 签名）")))
+			i18n.S("set android.signing in fpack.yaml or FPACK_ANDROID_KEYSTORE / _PASSWORD / _KEY_ALIAS (see README.md → Android signing)", "在 fpack.yaml 设置 android.signing，或设置 FPACK_ANDROID_KEYSTORE / _PASSWORD / _KEY_ALIAS 环境变量（见 README.ZH.md → Android 签名）")))
 	}
 	if is, ok := flavorCheck(c, host.Android); !ok {
 		out = append(out, is)

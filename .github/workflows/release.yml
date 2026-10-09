@@ -49,8 +49,8 @@ jobs:
 
   # Optional: publish to pub.dev. Enable automated publishing for this repo
   # on pub.dev (Admin → Automated publishing → GitHub Actions, tag pattern v{{version}}).
-  # Whether the binaries are bundled is controlled by BUNDLE_BINARIES (see README:
-  # "pub.dev size tradeoff").
+  # Whether the binaries are bundled is controlled by BUNDLE_BINARIES (see README.md:
+  # "pub.dev package size trade-off").
   publish:
     needs: binaries
     if: ${{ vars.PUB_PUBLISH == 'true' }}

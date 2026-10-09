@@ -1,10 +1,11 @@
 # fpack 配置参考
 
-本文列出 fpack 1.1.0 的**全部**配置方式：`fpack.yaml` 的每个键、每个 `FPACK_*` 环境变量、每个命令行参数，以及它们的类型、默认值、影响的目标和作用。
+本文列出 fpack 1.1.1 的**全部**配置方式：`fpack.yaml` 的每个键、每个 `FPACK_*` 环境变量、每个命令行参数，以及它们的类型、默认值、影响的目标和作用。
 
 - 所有配置都是可选的：不写 `fpack.yaml` 也能直接 `fpack build apk`。
 - `fpack init` 会在项目根目录生成一份带注释的 `fpack.yaml`（这是 fpack 唯一会写入项目的文件）。
 - fpack **不会修改**项目里的任何其他文件（`pubspec.yaml`、`key.properties`、Gradle、Xcode 工程等都只读）。
+- 概览文档：[README.md](../README.md)（English）· [README.ZH.md](../README.ZH.md)（中文）。macOS 证书与公证凭证的获取方法见 [2.13](#213-获取-macos-签名证书与公证凭证)。
 
 目录：
 
@@ -443,6 +444,110 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 
 **Web**：Flutter 3.x 已移除 `--pwa-strategy` 与 `--web-renderer`，因此没有对应的键；`web.wasm`、`source_maps`、`csp`、`optimization_level`、`static_assets_url`、`web_resources_cdn`、`web_define` 分别对应 `flutter build web` 的同名参数。zip 文件名可用 `output.names.web` 修改。
 
+
+### 2.13 获取 macOS 签名证书与公证凭证
+
+在 App Store 之外分发 macOS 应用需要：**Developer ID Application** 证书（签名 .app / zip / DMG）、可选的 **Developer ID Installer** 证书（签名 pkg），以及一种**公证凭证**。都需要付费的 [Apple Developer Program](https://developer.apple.com/programs/) 账号；Developer ID 证书只能由团队的 **Account Holder** 创建。
+
+**1. 创建 Developer ID 证书（在 Mac 上）**
+
+- Xcode → Settings… → Accounts → 选择团队 → Manage Certificates… → 左下角 **+** → *Developer ID Application*（需要 pkg 时再建 *Developer ID Installer*）。证书和私钥会直接进入「登录」钥匙串。
+- 或者在网页上创建：钥匙串访问 → 证书助理 → 从证书颁发机构请求证书…（保存 CSR 到磁盘）→ [developer.apple.com/account/resources/certificates](https://developer.apple.com/account/resources/certificates/list) → **+** → Developer ID Application / Developer ID Installer → 上传 CSR → 下载 `.cer` 并双击导入（必须在生成 CSR 的那台 Mac 上导入，私钥在那里）。
+- 检查：
+
+  ```bash
+  security find-identity -v -p codesigning   # "Developer ID Application: Your Name (ABCDE12345)"
+  security find-identity -v -p basic         # 也会列出 "Developer ID Installer: …"
+  ```
+
+- 填入 fpack（引号内的名称与上面输出完全一致；括号中的 10 位字符就是 **Team ID**）：
+
+  | 用途 | fpack.yaml | 环境变量 | 参数 |
+  | --- | --- | --- | --- |
+  | App 签名证书 | `macos.sign.identity` | `FPACK_MACOS_SIGN_IDENTITY` | `--sign-identity` |
+  | pkg 签名证书 | `macos.sign.installer_identity` | `FPACK_MACOS_INSTALLER_IDENTITY` | `--installer-identity` |
+
+**2. 公证凭证（三选一）**
+
+*a) 钥匙串配置（本机推荐）*：Apple ID + App 专用密码 + Team ID，只需保存一次。
+
+1. 在 [account.apple.com](https://account.apple.com) → 登录与安全 → **App 专用密码** → 生成一个密码（形如 `abcd-efgh-ijkl-mnop`）。
+2. Team ID：[developer.apple.com/account](https://developer.apple.com/account) → 会员资格详细信息（Membership details），或证书名称括号中的 10 位字符。
+3. 保存到钥匙串（不写 `--password` 时会提示输入）：
+
+   ```bash
+   xcrun notarytool store-credentials fpack-notary \
+     --apple-id you@example.com --team-id ABCDE12345 --password abcd-efgh-ijkl-mnop
+   xcrun notarytool history --keychain-profile fpack-notary   # 验证
+   ```
+
+4. fpack：`macos.sign.notary_profile: fpack-notary`（或 `FPACK_MACOS_NOTARY_PROFILE`、`--notary-profile`）。
+
+也可以不保存配置，直接给出 Apple ID：`notary_apple_id` / `notary_team_id` / `notary_password`（`FPACK_NOTARY_APPLE_ID`、`FPACK_NOTARY_TEAM_ID`、`FPACK_NOTARY_PASSWORD`）。密码只放在环境变量或 CI secret 中，fpack 在日志、`--dry-run` 和 NOTARIZATION.md 中都会隐藏它。
+
+*b) App Store Connect API 密钥（CI 推荐）*：不依赖个人 Apple ID，可随时吊销。
+
+1. [App Store Connect](https://appstoreconnect.apple.com) → 用户和访问 → 集成 → App Store Connect API → 团队密钥 → **+**，选择 Developer（或更高）权限。
+2. 下载 `AuthKey_<KEY_ID>.p8`（**只能下载一次**，请妥善保存）；记下页面上的 **Key ID** 和 **Issuer ID**（个人密钥没有 Issuer ID，可省略）。
+3. fpack：
+
+   | 值 | fpack.yaml | 环境变量 |
+   | --- | --- | --- |
+   | `.p8` 文件路径 | `macos.sign.notary_api_key` | `FPACK_NOTARY_API_KEY` |
+   | Key ID | `macos.sign.notary_api_key_id` | `FPACK_NOTARY_API_KEY_ID` |
+   | Issuer ID | `macos.sign.notary_api_issuer` | `FPACK_NOTARY_API_ISSUER` |
+
+   验证：`xcrun notarytool history --key AuthKey_ABC123DEF4.p8 --key-id ABC123DEF4 --issuer <Issuer ID>`。
+
+优先级：`notary_profile` → API 密钥 → Apple ID；设置任意一种即开启公证。
+
+**3. 导出证书（.p12）用于 CI**
+
+1. 钥匙串访问 → 「登录」钥匙串 → **我的证书** → 选中 “Developer ID Application: …”（展开能看到私钥，说明私钥在本机）→ 文件 → 导出项目… → 格式选「个人信息交换 (.p12)」→ 设置导出密码。需要 pkg 时对 “Developer ID Installer: …” 重复一次（也可以两个一起选中导出到同一个 .p12）。
+2. 转成 base64 存为 CI secret（例如 `MACOS_CERTS_P12_BASE64`、`MACOS_CERTS_P12_PASSWORD`），API 密钥同理（`NOTARY_API_KEY_P8_BASE64`）：
+
+   ```bash
+   base64 -i DeveloperID.p12 | pbcopy
+   base64 -i AuthKey_ABC123DEF4.p8 | pbcopy
+   ```
+
+3. 在 CI 机器上导入到临时钥匙串（GitHub Actions 示例）：
+
+   ```yaml
+   - name: import Developer ID certificates
+     env:
+       P12_BASE64: ${{ secrets.MACOS_CERTS_P12_BASE64 }}
+       P12_PASSWORD: ${{ secrets.MACOS_CERTS_P12_PASSWORD }}
+       KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}   # 任意随机字符串
+       API_KEY_BASE64: ${{ secrets.NOTARY_API_KEY_P8_BASE64 }}
+     run: |
+       KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+       echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/certs.p12"
+       security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+       security set-keychain-settings -lut 21600 "$KEYCHAIN"
+       security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+       security import "$RUNNER_TEMP/certs.p12" -k "$KEYCHAIN" -P "$P12_PASSWORD" \
+         -T /usr/bin/codesign -T /usr/bin/productbuild -T /usr/bin/pkgbuild
+       security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+       security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+       security find-identity -v -p codesigning "$KEYCHAIN"
+       echo "$API_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
+       rm "$RUNNER_TEMP/certs.p12"
+   - name: fpack build macos dmg pkg
+     env:
+       FPACK_MACOS_SIGN_IDENTITY: "Developer ID Application: Your Name (ABCDE12345)"
+       FPACK_MACOS_INSTALLER_IDENTITY: "Developer ID Installer: Your Name (ABCDE12345)"
+       FPACK_NOTARY_API_KEY: ${{ runner.temp }}/AuthKey.p8
+       FPACK_NOTARY_API_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
+       FPACK_NOTARY_API_ISSUER: ${{ secrets.NOTARY_API_ISSUER }}
+     run: fpack build macos dmg pkg
+   - name: clean up keychain
+     if: always()
+     run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
+   ```
+
+   `set-key-partition-list` 让 codesign / productbuild 无需弹窗即可使用私钥；`-lut 21600` 让钥匙串 6 小时内不自动锁定。证书、.p12、.p8 与密码都不要提交到仓库。
+
 ---
 
 ## 3. 环境变量
@@ -510,12 +615,14 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 | --- | --- | --- |
 | `FPACK_CORE` | 未设置 | 直接指定 `fpack-core` 可执行文件（开发 fpack 本身时用）。 |
 | `FPACK_HOME` | macOS `~/Library/Caches/fpack`；Linux `$XDG_CACHE_HOME/fpack` 或 `~/.cache/fpack`；Windows `%LOCALAPPDATA%\fpack` | 原生核心的缓存目录。 |
-| `FPACK_REBUILD` | 未设置 | 设为 `1` 时强制用本机 Go 从包内源码重新编译核心。 |
-| `FPACK_GO` | 自动查找（PATH、`/usr/local/go/bin`、`/opt/homebrew/bin` 等） | Go 可执行文件路径；设为 `none` 表示不使用 Go 编译。 |
-| `FPACK_NO_DOWNLOAD` | 未设置 | 设为 `1` 时禁止从 GitHub Release 下载核心。 |
+| `FPACK_REBUILD` | 未设置 | 设为 `1` 时忽略缓存，先用本机 Go 从包内源码编译核心（开发 fpack 本身时用）。 |
+| `FPACK_GO` | 自动查找（PATH、`/usr/local/go/bin`、`/opt/homebrew/bin` 等） | 回退编译时使用的 Go；设为 `none` 表示禁止本机编译（下载失败时直接报错）。 |
+| `FPACK_NO_DOWNLOAD` | 未设置 | 设为 `1` 时禁止从 GitHub Release 下载核心（离线/内网：使用包内二进制或直接本机编译）。 |
 | `FPACK_DOWNLOAD_URL` | `https://github.com/Matkurban/fpack/releases/download/v<版本>/` | 核心下载地址（内网镜像）。目录下需要 `checksums.txt` 和 `fpack-core-<os>-<arch>[.exe]`，下载后会校验 SHA-256。 |
 
-核心的查找顺序：`FPACK_CORE` → 缓存（版本与校验和匹配时）→ 包内预编译二进制（按 `prebuilt/manifest.json` 校验）→ 用 Go 编译包内源码 → 从 GitHub Release 下载并校验。
+核心的查找顺序（**优先使用经过校验的预编译二进制**）：`FPACK_CORE` → 缓存（版本匹配时）→ 包内预编译二进制（按 `prebuilt/manifest.json` 校验 SHA-256）→ 从 GitHub Release（或 `FPACK_DOWNLOAD_URL`）下载并按 `checksums.txt` 校验 SHA-256 → **只有下载失败或被禁用时**才用本机 Go 编译包内源码，此时会提示 `fpack: note: no verified prebuilt core available (<原因>); fpack: falling back to a local build from the bundled sources with <Go 版本> (<路径>)`。`FPACK_REBUILD=1` 时先本机编译。
+
+本机编译出的核心会被缓存并在之后的运行中使用，直到版本变化；想换成下载的二进制，删除缓存目录即可（`fpack --wrapper-info` 显示路径、下载地址、Go 版本与查找顺序）。
 
 ### 3.4 fpack 读取的其他变量
 

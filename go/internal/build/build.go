@@ -182,7 +182,7 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 					tr.ReferenceOnly = true
 				} else {
 					tr.Status = Failed
-					tr.Fix = i18n.F("run fpack on %s (e.g. a %s CI runner, see README → CI)", "请在 %s 上运行 fpack（例如 %s CI 机器，见 README → CI）", host.OSName(need), host.OSName(need))
+					tr.Fix = i18n.F("run fpack on %s (e.g. a %s CI runner, see README.md → CI example)", "请在 %s 上运行 fpack（例如 %s CI 机器，见 README.ZH.md → CI 示例）", host.OSName(need), host.OSName(need))
 					continue
 				}
 			} else {

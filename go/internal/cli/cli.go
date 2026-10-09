@@ -230,7 +230,7 @@ func contextError(u *ui.UI, err error) int {
 		for _, l := range strings.Split(ce.Error(), "\n") {
 			u.Info(l)
 		}
-		u.Hint(i18n.S("see README → Configuration reference", "参见 README → 配置参考"))
+		u.Hint(i18n.S("see doc/configuration.md (https://github.com/Matkurban/fpack/blob/main/doc/configuration.md) or run fpack init", "参见 doc/configuration.md（https://github.com/Matkurban/fpack/blob/main/doc/configuration.md），或运行 fpack init"))
 		return build.ExitUsage
 	case errors.As(err, &ns):
 		u.Errorf("%s", ns.Error())
