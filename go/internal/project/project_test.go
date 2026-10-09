@@ -146,3 +146,24 @@ msix_config:
 		t.Fatalf("monorepo: %v %+v", err, nf)
 	}
 }
+
+func TestSchemesSharedUserAndWorkspace(t *testing.T) {
+	root := t.TempDir()
+	for _, f := range []string{
+		"Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme",
+		"Runner.xcodeproj/xcshareddata/xcschemes/prod.xcscheme",
+		"Runner.xcodeproj/xcuserdata/me.xcuserdatad/xcschemes/dev.xcscheme",
+		"Runner.xcworkspace/xcshareddata/xcschemes/staging.xcscheme",
+		"Runner.xcworkspace/xcshareddata/xcschemes/prod.xcscheme",
+	} {
+		p := filepath.Join(root, f)
+		os.MkdirAll(filepath.Dir(p), 0o755)
+		os.WriteFile(p, nil, 0o644)
+	}
+	if got := schemes(filepath.Join(root, "Runner.xcodeproj")); !reflect.DeepEqual(got, []string{"dev", "prod", "staging"}) {
+		t.Fatal(got)
+	}
+	if got := schemes(filepath.Join(root, "missing.xcodeproj")); got != nil {
+		t.Fatal(got)
+	}
+}

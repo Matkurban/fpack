@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- A flavor that only exists on Android (e.g. `build.flavor: prod` with Gradle productFlavors) no longer breaks iOS/macOS builds of a project whose Xcode projects define no custom schemes: the flavor is not passed to `flutter build ios/macos` there (Flutter would reject it), with a note. Scheme detection now also includes per-user and workspace schemes, like `xcodebuild -list`.
+
 ## 1.1.3
 
 ### Changed

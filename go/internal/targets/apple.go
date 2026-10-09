@@ -585,7 +585,7 @@ func MacProductsDir(root, mode, flavor string) string {
 }
 
 func locateMacApp(c *Context, predicted bool) (Inputs, error) {
-	dir := MacProductsDir(c.Project.Root, c.Mode(), c.Flavor())
+	dir := MacProductsDir(c.Project.Root, c.Mode(), platformFlavor(c, host.MacOS))
 	name := c.Project.MacProductName
 	if name == "" || strings.Contains(name, "$") {
 		name = c.Project.Name

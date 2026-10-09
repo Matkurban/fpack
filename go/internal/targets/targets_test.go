@@ -305,6 +305,7 @@ func TestIPADefault(t *testing.T) {
 
 func TestIPAExportMethodAndPlist(t *testing.T) {
 	c := newCtx(t, "darwin", "ios:\n  export_method: ad-hoc\nbuild:\n  flavor: prod\n", "")
+	c.Project.IOSSchemes = []string{"dev", "prod"}
 	if got := strings.Join(steps(t, &IPA{}, c)[0].Args, " "); got != "build ipa --release --flavor prod --export-method ad-hoc" {
 		t.Fatal(got)
 	}
@@ -525,6 +526,7 @@ func TestDMGCreateDMGAndFlavorProfile(t *testing.T) {
 	posixPaths(t)
 	c := newCtx(t, "darwin", "build:\n  flavor: prod\n  mode: profile\nmacos:\n  dmg:\n    tool: create-dmg\n    volume_name: XueHua Installer\n", "")
 	c.Tools.(*fakeTools).bins["create-dmg"] = "/opt/homebrew/bin/create-dmg"
+	c.Project.MacOSSchemes = []string{"prod"}
 	if got := strings.Join(steps(t, &DMG{}, c)[0].Args, " "); got != "build macos --profile --flavor prod" {
 		t.Fatal(got)
 	}
@@ -867,5 +869,37 @@ func TestTargetAliasesMatchConfig(t *testing.T) {
 		if _, ok := Get(a); !ok {
 			t.Fatalf("alias %q does not resolve", a)
 		}
+	}
+}
+
+// A flavor set for Android-only flavors must not break iOS/macOS builds of
+// a project whose Xcode projects define no custom schemes.
+func TestFlavorDroppedForAppleWithoutSchemes(t *testing.T) {
+	c := newCtx(t, "darwin", "build:\n  flavor: prod\n", "")
+	c.Project.AndroidFlavors = []string{"dev", "prod"}
+	for _, tg := range []Target{&IPA{}, &DMG{}} {
+		st := steps(t, tg, c)[0]
+		if strings.Contains(strings.Join(st.Args, " "), "--flavor") {
+			t.Fatalf("%s: %v", tg.Name(), st.Args)
+		}
+		note := false
+		for _, w := range st.Warnings {
+			note = note || strings.Contains(w, "no custom schemes")
+		}
+		if !note {
+			t.Fatalf("%s: %v", tg.Name(), st.Warnings)
+		}
+		if fatal, warns := preflightOf(t, tg, c); len(fatal) != 0 || len(warns) > 0 && strings.Contains(warns[0].Msg, "flavor") {
+			t.Fatalf("%s: %+v %+v", tg.Name(), fatal, warns)
+		}
+	}
+	if n := names(plan(t, &DMG{}, c))[0]; strings.Contains(n, "prod") {
+		t.Fatalf("not a flavored build: %s", n)
+	}
+	if !strings.Contains(cmds(plan(t, &DMG{}, c))[0], "Products/Release/") {
+		t.Fatal(cmds(plan(t, &DMG{}, c))[0])
+	}
+	if got := strings.Join(steps(t, &APK{}, c)[0].Args, " "); !strings.Contains(got, "--flavor prod") {
+		t.Fatal(got)
 	}
 }

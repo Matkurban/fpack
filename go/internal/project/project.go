@@ -359,16 +359,28 @@ func blockAfter(s, keyword string) string {
 	}
 }
 
+// schemes lists the custom (non-Runner) Xcode schemes like `xcodebuild
+// -list` does: shared and per-user schemes of the project and workspace.
 func schemes(xcodeproj string) []string {
-	entries, err := os.ReadDir(filepath.Join(xcodeproj, "xcshareddata", "xcschemes"))
-	if err != nil {
-		return nil
+	ws := strings.TrimSuffix(xcodeproj, ".xcodeproj") + ".xcworkspace"
+	dirs := []string{filepath.Join(xcodeproj, "xcshareddata", "xcschemes"), filepath.Join(ws, "xcshareddata", "xcschemes")}
+	for _, base := range []string{xcodeproj, ws} {
+		users, _ := filepath.Glob(filepath.Join(base, "xcuserdata", "*.xcuserdatad", "xcschemes"))
+		dirs = append(dirs, users...)
 	}
+	seen := map[string]bool{}
 	var out []string
-	for _, e := range entries {
-		n := strings.TrimSuffix(e.Name(), ".xcscheme")
-		if n != e.Name() && n != "Runner" {
-			out = append(out, n)
+	for _, d := range dirs {
+		entries, err := os.ReadDir(d)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			n := strings.TrimSuffix(e.Name(), ".xcscheme")
+			if n != e.Name() && n != "Runner" && !seen[n] {
+				seen[n] = true
+				out = append(out, n)
+			}
 		}
 	}
 	sort.Strings(out)

@@ -336,11 +336,21 @@ func ForPlatform(p host.Platform) []Target {
 // ---- shared flutter args ----
 
 // nameFlavor is {flavor} in file names: empty where Flutter ignores flavors.
-func nameFlavor(c *Context, p host.Platform) string {
-	if supportsFlavor(p) {
-		return c.Flavor()
+func nameFlavor(c *Context, p host.Platform) string { return platformFlavor(c, p) }
+
+// platformFlavor is the flavor passed to flutter for platform p: empty where
+// Flutter ignores flavors, and on iOS/macOS when the Xcode project defines
+// no custom schemes (flutter refuses --flavor there), so one flavor setting
+// works for a project whose flavors exist on Android only.
+func platformFlavor(c *Context, p host.Platform) string {
+	f := c.Flavor()
+	if f == "" || !supportsFlavor(p) {
+		return ""
 	}
-	return ""
+	if (p == host.IOS || p == host.MacOS) && c.Project != nil && len(c.Project.Flavors(p)) == 0 {
+		return ""
+	}
+	return f
 }
 
 // NotePrefix marks step messages that are informational (shown once, not
@@ -357,8 +367,10 @@ func CommonArgs(c *Context, p host.Platform, sub string) ([]string, []string) {
 	var warns []string
 	args := []string{"build", sub, "--" + c.Mode()}
 	if f := c.Flavor(); f != "" {
-		if supportsFlavor(p) {
-			args = append(args, "--flavor", f)
+		if pf := platformFlavor(c, p); pf != "" {
+			args = append(args, "--flavor", pf)
+		} else if supportsFlavor(p) {
+			warns = append(warns, NotePrefix+i18n.F("flavor %q is not used for %s: the Xcode project defines no custom schemes", "%[2]s 构建不使用 flavor %[1]q：Xcode 工程没有定义自定义 scheme", f, p))
 		} else {
 			warns = append(warns, NotePrefix+i18n.F("flavor %q is not used for %s (Flutter supports flavors on Android, iOS and macOS only)", "%[2]s 构建不使用 flavor %[1]q（Flutter 只在 Android、iOS、macOS 上支持 flavor）", f, p))
 		}
@@ -508,6 +520,9 @@ func flavorCheck(c *Context, p host.Platform) (Issue, bool) {
 		}
 	}
 	where := map[host.Platform]string{host.Android: "android/app/build.gradle(.kts) productFlavors", host.IOS: "ios/Runner.xcodeproj schemes", host.MacOS: "macos/Runner.xcodeproj schemes"}[p]
+	if len(found) == 0 && (p == host.IOS || p == host.MacOS) {
+		return Issue{}, true // not passed to flutter at all (see platformFlavor)
+	}
 	if len(found) == 0 {
 		// Nothing detected: detection is heuristic (flavors may come from a
 		// Gradle plugin or a non-shared scheme), so only warn.

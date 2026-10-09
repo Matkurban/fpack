@@ -5,3 +5,5 @@ analyzer:
     - go/**
     - prebuilt/**
     - build/**
+    - example/**
+    - website/**
