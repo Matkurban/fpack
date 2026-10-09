@@ -513,11 +513,83 @@ func Load(path string, getenv func(string) string) (*Config, error) {
 		return nil, err
 	}
 	if err := Parse(data, c); err != nil {
-		return nil, fmt.Errorf("%s: %w", filepath.Base(path), err)
+		// Values such as `obfuscate: ${OBF:-false}` or `split_per_abi:
+		// ${SPLIT}` only get their type once expanded: expand them in the
+		// YAML tree and parse again. Errors keep the original line numbers.
+		if !bytes.Contains(data, []byte("${")) {
+			return nil, fmt.Errorf("%s: %w", filepath.Base(path), err)
+		}
+		exp, unset, xerr := expandYAML(data, getenv)
+		c2 := &Config{}
+		if xerr != nil || Parse(exp, c2) != nil {
+			return nil, fmt.Errorf("%s: %w", filepath.Base(path), err)
+		}
+		c2.File, c2.UnsetEnv = path, unset
+		return c2, nil
 	}
 	c.File = path
 	c.UnsetEnv = interpolate(reflect.ValueOf(c).Elem(), getenv)
 	return c, nil
+}
+
+// expandYAML expands ${VAR} references in every scalar value of the YAML
+// document and re-types them, so `${OBF:-false}` (quoted or not) becomes a
+// boolean for boolean keys.
+func expandYAML(data []byte, getenv func(string) string) ([]byte, []string, error) {
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return nil, nil, err
+	}
+	unset := map[string]bool{}
+	var walk func(n *yaml.Node)
+	walk = func(n *yaml.Node) {
+		switch n.Kind {
+		case yaml.DocumentNode, yaml.SequenceNode:
+			for _, c := range n.Content {
+				walk(c)
+			}
+		case yaml.MappingNode:
+			for i := 1; i < len(n.Content); i += 2 {
+				walk(n.Content[i])
+			}
+		case yaml.ScalarNode:
+			if strings.Contains(n.Value, "${") {
+				// Re-type the expanded value ("false" → bool for bool
+				// keys); string keys still receive the text unchanged.
+				n.Value = expandString(n.Value, getenv, unset)
+				n.Tag, n.Style = "", 0
+			}
+		}
+	}
+	walk(&root)
+	out, err := yaml.Marshal(&root)
+	var names []string
+	for k := range unset {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	return out, names, err
+}
+
+// expandString expands ${VAR} and ${VAR:-default}; substituted values are
+// never expanded again (only defaults nest). Unset names go to unset.
+func expandString(s string, getenv func(string) string, unset map[string]bool) string {
+	protect := strings.NewReplacer("$", "\x00", "{", "\x01", "}", "\x02")
+	restore := strings.NewReplacer("\x00", "$", "\x01", "{", "\x02", "}")
+	for pass := 0; pass < 8 && envRef.MatchString(s); pass++ {
+		s = envRef.ReplaceAllStringFunc(s, func(m string) string {
+			sm := envRef.FindStringSubmatch(m)
+			if val := getenv(sm[1]); val != "" {
+				return protect.Replace(val)
+			}
+			if sm[2] != "" {
+				return sm[3]
+			}
+			unset[sm[1]] = true
+			return ""
+		})
+	}
+	return restore.Replace(s)
 }
 
 var unknownField = regexp.MustCompile(`line (\d+): field (\S+) not found in type config\.(\w+)`)
@@ -580,6 +652,8 @@ func expectedFor(goType string) string {
 		return "a list"
 	case goType == "string":
 		return "a text value"
+	case strings.HasPrefix(goType, "config."):
+		return "a section of keys (key: value on indented lines)"
 	}
 	return goType
 }
@@ -693,25 +767,31 @@ func suggest(s string, candidates []string) string {
 // Suggest is exported for CLI "did you mean" messages.
 func Suggest(s string, candidates []string) string { return suggest(s, candidates) }
 
+// levenshtein is the optimal-string-alignment distance: an adjacent
+// transposition ("wbe" → "web") counts as one edit.
 func levenshtein(a, b string) int {
 	ra, rb := []rune(a), []rune(b)
-	prev := make([]int, len(rb)+1)
-	for j := range prev {
-		prev[j] = j
+	d := make([][]int, len(ra)+1)
+	for i := range d {
+		d[i] = make([]int, len(rb)+1)
+		d[i][0] = i
+	}
+	for j := range d[0] {
+		d[0][j] = j
 	}
 	for i := 1; i <= len(ra); i++ {
-		cur := make([]int, len(rb)+1)
-		cur[0] = i
 		for j := 1; j <= len(rb); j++ {
 			cost := 1
 			if ra[i-1] == rb[j-1] {
 				cost = 0
 			}
-			cur[j] = min(prev[j]+1, cur[j-1]+1, prev[j-1]+cost)
+			d[i][j] = min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1]+cost)
+			if i > 1 && j > 1 && ra[i-1] == rb[j-2] && ra[i-2] == rb[j-1] {
+				d[i][j] = min(d[i][j], d[i-2][j-2]+1)
+			}
 		}
-		prev = cur
 	}
-	return prev[len(rb)]
+	return d[len(ra)][len(rb)]
 }
 
 // envRef matches an innermost ${VAR} / ${VAR:-default} (the default holds no
@@ -727,25 +807,7 @@ func interpolate(v reflect.Value, getenv func(string) string) []string {
 		switch v.Kind() {
 		case reflect.String:
 			if v.CanSet() && strings.Contains(v.String(), "${") {
-				// Values substituted in one pass are marked so that their
-				// content is never expanded again (only defaults nest).
-				protect := strings.NewReplacer("$", "\x00", "{", "\x01", "}", "\x02")
-				restore := strings.NewReplacer("\x00", "$", "\x01", "{", "\x02", "}")
-				s := v.String()
-				for pass := 0; pass < 8 && envRef.MatchString(s); pass++ {
-					s = envRef.ReplaceAllStringFunc(s, func(m string) string {
-						sm := envRef.FindStringSubmatch(m)
-						if val := getenv(sm[1]); val != "" {
-							return protect.Replace(val)
-						}
-						if sm[2] != "" {
-							return sm[3]
-						}
-						unset[sm[1]] = true
-						return ""
-					})
-				}
-				v.SetString(restore.Replace(s))
+				v.SetString(expandString(v.String(), getenv, unset))
 			}
 		case reflect.Struct:
 			for i := 0; i < v.NumField(); i++ {
@@ -977,10 +1039,16 @@ func (c *Config) Validate() []string {
 	if g := c.Windows.InnoSetup.AppID; g != "" && !guidRe.MatchString(strings.Trim(g, "{}")) {
 		p = append(p, fmt.Sprintf("windows.inno_setup.app_id must be a GUID like 8F0E7C2A-1B3D-4E5F-9A6B-7C8D9E0F1A2B (got %q)", g))
 	}
-	for name := range c.Output.Names {
+	for name, tmpl := range c.Output.Names {
 		if !contains(TargetNames, name) {
 			p = append(p, fmt.Sprintf("output.names: unknown target %q%s", name, didYouMean(name, TargetNames)))
 		}
+		if bad := unknownPlaceholders(tmpl); len(bad) > 0 {
+			p = append(p, fmt.Sprintf("output.names.%s: unknown placeholder %s (available: %s)", name, strings.Join(bad, ", "), strings.Join(NamePlaceholders, ", ")))
+		}
+	}
+	if bad := unknownPlaceholders(c.Output.Name); len(bad) > 0 {
+		p = append(p, fmt.Sprintf("output.name: unknown placeholder %s (available: %s)", strings.Join(bad, ", "), strings.Join(NamePlaceholders, ", ")))
 	}
 	for _, m := range []map[string]List{c.Hooks.PrePackage, c.Hooks.PostPackage} {
 		for name := range m {
@@ -1015,6 +1083,23 @@ func (c *Config) Validate() []string {
 		p = append(p, "windows.sign: set either certificate (.pfx) or thumbprint (certificate store), not both")
 	}
 	return p
+}
+
+// NamePlaceholders are the keys of file name templates (same as
+// pack.Placeholders; a test keeps them in sync).
+var NamePlaceholders = []string{"app", "version", "build", "platform", "arch", "variant", "mode", "flavor", "target", "date"}
+
+var namePlaceholder = regexp.MustCompile(`\{([-_.+]?)([a-z]+)\}`)
+
+// unknownPlaceholders returns the placeholders of tmpl that are not known.
+func unknownPlaceholders(tmpl string) []string {
+	var bad []string
+	for _, sm := range namePlaceholder.FindAllStringSubmatch(tmpl, -1) {
+		if !contains(NamePlaceholders, sm[2]) {
+			bad = append(bad, sm[0])
+		}
+	}
+	return bad
 }
 
 var guidRe = regexp.MustCompile(`^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$`)

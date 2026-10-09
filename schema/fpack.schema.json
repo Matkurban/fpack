@@ -13,11 +13,21 @@
           "anyOf": [
             {
               "items": {
+                "enum": [
+                  "armeabi-v7a",
+                  "arm64-v8a",
+                  "x86_64"
+                ],
                 "type": "string"
               },
               "type": "array"
             },
             {
+              "enum": [
+                "armeabi-v7a",
+                "arm64-v8a",
+                "x86_64"
+              ],
               "type": "string"
             }
           ],
@@ -105,36 +115,68 @@
               "type": "string"
             },
             "v1": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "APK signature scheme v1 (JAR signing, needed below Android 7). Setting any of v1-v4 makes fpack re-sign the APKs with apksigner using android.signing. Default: apksigner default (on when minSdk \u003c 24). Targets: apk.",
               "examples": [
                 true
               ],
-              "markdownDescription": "**APK signature scheme v1 (JAR signing, needed below Android 7). Setting any of v1-v4 makes fpack re-sign the APKs with apksigner using android.signing.**  \nAPK v1 签名（JAR 签名，Android 7 以下需要）。设置 v1-v4 任意一项时，fpack 会用 apksigner 和 android.signing 重新签名 APK。\n\nDefault / 默认: `apksigner 默认（minSdk \u003c 24 时开启）`\n\nTargets / 目标: apk",
-              "type": "boolean"
+              "markdownDescription": "**APK signature scheme v1 (JAR signing, needed below Android 7). Setting any of v1-v4 makes fpack re-sign the APKs with apksigner using android.signing.**  \nAPK v1 签名（JAR 签名，Android 7 以下需要）。设置 v1-v4 任意一项时，fpack 会用 apksigner 和 android.signing 重新签名 APK。\n\nDefault / 默认: `apksigner 默认（minSdk \u003c 24 时开启）`\n\nTargets / 目标: apk"
             },
             "v2": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "APK signature scheme v2 (Android 7+). Default: true. Targets: apk.",
               "examples": [
                 true
               ],
-              "markdownDescription": "**APK signature scheme v2 (Android 7+).**  \nAPK v2 签名（Android 7+）。\n\nDefault / 默认: `true`\n\nTargets / 目标: apk",
-              "type": "boolean"
+              "markdownDescription": "**APK signature scheme v2 (Android 7+).**  \nAPK v2 签名（Android 7+）。\n\nDefault / 默认: `true`\n\nTargets / 目标: apk"
             },
             "v3": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "APK signature scheme v3 (Android 9+, key rotation). Default: true. Targets: apk.",
               "examples": [
                 true
               ],
-              "markdownDescription": "**APK signature scheme v3 (Android 9+, key rotation).**  \nAPK v3 签名（Android 9+，支持密钥轮换）。\n\nDefault / 默认: `true`\n\nTargets / 目标: apk",
-              "type": "boolean"
+              "markdownDescription": "**APK signature scheme v3 (Android 9+, key rotation).**  \nAPK v3 签名（Android 9+，支持密钥轮换）。\n\nDefault / 默认: `true`\n\nTargets / 目标: apk"
             },
             "v4": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "APK signature scheme v4 (incremental install, Android 11+); writes \u003capk\u003e.idsig next to the APK. Default: false. Targets: apk.",
               "examples": [
                 true
               ],
-              "markdownDescription": "**APK signature scheme v4 (incremental install, Android 11+); writes \u003capk\u003e.idsig next to the APK.**  \nAPK v4 签名（增量安装，Android 11+）；会在 APK 旁生成 \u003capk\u003e.idsig。\n\nDefault / 默认: `false`\n\nTargets / 目标: apk",
-              "type": "boolean"
+              "markdownDescription": "**APK signature scheme v4 (incremental install, Android 11+); writes \u003capk\u003e.idsig next to the APK.**  \nAPK v4 签名（增量安装，Android 11+）；会在 APK 旁生成 \u003capk\u003e.idsig。\n\nDefault / 默认: `false`\n\nTargets / 目标: apk"
             }
           },
           "type": [
@@ -145,16 +187,24 @@
         "split_per_abi": {
           "anyOf": [
             {
-              "type": "boolean"
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "enum": [
+                    "true",
+                    "false",
+                    "both",
+                    "universal",
+                    "split"
+                  ],
+                  "type": "string"
+                }
+              ]
             },
             {
-              "enum": [
-                "true",
-                "false",
-                "both",
-                "universal",
-                "split"
-              ],
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
               "type": "string"
             }
           ],
@@ -367,25 +417,41 @@
           "type": "string"
         },
         "mode": {
-          "description": "Build mode. Default: release. Env: FPACK_MODE. Targets: all.",
-          "enum": [
-            "release",
-            "profile",
-            "debug"
+          "anyOf": [
+            {
+              "enum": [
+                "release",
+                "profile",
+                "debug"
+              ],
+              "type": "string"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
           ],
+          "description": "Build mode. Default: release. Env: FPACK_MODE. Targets: all.",
           "examples": [
             "release"
           ],
-          "markdownDescription": "**Build mode.**  \n构建模式。\n\nDefault / 默认: `release`\n\nTargets / 目标: all · Env: `FPACK_MODE` · Flag: `--mode`",
-          "type": "string"
+          "markdownDescription": "**Build mode.**  \n构建模式。\n\nDefault / 默认: `release`\n\nTargets / 目标: all · Env: `FPACK_MODE` · Flag: `--mode`"
         },
         "obfuscate": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "Obfuscate Dart code; symbols go to split_debug_info (default \u003coutput\u003e/debug-info/\u003cplatform\u003e). Default: false. Env: FPACK_OBFUSCATE. Targets: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage.",
           "examples": [
             true
           ],
-          "markdownDescription": "**Obfuscate Dart code; symbols go to split_debug_info (default \u003coutput\u003e/debug-info/\u003cplatform\u003e).**  \n混淆 Dart 代码；符号文件保存到 split_debug_info（默认 \u003c输出目录\u003e/debug-info/\u003c平台\u003e）。\n\nDefault / 默认: `false`\n\nTargets / 目标: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage · Env: `FPACK_OBFUSCATE` · Flag: `--obfuscate`",
-          "type": "boolean"
+          "markdownDescription": "**Obfuscate Dart code; symbols go to split_debug_info (default \u003coutput\u003e/debug-info/\u003cplatform\u003e).**  \n混淆 Dart 代码；符号文件保存到 split_debug_info（默认 \u003c输出目录\u003e/debug-info/\u003c平台\u003e）。\n\nDefault / 默认: `false`\n\nTargets / 目标: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage · Env: `FPACK_OBFUSCATE` · Flag: `--obfuscate`"
         },
         "split_debug_info": {
           "description": "Directory for Dart debug symbols (--split-debug-info). Default: \u003coutput\u003e/debug-info/\u003cplatform\u003e when obfuscating. Targets: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage.",
@@ -459,12 +525,20 @@
           "markdownDescription": "**Targets built by `fpack build` without arguments.**  \n执行 `fpack build` 且不带目标时构建的目标。\n\nTargets / 目标: —"
         },
         "tree_shake_icons": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "false = --no-tree-shake-icons (keep all icon font glyphs). Default: true. Targets: all.",
           "examples": [
             false
           ],
-          "markdownDescription": "**false = --no-tree-shake-icons (keep all icon font glyphs).**  \nfalse 时传 --no-tree-shake-icons（保留全部图标字体字形）。\n\nDefault / 默认: `true`\n\nTargets / 目标: all",
-          "type": "boolean"
+          "markdownDescription": "**false = --no-tree-shake-icons (keep all icon font glyphs).**  \nfalse 时传 --no-tree-shake-icons（保留全部图标字体字形）。\n\nDefault / 默认: `true`\n\nTargets / 目标: all"
         }
       },
       "type": [
@@ -942,41 +1016,65 @@
       "markdownDescription": "iOS: ipa. Setting any of team_id … export_options makes fpack generate ExportOptions.plist.  \niOS：ipa。设置 team_id … export_options 中任意一项时，fpack 会自动生成 ExportOptions.plist。",
       "properties": {
         "codesign": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "false = unsigned IPA (Payload/ zip) for re-signing later. Default: true. Env: FPACK_IOS_CODESIGN. Targets: ipa.",
           "examples": [
             false
           ],
-          "markdownDescription": "**false = unsigned IPA (Payload/ zip) for re-signing later.**  \nfalse：构建未签名 IPA（Payload/ 结构），用于之后重签名。\n\nDefault / 默认: `true`\n\nTargets / 目标: ipa · Env: `FPACK_IOS_CODESIGN` · Flag: `--no-codesign`",
-          "type": "boolean"
+          "markdownDescription": "**false = unsigned IPA (Payload/ zip) for re-signing later.**  \nfalse：构建未签名 IPA（Payload/ 结构），用于之后重签名。\n\nDefault / 默认: `true`\n\nTargets / 目标: ipa · Env: `FPACK_IOS_CODESIGN` · Flag: `--no-codesign`"
         },
         "destination": {
-          "description": "export = write the IPA locally, upload = send it to App Store Connect (ExportOptions destination). Default: export. Targets: ipa.",
-          "enum": [
-            "export",
-            "upload"
+          "anyOf": [
+            {
+              "enum": [
+                "export",
+                "upload"
+              ],
+              "type": "string"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
           ],
+          "description": "export = write the IPA locally, upload = send it to App Store Connect (ExportOptions destination). Default: export. Targets: ipa.",
           "examples": [
             "upload"
           ],
-          "markdownDescription": "**export = write the IPA locally, upload = send it to App Store Connect (ExportOptions destination).**  \nexport 为本地导出 IPA，upload 为直接上传到 App Store Connect（ExportOptions 的 destination）。\n\nDefault / 默认: `export`\n\nTargets / 目标: ipa",
-          "type": "string"
+          "markdownDescription": "**export = write the IPA locally, upload = send it to App Store Connect (ExportOptions destination).**  \nexport 为本地导出 IPA，upload 为直接上传到 App Store Connect（ExportOptions 的 destination）。\n\nDefault / 默认: `export`\n\nTargets / 目标: ipa"
         },
         "export_method": {
-          "description": "IPA export method. Default: app-store-connect. Env: FPACK_IOS_EXPORT_METHOD. Targets: ipa.",
-          "enum": [
-            "app-store-connect",
-            "app-store",
-            "release-testing",
-            "ad-hoc",
-            "development",
-            "debugging",
-            "enterprise"
+          "anyOf": [
+            {
+              "enum": [
+                "app-store-connect",
+                "app-store",
+                "release-testing",
+                "ad-hoc",
+                "development",
+                "debugging",
+                "enterprise"
+              ],
+              "type": "string"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
           ],
+          "description": "IPA export method. Default: app-store-connect. Env: FPACK_IOS_EXPORT_METHOD. Targets: ipa.",
           "examples": [
             "ad-hoc"
           ],
-          "markdownDescription": "**IPA export method.**  \nIPA 导出方式。\n\nDefault / 默认: `app-store-connect`\n\nTargets / 目标: ipa · Env: `FPACK_IOS_EXPORT_METHOD` · Flag: `--export-method`",
-          "type": "string"
+          "markdownDescription": "**IPA export method.**  \nIPA 导出方式。\n\nDefault / 默认: `app-store-connect`\n\nTargets / 目标: ipa · Env: `FPACK_IOS_EXPORT_METHOD` · Flag: `--export-method`"
         },
         "export_options": {
           "description": "Any other ExportOptions.plist keys (added as-is). Targets: ipa.",
@@ -1017,12 +1115,20 @@
           "markdownDescription": "**Extra arguments for flutter build ipa.**  \n追加到 flutter build ipa 的参数。\n\nTargets / 目标: ipa"
         },
         "manage_app_version_and_build_number": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "manageAppVersionAndBuildNumber: let App Store Connect bump the build number. Default: true. Targets: ipa.",
           "examples": [
             false
           ],
-          "markdownDescription": "**manageAppVersionAndBuildNumber: let App Store Connect bump the build number.**  \nmanageAppVersionAndBuildNumber：是否由 App Store Connect 自动管理版本号/构建号。\n\nDefault / 默认: `true`\n\nTargets / 目标: ipa",
-          "type": "boolean"
+          "markdownDescription": "**manageAppVersionAndBuildNumber: let App Store Connect bump the build number.**  \nmanageAppVersionAndBuildNumber：是否由 App Store Connect 自动管理版本号/构建号。\n\nDefault / 默认: `true`\n\nTargets / 目标: ipa"
         },
         "provisioning_profiles": {
           "additionalProperties": {
@@ -1050,24 +1156,40 @@
           "type": "string"
         },
         "signing_style": {
-          "description": "signingStyle: automatic or manual (manual needs provisioning_profiles). Default: automatic. Targets: ipa.",
-          "enum": [
-            "automatic",
-            "manual"
+          "anyOf": [
+            {
+              "enum": [
+                "automatic",
+                "manual"
+              ],
+              "type": "string"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
           ],
+          "description": "signingStyle: automatic or manual (manual needs provisioning_profiles). Default: automatic. Targets: ipa.",
           "examples": [
             "manual"
           ],
-          "markdownDescription": "**signingStyle: automatic or manual (manual needs provisioning_profiles).**  \nsigningStyle：automatic 或 manual（manual 需要 provisioning_profiles）。\n\nDefault / 默认: `automatic`\n\nTargets / 目标: ipa",
-          "type": "string"
+          "markdownDescription": "**signingStyle: automatic or manual (manual needs provisioning_profiles).**  \nsigningStyle：automatic 或 manual（manual 需要 provisioning_profiles）。\n\nDefault / 默认: `automatic`\n\nTargets / 目标: ipa"
         },
         "strip_swift_symbols": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "stripSwiftSymbols. Default: true. Targets: ipa.",
           "examples": [
             false
           ],
-          "markdownDescription": "**stripSwiftSymbols.**  \nstripSwiftSymbols。\n\nDefault / 默认: `true`\n\nTargets / 目标: ipa",
-          "type": "boolean"
+          "markdownDescription": "**stripSwiftSymbols.**  \nstripSwiftSymbols。\n\nDefault / 默认: `true`\n\nTargets / 目标: ipa"
         },
         "team_id": {
           "description": "Apple team ID (teamID). Default: DEVELOPMENT_TEAM of the Xcode project. Targets: ipa.",
@@ -1086,12 +1208,20 @@
           "type": "string"
         },
         "upload_symbols": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "uploadSymbols for App Store Connect. Default: true. Targets: ipa.",
           "examples": [
             false
           ],
-          "markdownDescription": "**uploadSymbols for App Store Connect.**  \nuploadSymbols：是否上传符号表到 App Store Connect。\n\nDefault / 默认: `true`\n\nTargets / 目标: ipa",
-          "type": "boolean"
+          "markdownDescription": "**uploadSymbols for App Store Connect.**  \nuploadSymbols：是否上传符号表到 App Store Connect。\n\nDefault / 默认: `true`\n\nTargets / 目标: ipa"
         }
       },
       "type": [
@@ -1252,19 +1382,27 @@
               "type": "string"
             },
             "priority": {
-              "description": "Priority. Default: optional. Targets: deb.",
-              "enum": [
-                "required",
-                "important",
-                "standard",
-                "optional",
-                "extra"
+              "anyOf": [
+                {
+                  "enum": [
+                    "required",
+                    "important",
+                    "standard",
+                    "optional",
+                    "extra"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
               ],
+              "description": "Priority. Default: optional. Targets: deb.",
               "examples": [
                 "optional"
               ],
-              "markdownDescription": "**Priority.**  \nPriority（优先级）。\n\nDefault / 默认: `optional`\n\nTargets / 目标: deb",
-              "type": "string"
+              "markdownDescription": "**Priority.**  \nPriority（优先级）。\n\nDefault / 默认: `optional`\n\nTargets / 目标: deb"
             },
             "recommends": {
               "anyOf": [
@@ -1357,6 +1495,20 @@
           "type": "string"
         },
         "icon_sizes": {
+          "anyOf": [
+            {
+              "items": {
+                "maximum": 1024,
+                "minimum": 16,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "hicolor icon sizes installed (resized from linux.icon; never upscaled). Default: [16, 32, 48, 64, 128, 256, 512]. Targets: deb, rpm.",
           "examples": [
             [
@@ -1365,13 +1517,7 @@
               256
             ]
           ],
-          "items": {
-            "maximum": 1024,
-            "minimum": 16,
-            "type": "integer"
-          },
-          "markdownDescription": "**hicolor icon sizes installed (resized from linux.icon; never upscaled).**  \n安装到 hicolor 主题的图标尺寸（由 linux.icon 缩放，不放大）。\n\nDefault / 默认: `[16, 32, 48, 64, 128, 256, 512]`\n\nTargets / 目标: deb, rpm",
-          "type": "array"
+          "markdownDescription": "**hicolor icon sizes installed (resized from linux.icon; never upscaled).**  \n安装到 hicolor 主题的图标尺寸（由 linux.icon 缩放，不放大）。\n\nDefault / 默认: `[16, 32, 48, 64, 128, 256, 512]`\n\nTargets / 目标: deb, rpm"
         },
         "keywords": {
           "anyOf": [
@@ -1546,15 +1692,23 @@
             "app_position": {
               "anyOf": [
                 {
-                  "items": {
-                    "type": "integer"
-                  },
-                  "maxItems": 2,
-                  "minItems": 2,
-                  "type": "array"
+                  "anyOf": [
+                    {
+                      "items": {
+                        "type": "integer"
+                      },
+                      "maxItems": 2,
+                      "minItems": 2,
+                      "type": "array"
+                    },
+                    {
+                      "pattern": "^\\d+\\s*[,x]\\s*\\d+$",
+                      "type": "string"
+                    }
+                  ]
                 },
                 {
-                  "pattern": "^\\d+\\s*[,x]\\s*\\d+$",
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
                   "type": "string"
                 }
               ],
@@ -1570,15 +1724,23 @@
             "applications_position": {
               "anyOf": [
                 {
-                  "items": {
-                    "type": "integer"
-                  },
-                  "maxItems": 2,
-                  "minItems": 2,
-                  "type": "array"
+                  "anyOf": [
+                    {
+                      "items": {
+                        "type": "integer"
+                      },
+                      "maxItems": 2,
+                      "minItems": 2,
+                      "type": "array"
+                    },
+                    {
+                      "pattern": "^\\d+\\s*[,x]\\s*\\d+$",
+                      "type": "string"
+                    }
+                  ]
                 },
                 {
-                  "pattern": "^\\d+\\s*[,x]\\s*\\d+$",
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
                   "type": "string"
                 }
               ],
@@ -1600,41 +1762,65 @@
               "type": "string"
             },
             "filesystem": {
-              "description": "Filesystem of the image. Default: HFS+. Targets: dmg.",
-              "enum": [
-                "HFS+",
-                "APFS"
+              "anyOf": [
+                {
+                  "enum": [
+                    "HFS+",
+                    "APFS"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
               ],
+              "description": "Filesystem of the image. Default: HFS+. Targets: dmg.",
               "examples": [
                 "APFS"
               ],
-              "markdownDescription": "**Filesystem of the image.**  \n镜像文件系统。\n\nDefault / 默认: `HFS+`\n\nTargets / 目标: dmg",
-              "type": "string"
+              "markdownDescription": "**Filesystem of the image.**  \n镜像文件系统。\n\nDefault / 默认: `HFS+`\n\nTargets / 目标: dmg"
             },
             "format": {
-              "description": "Image format: UDZO (zlib), UDBZ (bzip2), ULFO (lzfse, macOS 10.11+), ULMO (lzma, 10.15+), UDRO (read-only, uncompressed). Default: UDZO. Targets: dmg.",
-              "enum": [
-                "UDZO",
-                "UDBZ",
-                "ULFO",
-                "ULMO",
-                "UDRO"
+              "anyOf": [
+                {
+                  "enum": [
+                    "UDZO",
+                    "UDBZ",
+                    "ULFO",
+                    "ULMO",
+                    "UDRO"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
               ],
+              "description": "Image format: UDZO (zlib), UDBZ (bzip2), ULFO (lzfse, macOS 10.11+), ULMO (lzma, 10.15+), UDRO (read-only, uncompressed). Default: UDZO. Targets: dmg.",
               "examples": [
                 "ULFO"
               ],
-              "markdownDescription": "**Image format: UDZO (zlib), UDBZ (bzip2), ULFO (lzfse, macOS 10.11+), ULMO (lzma, 10.15+), UDRO (read-only, uncompressed).**  \n镜像格式：UDZO（zlib）、UDBZ（bzip2）、ULFO（lzfse，macOS 10.11+）、ULMO（lzma，10.15+）、UDRO（只读不压缩）。\n\nDefault / 默认: `UDZO`\n\nTargets / 目标: dmg",
-              "type": "string"
+              "markdownDescription": "**Image format: UDZO (zlib), UDBZ (bzip2), ULFO (lzfse, macOS 10.11+), ULMO (lzma, 10.15+), UDRO (read-only, uncompressed).**  \n镜像格式：UDZO（zlib）、UDBZ（bzip2）、ULFO（lzfse，macOS 10.11+）、ULMO（lzma，10.15+）、UDRO（只读不压缩）。\n\nDefault / 默认: `UDZO`\n\nTargets / 目标: dmg"
             },
             "icon_size": {
+              "anyOf": [
+                {
+                  "maximum": 512,
+                  "minimum": 16,
+                  "type": "integer"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "Icon size in the window. create-dmg. Default: 128. Targets: dmg.",
               "examples": [
                 128
               ],
-              "markdownDescription": "**Icon size in the window. create-dmg.**  \n窗口中的图标大小。需要 create-dmg。\n\nDefault / 默认: `128`\n\nTargets / 目标: dmg",
-              "maximum": 512,
-              "minimum": 16,
-              "type": "integer"
+              "markdownDescription": "**Icon size in the window. create-dmg.**  \n窗口中的图标大小。需要 create-dmg。\n\nDefault / 默认: `128`\n\nTargets / 目标: dmg"
             },
             "license": {
               "description": "License agreement shown when the DMG is opened (.txt/.rtf). create-dmg. Targets: dmg.",
@@ -1645,17 +1831,25 @@
               "type": "string"
             },
             "tool": {
-              "description": "auto = create-dmg when installed (or when layout keys are set), else hdiutil. Default: auto. Env: FPACK_DMG_TOOL. Targets: dmg.",
-              "enum": [
-                "auto",
-                "hdiutil",
-                "create-dmg"
+              "anyOf": [
+                {
+                  "enum": [
+                    "auto",
+                    "hdiutil",
+                    "create-dmg"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
               ],
+              "description": "auto = create-dmg when installed (or when layout keys are set), else hdiutil. Default: auto. Env: FPACK_DMG_TOOL. Targets: dmg.",
               "examples": [
                 "create-dmg"
               ],
-              "markdownDescription": "**auto = create-dmg when installed (or when layout keys are set), else hdiutil.**  \nauto：装了 create-dmg（或设置了布局键）时用 create-dmg，否则用 hdiutil。\n\nDefault / 默认: `auto`\n\nTargets / 目标: dmg · Env: `FPACK_DMG_TOOL` · Flag: `--dmg-tool`",
-              "type": "string"
+              "markdownDescription": "**auto = create-dmg when installed (or when layout keys are set), else hdiutil.**  \nauto：装了 create-dmg（或设置了布局键）时用 create-dmg，否则用 hdiutil。\n\nDefault / 默认: `auto`\n\nTargets / 目标: dmg · Env: `FPACK_DMG_TOOL` · Flag: `--dmg-tool`"
             },
             "volume_icon": {
               "description": "Volume icon (.icns). create-dmg. Targets: dmg.",
@@ -1676,15 +1870,23 @@
             "window_position": {
               "anyOf": [
                 {
-                  "items": {
-                    "type": "integer"
-                  },
-                  "maxItems": 2,
-                  "minItems": 2,
-                  "type": "array"
+                  "anyOf": [
+                    {
+                      "items": {
+                        "type": "integer"
+                      },
+                      "maxItems": 2,
+                      "minItems": 2,
+                      "type": "array"
+                    },
+                    {
+                      "pattern": "^\\d+\\s*[,x]\\s*\\d+$",
+                      "type": "string"
+                    }
+                  ]
                 },
                 {
-                  "pattern": "^\\d+\\s*[,x]\\s*\\d+$",
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
                   "type": "string"
                 }
               ],
@@ -1700,15 +1902,23 @@
             "window_size": {
               "anyOf": [
                 {
-                  "items": {
-                    "type": "integer"
-                  },
-                  "maxItems": 2,
-                  "minItems": 2,
-                  "type": "array"
+                  "anyOf": [
+                    {
+                      "items": {
+                        "type": "integer"
+                      },
+                      "maxItems": 2,
+                      "minItems": 2,
+                      "type": "array"
+                    },
+                    {
+                      "pattern": "^\\d+\\s*[,x]\\s*\\d+$",
+                      "type": "string"
+                    }
+                  ]
                 },
                 {
-                  "pattern": "^\\d+\\s*[,x]\\s*\\d+$",
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
                   "type": "string"
                 }
               ],
@@ -1753,12 +1963,20 @@
           "markdownDescription": "How fpack waits for Apple's notary service. Every submission is recorded in \u003coutput\u003e/NOTARIZATION.md and notarization.json with copy-paste commands.  \n如何等待 Apple 公证服务。每次提交都会记录到 \u003c输出目录\u003e/NOTARIZATION.md 和 notarization.json，其中有可直接复制的查询命令。",
           "properties": {
             "wait": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "true: stay attached until Apple answers (shows elapsed time; Ctrl-C stops waiting, the submission continues at Apple). false: submit, write NOTARIZATION.md / notarization.json and finish with status \"submitted\"; later run `fpack notarize finish` to staple. Default: true. Env: FPACK_NOTARIZE_WAIT. Targets: macos, dmg, pkg.",
               "examples": [
                 false
               ],
-              "markdownDescription": "**true: stay attached until Apple answers (shows elapsed time; Ctrl-C stops waiting, the submission continues at Apple). false: submit, write NOTARIZATION.md / notarization.json and finish with status \"submitted\"; later run `fpack notarize finish` to staple.**  \ntrue：一直等待 Apple 返回结果（显示已等待时间；按 Ctrl-C 只是停止等待，Apple 端会继续处理）。false：提交后写入 NOTARIZATION.md / notarization.json 并结束，状态为 “submitted”；之后运行 `fpack notarize finish` 装订。\n\nDefault / 默认: `true`\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_NOTARIZE_WAIT` · Flag: `--notarize-no-wait`",
-              "type": "boolean"
+              "markdownDescription": "**true: stay attached until Apple answers (shows elapsed time; Ctrl-C stops waiting, the submission continues at Apple). false: submit, write NOTARIZATION.md / notarization.json and finish with status \"submitted\"; later run `fpack notarize finish` to staple.**  \ntrue：一直等待 Apple 返回结果（显示已等待时间；按 Ctrl-C 只是停止等待，Apple 端会继续处理）。false：提交后写入 NOTARIZATION.md / notarization.json 并结束，状态为 “submitted”；之后运行 `fpack notarize finish` 装订。\n\nDefault / 默认: `true`\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_NOTARIZE_WAIT` · Flag: `--notarize-no-wait`"
             }
           },
           "type": [
@@ -1844,20 +2062,36 @@
               "type": "string"
             },
             "relocatable": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "true = Installer updates a moved copy of the app wherever it is; false = always install_location. Default: false. Targets: pkg.",
               "examples": [
                 true
               ],
-              "markdownDescription": "**true = Installer updates a moved copy of the app wherever it is; false = always install_location.**  \ntrue：App 被移动过时在原位置升级；false：总是安装到 install_location。\n\nDefault / 默认: `false`\n\nTargets / 目标: pkg",
-              "type": "boolean"
+              "markdownDescription": "**true = Installer updates a moved copy of the app wherever it is; false = always install_location.**  \ntrue：App 被移动过时在原位置升级；false：总是安装到 install_location。\n\nDefault / 默认: `false`\n\nTargets / 目标: pkg"
             },
             "require_restart": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "Ask the user to restart after installing. Default: false. Targets: pkg.",
               "examples": [
                 true
               ],
-              "markdownDescription": "**Ask the user to restart after installing.**  \n安装完成后要求重启。\n\nDefault / 默认: `false`\n\nTargets / 目标: pkg",
-              "type": "boolean"
+              "markdownDescription": "**Ask the user to restart after installing.**  \n安装完成后要求重启。\n\nDefault / 默认: `false`\n\nTargets / 目标: pkg"
             },
             "title": {
               "description": "Installer window title. Default: .app name. Targets: pkg.",
@@ -1895,12 +2129,20 @@
           "markdownDescription": "Developer ID signing and notarization (only from this file, FPACK_MACOS_* and flags).  \nDeveloper ID 签名与公证（只来自本文件、FPACK_MACOS_* 和命令行参数）。",
           "properties": {
             "enabled": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "Re-sign the .app with Developer ID (and sign the DMG). true without identity picks the first \"Developer ID Application\" identity. false (--no-sign) also disables pkg signing and notarization. Default: true when identity is set. Env: FPACK_MACOS_SIGN. Targets: macos, dmg, pkg.",
               "examples": [
                 true
               ],
-              "markdownDescription": "**Re-sign the .app with Developer ID (and sign the DMG). true without identity picks the first \"Developer ID Application\" identity. false (--no-sign) also disables pkg signing and notarization.**  \n用 Developer ID 重新签名 .app（并签名 DMG）。为 true 但未设置 identity 时自动选用第一个 “Developer ID Application” 证书。false（--no-sign）同时关闭 pkg 签名与公证。\n\nDefault / 默认: `设置了 identity 时为 true`\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_MACOS_SIGN` · Flag: `--sign / --no-sign`",
-              "type": "boolean"
+              "markdownDescription": "**Re-sign the .app with Developer ID (and sign the DMG). true without identity picks the first \"Developer ID Application\" identity. false (--no-sign) also disables pkg signing and notarization.**  \n用 Developer ID 重新签名 .app（并签名 DMG）。为 true 但未设置 identity 时自动选用第一个 “Developer ID Application” 证书。false（--no-sign）同时关闭 pkg 签名与公证。\n\nDefault / 默认: `设置了 identity 时为 true`\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_MACOS_SIGN` · Flag: `--sign / --no-sign`"
             },
             "entitlements": {
               "description": "Entitlements used when re-signing the app. Default: macos/Runner/Release.entitlements. Targets: macos, dmg, pkg.",
@@ -1911,12 +2153,20 @@
               "type": "string"
             },
             "hardened_runtime": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "Sign with the hardened runtime (required for notarization). Default: true. Targets: macos, dmg, pkg.",
               "examples": [
                 true
               ],
-              "markdownDescription": "**Sign with the hardened runtime (required for notarization).**  \n使用 Hardened Runtime 签名（公证必需）。\n\nDefault / 默认: `true`\n\nTargets / 目标: macos, dmg, pkg",
-              "type": "boolean"
+              "markdownDescription": "**Sign with the hardened runtime (required for notarization).**  \n使用 Hardened Runtime 签名（公证必需）。\n\nDefault / 默认: `true`\n\nTargets / 目标: macos, dmg, pkg"
             },
             "identity": {
               "description": "codesign identity for the app; setting it turns signing on. Env: FPACK_MACOS_SIGN_IDENTITY. Targets: macos, dmg, pkg.",
@@ -1935,12 +2185,20 @@
               "type": "string"
             },
             "notarize": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "Notarize and staple the zip, DMG and signed pkg (uploads to Apple). Default: true when a notary credential is set. Env: FPACK_MACOS_NOTARIZE. Targets: macos, dmg, pkg.",
               "examples": [
                 true
               ],
-              "markdownDescription": "**Notarize and staple the zip, DMG and signed pkg (uploads to Apple).**  \n公证并装订 zip、DMG 与已签名的 pkg（会上传到 Apple）。\n\nDefault / 默认: `设置了公证凭证时为 true`\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_MACOS_NOTARIZE` · Flag: `--notarize / --no-notarize`",
-              "type": "boolean"
+              "markdownDescription": "**Notarize and staple the zip, DMG and signed pkg (uploads to Apple).**  \n公证并装订 zip、DMG 与已签名的 pkg（会上传到 Apple）。\n\nDefault / 默认: `设置了公证凭证时为 true`\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_MACOS_NOTARIZE` · Flag: `--notarize / --no-notarize`"
             },
             "notary_api_issuer": {
               "description": "API issuer UUID (omit for individual keys). Env: FPACK_NOTARY_API_ISSUER. Targets: macos, dmg, pkg.",
@@ -2016,24 +2274,40 @@
       "markdownDescription": "Where artifacts go and how they are named.  \n产物输出目录与命名。",
       "properties": {
         "checksum_algorithm": {
-          "description": "Checksum algorithm (file SHA256SUMS or SHA512SUMS). Default: sha256. Targets: all.",
-          "enum": [
-            "sha256",
-            "sha512"
+          "anyOf": [
+            {
+              "enum": [
+                "sha256",
+                "sha512"
+              ],
+              "type": "string"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
           ],
+          "description": "Checksum algorithm (file SHA256SUMS or SHA512SUMS). Default: sha256. Targets: all.",
           "examples": [
             "sha512"
           ],
-          "markdownDescription": "**Checksum algorithm (file SHA256SUMS or SHA512SUMS).**  \n校验算法（文件名 SHA256SUMS 或 SHA512SUMS）。\n\nDefault / 默认: `sha256`\n\nTargets / 目标: all",
-          "type": "string"
+          "markdownDescription": "**Checksum algorithm (file SHA256SUMS or SHA512SUMS).**  \n校验算法（文件名 SHA256SUMS 或 SHA512SUMS）。\n\nDefault / 默认: `sha256`\n\nTargets / 目标: all"
         },
         "checksums": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "Write a checksum file next to the artifacts. Default: true. Targets: all.",
           "examples": [
             false
           ],
-          "markdownDescription": "**Write a checksum file next to the artifacts.**  \n在产物旁写入校验和文件。\n\nDefault / 默认: `true`\n\nTargets / 目标: all",
-          "type": "boolean"
+          "markdownDescription": "**Write a checksum file next to the artifacts.**  \n在产物旁写入校验和文件。\n\nDefault / 默认: `true`\n\nTargets / 目标: all"
         },
         "dir": {
           "description": "Artifact directory (relative to the project; placeholders allowed). Default: dist/{version}{+build}. Env: FPACK_OUTPUT_DIR. Targets: all.",
@@ -2067,15 +2341,41 @@
             }
           ],
           "markdownDescription": "**Per-target file name templates (target → template), overriding output.name.**  \n按目标单独设置文件名模板（目标 → 模板），优先于 output.name。\n\nTargets / 目标: all",
+          "propertyNames": {
+            "enum": [
+              "apk",
+              "aab",
+              "ipa",
+              "macos",
+              "dmg",
+              "pkg",
+              "windows",
+              "exe",
+              "msix",
+              "linux",
+              "deb",
+              "rpm",
+              "appimage",
+              "web"
+            ]
+          },
           "type": "object"
         },
         "overwrite": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "Replace existing artifacts instead of stopping. Default: false. Env: FPACK_OVERWRITE. Targets: all.",
           "examples": [
             true
           ],
-          "markdownDescription": "**Replace existing artifacts instead of stopping.**  \n已存在同名产物时覆盖，而不是停止。\n\nDefault / 默认: `false`\n\nTargets / 目标: all · Env: `FPACK_OVERWRITE` · Flag: `-f, --force`",
-          "type": "boolean"
+          "markdownDescription": "**Replace existing artifacts instead of stopping.**  \n已存在同名产物时覆盖，而不是停止。\n\nDefault / 默认: `false`\n\nTargets / 目标: all · Env: `FPACK_OVERWRITE` · Flag: `-f, --force`"
         }
       },
       "type": [
@@ -2097,12 +2397,20 @@
           "type": "string"
         },
         "csp": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "No dynamic code generation (Content-Security-Policy). Default: false. Targets: web.",
           "examples": [
             true
           ],
-          "markdownDescription": "**No dynamic code generation (Content-Security-Policy).**  \n不动态生成代码（满足 CSP 限制）。\n\nDefault / 默认: `false`\n\nTargets / 目标: web",
-          "type": "boolean"
+          "markdownDescription": "**No dynamic code generation (Content-Security-Policy).**  \n不动态生成代码（满足 CSP 限制）。\n\nDefault / 默认: `false`\n\nTargets / 目标: web"
         },
         "extra_args": {
           "anyOf": [
@@ -2125,22 +2433,38 @@
           "markdownDescription": "**Extra arguments for flutter build web.**  \n追加到 flutter build web 的参数。\n\nTargets / 目标: web"
         },
         "optimization_level": {
+          "anyOf": [
+            {
+              "maximum": 4,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "dart2js / dart2wasm optimization level 0-4 (-O). Default: 4. Targets: web.",
           "examples": [
             2
           ],
-          "markdownDescription": "**dart2js / dart2wasm optimization level 0-4 (-O).**  \ndart2js / dart2wasm 优化级别 0-4（-O）。\n\nDefault / 默认: `4`\n\nTargets / 目标: web",
-          "maximum": 4,
-          "minimum": 0,
-          "type": "integer"
+          "markdownDescription": "**dart2js / dart2wasm optimization level 0-4 (-O).**  \ndart2js / dart2wasm 优化级别 0-4（-O）。\n\nDefault / 默认: `4`\n\nTargets / 目标: web"
         },
         "source_maps": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "Generate source maps. Default: false. Targets: web.",
           "examples": [
             true
           ],
-          "markdownDescription": "**Generate source maps.**  \n生成 source map。\n\nDefault / 默认: `false`\n\nTargets / 目标: web",
-          "type": "boolean"
+          "markdownDescription": "**Generate source maps.**  \n生成 source map。\n\nDefault / 默认: `false`\n\nTargets / 目标: web"
         },
         "static_assets_url": {
           "description": "Serve static assets from another domain (must end with /). Targets: web.",
@@ -2152,12 +2476,20 @@
           "type": "string"
         },
         "wasm": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "Compile to WebAssembly (with JS fallback). Default: false. Targets: web.",
           "examples": [
             true
           ],
-          "markdownDescription": "**Compile to WebAssembly (with JS fallback).**  \n编译为 WebAssembly（带 JS 回退）。\n\nDefault / 默认: `false`\n\nTargets / 目标: web · Flag: `--wasm`",
-          "type": "boolean"
+          "markdownDescription": "**Compile to WebAssembly (with JS fallback).**  \n编译为 WebAssembly（带 JS 回退）。\n\nDefault / 默认: `false`\n\nTargets / 目标: web · Flag: `--wasm`"
         },
         "web_define": {
           "additionalProperties": {
@@ -2177,12 +2509,20 @@
           "type": "object"
         },
         "web_resources_cdn": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
           "description": "false = bundle CanvasKit instead of loading it from the CDN. Default: true. Targets: web.",
           "examples": [
             false
           ],
-          "markdownDescription": "**false = bundle CanvasKit instead of loading it from the CDN.**  \nfalse：打包 CanvasKit，不从 CDN 加载。\n\nDefault / 默认: `true`\n\nTargets / 目标: web",
-          "type": "boolean"
+          "markdownDescription": "**false = bundle CanvasKit instead of loading it from the CDN.**  \nfalse：打包 CanvasKit，不从 CDN 加载。\n\nDefault / 默认: `true`\n\nTargets / 目标: web"
         }
       },
       "type": [
@@ -2245,17 +2585,25 @@
               "type": "string"
             },
             "desktop_icon": {
-              "description": "Desktop shortcut task: none, unchecked (offered), checked (on by default). Default: unchecked. Targets: exe.",
-              "enum": [
-                "none",
-                "unchecked",
-                "checked"
+              "anyOf": [
+                {
+                  "enum": [
+                    "none",
+                    "unchecked",
+                    "checked"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
               ],
+              "description": "Desktop shortcut task: none, unchecked (offered), checked (on by default). Default: unchecked. Targets: exe.",
               "examples": [
                 "checked"
               ],
-              "markdownDescription": "**Desktop shortcut task: none, unchecked (offered), checked (on by default).**  \n桌面快捷方式：none 不提供，unchecked 提供但默认不勾选，checked 默认勾选。\n\nDefault / 默认: `unchecked`\n\nTargets / 目标: exe",
-              "type": "string"
+              "markdownDescription": "**Desktop shortcut task: none, unchecked (offered), checked (on by default).**  \n桌面快捷方式：none 不提供，unchecked 提供但默认不勾选，checked 默认勾选。\n\nDefault / 默认: `unchecked`\n\nTargets / 目标: exe"
             },
             "group_name": {
               "description": "Start menu folder. Default: display name. Targets: exe.",
@@ -2327,17 +2675,25 @@
               "type": "string"
             },
             "privileges": {
-              "description": "user = per-user install (no UAC), admin = all users (UAC), ask = let the user choose. Default: ask. Targets: exe.",
-              "enum": [
-                "user",
-                "admin",
-                "ask"
+              "anyOf": [
+                {
+                  "enum": [
+                    "user",
+                    "admin",
+                    "ask"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
               ],
+              "description": "user = per-user install (no UAC), admin = all users (UAC), ask = let the user choose. Default: ask. Targets: exe.",
               "examples": [
                 "admin"
               ],
-              "markdownDescription": "**user = per-user install (no UAC), admin = all users (UAC), ask = let the user choose.**  \nuser：仅当前用户（无需管理员）；admin：所有用户（需要 UAC）；ask：让用户选择。\n\nDefault / 默认: `ask`\n\nTargets / 目标: exe",
-              "type": "string"
+              "markdownDescription": "**user = per-user install (no UAC), admin = all users (UAC), ask = let the user choose.**  \nuser：仅当前用户（无需管理员）；admin：所有用户（需要 UAC）；ask：让用户选择。\n\nDefault / 默认: `ask`\n\nTargets / 目标: exe"
             },
             "publisher": {
               "description": "AppPublisher. Default: app.publisher. Targets: exe.",
@@ -2357,12 +2713,20 @@
               "type": "string"
             },
             "run_after_install": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "Offer \"Launch \u003capp\u003e\" on the last page. Default: true. Targets: exe.",
               "examples": [
                 false
               ],
-              "markdownDescription": "**Offer \"Launch \u003capp\u003e\" on the last page.**  \n最后一页提供“运行 \u003c应用\u003e”选项。\n\nDefault / 默认: `true`\n\nTargets / 目标: exe",
-              "type": "boolean"
+              "markdownDescription": "**Offer \"Launch \u003capp\u003e\" on the last page.**  \n最后一页提供“运行 \u003c应用\u003e”选项。\n\nDefault / 默认: `true`\n\nTargets / 目标: exe"
             },
             "script": {
               "description": "Your own .iss script; fpack passes /DAppName /DAppVersion /DAppPublisher /DAppExeName /DSourceDir /DAppId /DAppURL. Targets: exe.",
@@ -2415,16 +2779,24 @@
               "type": "string"
             },
             "wizard_style": {
-              "description": "Wizard style. Default: modern. Targets: exe.",
-              "enum": [
-                "modern",
-                "classic"
+              "anyOf": [
+                {
+                  "enum": [
+                    "modern",
+                    "classic"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
               ],
+              "description": "Wizard style. Default: modern. Targets: exe.",
               "examples": [
                 "classic"
               ],
-              "markdownDescription": "**Wizard style.**  \n向导样式。\n\nDefault / 默认: `modern`\n\nTargets / 目标: exe",
-              "type": "string"
+              "markdownDescription": "**Wizard style.**  \n向导样式。\n\nDefault / 默认: `modern`\n\nTargets / 目标: exe"
             }
           },
           "type": [
@@ -2622,28 +2994,52 @@
               "type": "string"
             },
             "sign": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "Sign the MSIX (false requires publisher). Default: true. Targets: msix.",
               "examples": [
                 false
               ],
-              "markdownDescription": "**Sign the MSIX (false requires publisher).**  \n是否签名 MSIX（false 时必须设置 publisher）。\n\nDefault / 默认: `true`\n\nTargets / 目标: msix",
-              "type": "boolean"
+              "markdownDescription": "**Sign the MSIX (false requires publisher).**  \n是否签名 MSIX（false 时必须设置 publisher）。\n\nDefault / 默认: `true`\n\nTargets / 目标: msix"
             },
             "start_at_login": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "Start the app at login. Default: false. Targets: msix.",
               "examples": [
                 true
               ],
-              "markdownDescription": "**Start the app at login.**  \n登录时自动启动。\n\nDefault / 默认: `false`\n\nTargets / 目标: msix",
-              "type": "boolean"
+              "markdownDescription": "**Start the app at login.**  \n登录时自动启动。\n\nDefault / 默认: `false`\n\nTargets / 目标: msix"
             },
             "store": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
               "description": "Build for the Microsoft Store (unsigned, Store signs it). Default: false. Targets: msix.",
               "examples": [
                 true
               ],
-              "markdownDescription": "**Build for the Microsoft Store (unsigned, Store signs it).**  \n为 Microsoft Store 构建（不签名，由 Store 签名）。\n\nDefault / 默认: `false`\n\nTargets / 目标: msix",
-              "type": "boolean"
+              "markdownDescription": "**Build for the Microsoft Store (unsigned, Store signs it).**  \n为 Microsoft Store 构建（不签名，由 Store 签名）。\n\nDefault / 默认: `false`\n\nTargets / 目标: msix"
             },
             "version": {
               "description": "MSIX version (a.b.c.d). Default: build name as a.b.c.0. Targets: msix.",

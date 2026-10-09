@@ -44,7 +44,7 @@
 - **`extra_args` 的拼接顺序**：`build.extra_args` → 平台的 `extra_args`（如 `android.extra_args`）→ 命令行 `--` 之后的参数。都会原样追加到 `flutter build …` 的末尾。
 - **macOS 签名的联动规则**：设置了证书（`identity`）即视为启用签名；设置了任一公证凭证（`notary_profile`、API 密钥或 Apple ID）即视为启用公证；关闭签名（`--no-sign` / `enabled: false`）会同时关闭公证；`enabled: false` 与 `notarize: true` 同时出现是配置错误。
 - **macOS 签名只来自 fpack 自己的配置**：fpack 不读取 `pubspec.yaml` 中其他插件的配置（例如 [`dmg`](https://pub.dev/packages/dmg) 包的 `dmg:` 段）。什么都不配置时，.app 保留 Xcode 工程自己的签名，DMG 不签名。
-- **`fpack.yaml` 中的环境变量引用**：任何字符串值都可以写 `${VAR}` 或 `${VAR:-默认值}`。未设置且没有默认值的变量会被替换为空字符串，并在运行时给出警告。
+- **`fpack.yaml` 中的环境变量引用**：任何值都可以写 `${VAR}` 或 `${VAR:-默认值}`，布尔值和数字也可以（例如 `obfuscate: ${OBF:-false}`、`optimization_level: ${OPT:-4}`，替换后再按类型校验）。未设置且没有默认值的变量会被替换为空字符串，并在运行时给出警告。
 - **路径**：`fpack.yaml` 中的相对路径都相对于 **项目根目录**（`pubspec.yaml` 所在目录）；支持 `~/`。
 - **未知键是错误**：拼错的键会报错并提示「你是不是想写 …」，不会被静默忽略。
 - **布尔值**：`true/false`、`yes/no`、`on/off`、`1/0` 都可以（环境变量同样适用）。
@@ -754,7 +754,7 @@ dist/1.0.0+1/xue_hua_im-1.0.0+1-macos-universal-profile.dmg # --profile
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Matkurban/fpack/main/schema/fpack.schema.json
 # fpack.yaml —— 放在项目根目录（与 pubspec.yaml 同级）
-# 所有键都可选；字符串中可用 ${VAR} / ${VAR:-默认值} 引用环境变量。
+# 所有键都可选；任何值中都可用 ${VAR} / ${VAR:-默认值} 引用环境变量。
 
 app:
   name: xue_hua_im                 # 产物文件名前缀（默认：pubspec 的 name）

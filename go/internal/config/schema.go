@@ -12,6 +12,9 @@ const SchemaURL = "https://raw.githubusercontent.com/Matkurban/fpack/main/schema
 
 type obj = map[string]any
 
+// envRefSchema accepts a ${VAR} / ${VAR:-default} reference.
+var envRefSchema = obj{"type": "string", "pattern": `\$\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\}`}
+
 func keySchema(k Key) obj {
 	var s obj
 	switch k.Kind {
@@ -33,14 +36,20 @@ func keySchema(k Key) obj {
 		s = obj{"type": "string", "enum": k.Enum}
 	case KList:
 		item := obj{"type": "string"}
-		if k.Path == "build.targets" {
+		switch k.Path {
+		case "build.targets":
 			item = obj{"type": "string", "enum": TargetNames}
+		case "android.abis":
+			item = obj{"type": "string", "enum": KnownABIs}
 		}
 		s = obj{"anyOf": []any{obj{"type": "array", "items": item}, item}}
 	case KIntList:
 		s = obj{"type": "array", "items": obj{"type": "integer", "minimum": 16, "maximum": 1024}}
 	case KMap:
 		s = obj{"type": "object", "additionalProperties": obj{"type": []string{"string", "number", "boolean"}}}
+		if k.Path == "output.names" {
+			s["propertyNames"] = obj{"enum": TargetNames}
+		}
 	case KAnyMap:
 		s = obj{"type": "object"}
 	case KListMap:
@@ -64,6 +73,11 @@ func keySchema(k Key) obj {
 		s = obj{"anyOf": []any{obj{"type": "boolean"}, obj{"type": "string", "enum": []string{"true", "false", "both", "universal", "split"}}}}
 	default:
 		s = obj{}
+	}
+	// Non-string values may come from the environment: `obfuscate: ${OBF:-false}`.
+	switch k.Kind {
+	case KBool, KInt, KEnum, KSplit, KIntList, KPair:
+		s = obj{"anyOf": []any{s, envRefSchema}}
 	}
 	desc := k.Doc.EN
 	if k.Default.EN != "" {

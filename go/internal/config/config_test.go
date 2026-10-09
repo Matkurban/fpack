@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/Matkurban/fpack/go/internal/pack"
 )
 
 func envOf(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
@@ -132,9 +134,9 @@ func TestEnvOverridesConfig(t *testing.T) {
 
 func TestValidate(t *testing.T) {
 	c := &Config{}
-	Parse([]byte("build:\n  mode: fast\nandroid:\n  abis: [x86]\n  signing:\n    store_file: a.jks\nios:\n  export_method: store\n"), c)
+	Parse([]byte("build:\n  mode: fast\nandroid:\n  abis: [x86]\n  signing:\n    store_file: a.jks\nios:\n  export_method: store\noutput:\n  name: \"{app}-{vers}\"\n  names: {exe: \"{app}{-nope}\"}\n"), c)
 	probs := strings.Join(c.Validate(), "\n")
-	for _, want := range []string{"build.mode", "unknown ABI \"x86\"", "ios.export_method", "store_password", "key_alias"} {
+	for _, want := range []string{"build.mode", "unknown ABI \"x86\"", "ios.export_method", "store_password", "key_alias", "output.name: unknown placeholder {vers}", "output.names.exe: unknown placeholder {-nope}"} {
 		if !strings.Contains(probs, want) {
 			t.Errorf("missing %q in %s", want, probs)
 		}
@@ -163,5 +165,36 @@ func TestNestedEnvDefaultsAndDollarValues(t *testing.T) {
 	s := c.Android.Signing
 	if s.StorePassword != "pa$s${B}w" || s.KeyPassword != "pa$s${B}w" || s.KeyAlias != "upload" || len(c.UnsetEnv) != 0 {
 		t.Fatalf("%+v unset=%v", s, c.UnsetEnv)
+	}
+}
+
+func TestNamePlaceholdersMatchPack(t *testing.T) {
+	if !reflect.DeepEqual(NamePlaceholders, pack.Placeholders) {
+		t.Fatalf("config %v != pack %v", NamePlaceholders, pack.Placeholders)
+	}
+}
+
+func TestEnvRefsInTypedKeys(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "fpack.yaml")
+	os.WriteFile(p, []byte("build:\n  obfuscate: \"${OBF:-false}\"\n  tree_shake_icons: ${TREE}\nandroid:\n  split_per_abi: ${SPLIT}\n  signing:\n    store_password: ${PW}\nweb:\n  optimization_level: ${OPT:-2}\n"), 0o644)
+	env := map[string]string{"SPLIT": "both", "TREE": "true", "PW": "a: b #c ${X}"}
+	c, err := Load(p, func(k string) string { return env[k] })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Build.Obfuscate == nil || *c.Build.Obfuscate || c.Build.TreeShakeIcons == nil || !*c.Build.TreeShakeIcons {
+		t.Fatalf("bools: %+v", c.Build)
+	}
+	if string(c.Android.SplitPerABI) != "both" || c.Android.Signing.StorePassword != "a: b #c ${X}" {
+		t.Fatalf("android: %q %q", c.Android.SplitPerABI, c.Android.Signing.StorePassword)
+	}
+	if c.Web.OptimizationLevel == nil || *c.Web.OptimizationLevel != 2 {
+		t.Fatalf("web: %v", c.Web.OptimizationLevel)
+	}
+	// A real type error still reports the original line.
+	os.WriteFile(p, []byte("build:\n  obfuscate: ${OBF}\n  mode: [x]\n"), 0o644)
+	if _, err := Load(p, func(string) string { return "" }); err == nil || !strings.Contains(err.Error(), "line") {
+		t.Fatal(err)
 	}
 }

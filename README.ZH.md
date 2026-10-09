@@ -16,7 +16,7 @@ fpack build --all                 # 本机能打的全部打出来，打不了�
 - **零配置可用**：直接读取 `pubspec.yaml`、Gradle、Xcode 工程中的信息；`fpack init` 生成的 `fpack.yaml` 完全可选。
 - **绝不修改你的项目文件**：只调用 Flutter 工具链和打包工具。签名信息通过环境变量注入，不改 Gradle。唯一会写入的文件是 `fpack init` 生成的 `fpack.yaml`，产物写到 `dist/`，临时文件写到 `build/fpack/`。
 - **原生核心**：核心用 Go 编写并编译为原生二进制（启动约 10 ms，无运行时依赖）；Dart 包只是一个很薄的启动器，负责找到/准备与之版本完全一致的二进制。
-- **一切可配置**：约 175 个 fpack.yaml 键（安装包元数据、签名、DMG 布局、Inno Setup 语言/权限、MSIX、deb/rpm 元数据与脚本、钩子、文件名模板……），全部可用 `FPACK_*` 环境变量覆盖；配置会被严格校验（未知键提示「你是不是想写 …」、类型错误指出行号），并提供 JSON Schema 供编辑器补全。
+- **一切可配置**：188 个 fpack.yaml 键（安装包元数据、签名、DMG 布局、Inno Setup 语言/权限、MSIX、deb/rpm 元数据与脚本、钩子、文件名模板……），任何值都可以引用环境变量（`${VAR}` / `${VAR:-默认值}`，布尔值和数字也可以），构建、签名、公证相关设置还有专门的 `FPACK_*` 变量；配置会被严格校验（未知键提示「你是不是想写 …」、类型错误指出行号），并提供 JSON Schema 供编辑器补全。
 - **为人设计**：彩色输出与进度动画（CI 中自动降级为纯文本）、失败时给出关键错误摘录 + 修复建议 + 完整日志路径、`--dry-run` 精确展示每一条将执行的命令、`--json` 机器可读输出、中英文自动切换。
 
 ---
@@ -212,7 +212,7 @@ Flutter 不能跨系统编译 iOS/macOS/Windows/Linux 桌面应用。`fpack buil
 
 - **校验**：未知键（提示「你是不是想写 …」）、类型错误（`line 12: android.signing.v1: expected true or false, got "maybe"`）、可选值与取值范围、组合冲突；构建前检查当前目标用到的文件是否存在。
 - **编辑器补全**：生成的文件第一行是 `# yaml-language-server: $schema=…/schema/fpack.schema.json`，VS Code（YAML 插件）/ JetBrains 会提供补全、悬停说明（中英文）和校验。`fpack schema -o fpack.schema.json` 可导出本地副本。
-- **环境变量**：`${VAR}` / `${VAR:-默认值}` 在加载时替换；几乎每个键都有对应的 `FPACK_*` 变量（见[完整列表](doc/configuration.md#3-环境变量)）。
+- **环境变量**：任何值中的 `${VAR}` / `${VAR:-默认值}` 都会在加载时替换（`obfuscate: ${OBF:-false}` 也可以）；构建、签名、公证相关设置还有专门的 `FPACK_*` 变量（见[完整列表](doc/configuration.md#3-环境变量)）。
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Matkurban/fpack/main/schema/fpack.schema.json
