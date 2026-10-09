@@ -7,7 +7,14 @@ lang: zh-CN
 更新日志仅提供英文版本。
 
 <!-- BEGIN GENERATED CHANGELOG -->
-## Unreleased
+## 1.1.4
+
+### Added
+- Documentation website: https://matkurban.github.io/fpack/ (English) and https://matkurban.github.io/fpack/zh/ (Chinese) – getting started, every command, every `fpack.yaml` key and `FPACK_*` variable (generated from the core, so it stays accurate), platform guides (Android signing, iOS, macOS signing + notarization incl. how to get certificates and credentials, Windows, Linux, web), CI recipes, troubleshooting, FAQ, search and dark mode. Built with Jaspr in `website/`, deployed by GitHub Actions.
+- `example/`: Aurora Notes, a small Flutter app with Android flavors, `--dart-define-from-file` per flavor, hooks, Linux packaging metadata and a fully commented `fpack.yaml` (signing via environment variables, macOS dmg/pkg, Windows exe/msix, Linux deb/rpm/AppImage, web). Packaged for real in E2E.
+
+### Changed
+- Documentation links printed by the CLI (`fpack help`, config errors, `fpack init` header, signing notes) and in the JSON schema now point to the documentation website; `pubspec.yaml` lists it as `documentation`.
 
 ### Fixed
 - A flavor that only exists on Android (e.g. `build.flavor: prod` with Gradle productFlavors) no longer breaks iOS/macOS builds of a project whose Xcode projects define no custom schemes: the flavor is not passed to `flutter build ios/macos` there (Flutter would reject it), with a note. Scheme detection now also includes per-user and workspace schemes, like `xcodebuild -list`.
