@@ -38,7 +38,8 @@ func keySchema(k Key) obj {
 		item := obj{"type": "string"}
 		switch k.Path {
 		case "build.targets":
-			item = obj{"type": "string", "enum": TargetNames}
+			// Aliases are accepted like on the command line.
+			item = obj{"type": "string", "enum": append(append([]string{}, TargetNames...), TargetAliases...)}
 		case "android.abis":
 			item = obj{"type": "string", "enum": KnownABIs}
 		}

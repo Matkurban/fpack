@@ -389,3 +389,56 @@ hooks:
 		t.Fatalf("hooks.log = %q, want %q", got, want)
 	}
 }
+
+const flavoredGradle = "android {\n  flavorDimensions += \"env\"\n  productFlavors {\n    create(\"dev\") { dimension = \"env\" }\n    create(\"prod\") { dimension = \"env\" }\n  }\n}\n"
+
+// TestUnknownFlavorFails: a flavor that is not among the detected ones is
+// an error (non-zero exit, suggestion); post_build does not run when no
+// target got past preflight.
+func TestUnknownFlavorFailsAndSkipsPostBuild(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("hook uses sh")
+	}
+	proj, sdk := fixture(t, "hooks:\n  post_build: ['echo \"done $FPACK_SUCCESS\" >> hooks.log']\n")
+	if err := os.WriteFile(filepath.Join(proj, "android", "app", "build.gradle.kts"), []byte(flavoredGradle), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := run(t, nil, "build", "apk", "--flavor", "dve", "--dry-run", "--json", "-C", proj, "--flutter", sdk)
+	s := summary(t, r)
+	apk := target(s, "apk")
+	if r.code == 0 || apk.Status != build.Failed || !strings.Contains(apk.Reason, `flavor "dve" not found`) || !strings.Contains(apk.Fix, `did you mean "dev"?`) {
+		t.Fatalf("exit %d %+v", r.code, apk)
+	}
+	if len(s.Hooks) != 0 {
+		t.Fatalf("dry-run must not plan post_build: %v", s.Hooks)
+	}
+
+	r = run(t, nil, "build", "apk", "--flavor", "nope", "-C", proj, "--flutter", sdk)
+	if r.code != build.ExitPrereq {
+		t.Fatalf("exit %d\n%s", r.code, r.all())
+	}
+	if !strings.Contains(r.all(), "post_build skipped") {
+		t.Fatalf("missing skip note:\n%s", r.all())
+	}
+	if _, err := os.Stat(filepath.Join(proj, "hooks.log")); err == nil {
+		t.Fatal("post_build ran although no target got past preflight")
+	}
+}
+
+// TestPostBuildRunsAfterBuildFailure: a target that fails during the build
+// (not preflight) still runs post_build with FPACK_SUCCESS=false.
+func TestPostBuildRunsAfterBuildFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake flutter is a shell script")
+	}
+	proj, sdk := fixture(t, "hooks:\n  post_build: ['echo \"done $FPACK_SUCCESS\" >> hooks.log']\n")
+	os.WriteFile(filepath.Join(sdk, "bin", "flutter"), []byte("#!/bin/sh\necho boom >&2\nexit 1\n"), 0o755)
+	r := run(t, nil, "build", "web", "-C", proj, "--flutter", sdk)
+	if r.code != build.ExitFailed {
+		t.Fatalf("exit %d\n%s", r.code, r.all())
+	}
+	b, _ := os.ReadFile(filepath.Join(proj, "hooks.log"))
+	if string(b) != "done 0\n" {
+		t.Fatalf("hooks.log = %q", b)
+	}
+}

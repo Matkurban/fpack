@@ -141,6 +141,10 @@ type Issue struct {
 	// cloud-managed signing). Real builds show it only on failure;
 	// dry runs and doctor show it up front.
 	IfFails bool
+	// NotReady: a warning (the build still tries, e.g. Gradle may find a
+	// JDK fpack cannot see) that keeps the target out of doctor's
+	// "ready to build" list.
+	NotReady bool
 }
 
 func warnIfFails(msg, fix string) Issue { return Issue{Msg: msg, Fix: fix, IfFails: true} }
@@ -483,8 +487,9 @@ func sortedKeys(m map[string]string) []string {
 // installHint returns an install command for a tool on this host.
 func installHint(h host.Host, pk map[string]string) string { return h.Install(pk) }
 
-// flavorCheck warns when --flavor is not among the flavors/schemes detected
-// in the project (detection is heuristic, so this is never fatal).
+// flavorCheck fails when --flavor is not among the flavors/schemes detected
+// in the project. When nothing is detected it only warns (detection is
+// heuristic: flavors can come from plugins or non-shared schemes).
 func flavorCheck(c *Context, p host.Platform) (Issue, bool) {
 	f := c.Flavor()
 	found := c.Project.Flavors(p)
@@ -503,10 +508,15 @@ func flavorCheck(c *Context, p host.Platform) (Issue, bool) {
 		}
 	}
 	where := map[host.Platform]string{host.Android: "android/app/build.gradle(.kts) productFlavors", host.IOS: "ios/Runner.xcodeproj schemes", host.MacOS: "macos/Runner.xcodeproj schemes"}[p]
-	list := strings.Join(found, ", ")
-	if list == "" {
-		list = i18n.S("none", "无")
+	if len(found) == 0 {
+		// Nothing detected: detection is heuristic (flavors may come from a
+		// Gradle plugin or a non-shared scheme), so only warn.
+		return warn(i18n.F("flavor %q: no flavors detected in %s", "flavor %[1]q：在 %[2]s 中未检测到任何 flavor", f, where),
+			i18n.S("if the build fails, check the flavor setup: https://docs.flutter.dev/deployment/flavors", "如果构建失败，请检查 flavor 配置：https://docs.flutter.dev/deployment/flavors")), false
 	}
-	return warn(i18n.F("flavor %q not found in %s (found: %s)", "在 %[2]s 中找不到 flavor %[1]q（已找到：%[3]s）", f, where, list),
-		i18n.S("check the spelling, or see https://docs.flutter.dev/deployment/flavors", "请检查拼写，或参考 https://docs.flutter.dev/deployment/flavors")), false
+	fix := i18n.F("fpack build %s --flavor %s   # available: %s", "fpack build %s --flavor %s   # 可用：%s", c.CurrentTarget, found[0], strings.Join(found, ", "))
+	if s := config.Suggest(f, found); s != "" {
+		fix = i18n.F("did you mean %q?  fpack build %s --flavor %s", "是不是想用 %q？  fpack build %s --flavor %s", s, c.CurrentTarget, s)
+	}
+	return fatal(i18n.F("flavor %q not found in %s (found: %s)", "在 %[2]s 中找不到 flavor %[1]q（已找到：%[3]s）", f, where, strings.Join(found, ", ")), fix), false
 }

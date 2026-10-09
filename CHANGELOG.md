@@ -1,8 +1,15 @@
 # Changelog
 
-## Unreleased
+## 1.1.3
+
+### Changed
+- An unknown `--flavor` / `build.flavor` is now an error (exit 3) when the project defines flavors (Android productFlavors, shared Xcode schemes), with a "did you mean" suggestion or the list of available flavors. If no flavors are detected it stays a warning, since detection is heuristic.
+- `fpack doctor` (and `fpack targets`) no longer list `apk`/`aab` as ready to build when Java is missing or older than 17; builds still try (Gradle may find a JDK fpack cannot see).
+- `hooks.post_build` is skipped when every target failed its checks before building (nothing was built); it still runs after build failures with `FPACK_SUCCESS=0`.
+- The JSON schema accepts target aliases in `build.targets` (`bundle`, `ios`, `setup`, …), matching the command line.
 
 ### Fixed
+- `hooks.post_build` documentation: `FPACK_SUCCESS` is `1`/`0`.
 - `${VAR}` interpolation now works in every key, including booleans, numbers, enums and lists (e.g. `sign: ${SIGN}`), as documented; previously typed keys failed to parse.
 - `build.targets` in `fpack.yaml` is validated even when targets are given on the command line, with "did you mean" suggestions (typo suggestions now treat swapped letters as one edit: `wbe` → `web`).
 - Unknown placeholders in `output.name` / `output.names.<target>` are reported by validation instead of ending up literally in file names.

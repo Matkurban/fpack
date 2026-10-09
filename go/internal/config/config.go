@@ -1108,6 +1108,11 @@ var guidRe = regexp.MustCompile(`^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[
 // with the targets registry by a test there).
 var TargetNames = []string{"apk", "aab", "ipa", "macos", "dmg", "pkg", "windows", "exe", "msix", "linux", "deb", "rpm", "appimage", "web"}
 
+// TargetAliases are the alternative names accepted for targets on the
+// command line and in build.targets (kept in sync with targets.aliases by a
+// test in the targets package).
+var TargetAliases = []string{"AppImage", "android", "app", "appbundle", "bundle", "debian", "fedora", "image", "inno", "installer", "ios", "mac", "osx", "portable", "setup", "tar", "tar.gz", "tgz", "win", "zip"}
+
 func didYouMean(v string, c []string) string {
 	if s := suggest(v, c); s != "" {
 		return fmt.Sprintf(" (did you mean %q?)", s)

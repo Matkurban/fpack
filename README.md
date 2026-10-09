@@ -140,7 +140,7 @@ Global options: `-C, --project DIR`, `--config FILE`, `--flutter SDK`, `--lang z
 | `-a, --all` | build every target this machine can build; skip the rest with a reason |
 | `-n, --dry-run` | print the full plan and exact commands, run nothing |
 | `-m, --mode` / `--release` `--profile` `--debug` | build mode (default release) |
-| `--flavor NAME` | Android productFlavor / Xcode scheme |
+| `--flavor NAME` | Android productFlavor / Xcode scheme. A name that is not among the detected flavors is an error (exit 3, with a suggestion); if no flavors are detected it is only a warning |
 | `-t, --target FILE` | entry point, e.g. `lib/main_prod.dart` |
 | `--dart-define K=V` (repeatable) / `--dart-define-from-file FILE` | compile-time variables |
 | `--build-name X.Y.Z` / `--build-number N` | override the pubspec version |
@@ -201,6 +201,10 @@ The default file name template is `{app}{-flavor}-{version}{+build}-{platform}{-
 Flutter cannot cross-compile iOS/macOS/Windows/Linux desktop apps. `fpack build --all` skips targets this machine cannot build and says why; naming one explicitly (e.g. `fpack build ipa` on Linux) is an error that points you to a CI runner of that OS. `--dry-run` still shows a reference plan for such targets.
 
 One flutter build is shared per run: `macos` + `dmg` + `pkg` build once, `linux` + `deb` + `rpm` + `appimage` build once, `windows` + `exe` + `msix` build once.
+
+Target aliases work on the command line and in `build.targets`: `bundle`/`appbundle` → `aab`, `android` → `apk`, `ios` → `ipa`, `mac`/`osx`/`app` → `macos`, `win`/`zip`/`portable` → `windows`, `setup`/`installer`/`inno` → `exe`, `tar`/`tgz`/`tar.gz` → `linux`, `debian` → `deb`, `fedora` → `rpm`, `image`/`AppImage` → `appimage`.
+
+`fpack doctor` lists a target as "ready to build" only when nothing it needs is missing; for `apk`/`aab` that includes Java (JDK 17+), even though a build still tries without it (Gradle may find a JDK fpack cannot see).
 
 ---
 
@@ -274,7 +278,7 @@ web:
   source_maps: true
 ```
 
-**Hooks** (`hooks`): `pre_build` (once before the first flutter build; a failure stops the run), `pre_package.<target>` / `post_package.<target>` (around packaging, with `FPACK_TARGET`, `FPACK_ARTIFACT`, `FPACK_ARTIFACTS`), `post_build` (once at the end, with `FPACK_ARTIFACTS`, `FPACK_SUCCESS`). All hooks run in the project root through `sh -c` (Windows: `cmd /C`) with `FPACK_PROJECT_ROOT`, `FPACK_OUTPUT_DIR`, `FPACK_VERSION`, `FPACK_BUILD_NUMBER`, `FPACK_MODE`, `FPACK_FLAVOR`; write `$VAR` for variables that only exist while the hook runs (`${VAR}` is expanded when the configuration is loaded). A failing hook means exit code 1.
+**Hooks** (`hooks`): `pre_build` (once before the first flutter build; a failure stops the run), `pre_package.<target>` / `post_package.<target>` (around packaging, with `FPACK_TARGET`, `FPACK_ARTIFACT`, `FPACK_ARTIFACTS`), `post_build` (once at the end, with `FPACK_ARTIFACTS`, `FPACK_SUCCESS` = `1`/`0`; it also runs after build failures, but is skipped when every target already failed its checks, e.g. a missing tool or unknown flavor). All hooks run in the project root through `sh -c` (Windows: `cmd /C`) with `FPACK_PROJECT_ROOT`, `FPACK_OUTPUT_DIR`, `FPACK_VERSION`, `FPACK_BUILD_NUMBER`, `FPACK_MODE`, `FPACK_FLAVOR`; write `$VAR` for variables that only exist while the hook runs (`${VAR}` is expanded when the configuration is loaded). A failing hook means exit code 1.
 
 ---
 

@@ -147,9 +147,13 @@ func androidPreflight(c *Context) []Issue {
 		out = append(out, warn(i18n.S("Android SDK licenses not accepted", "尚未接受 Android SDK 许可"), "flutter doctor --android-licenses"))
 	}
 	if env.Java == "" {
-		out = append(out, warn(i18n.S("no Java (JDK 17+) found", "未找到 Java（需要 JDK 17+）"), i18n.S("install Android Studio (bundles a JDK) or a JDK 17/21, then: flutter config --jdk-dir <path>", "安装 Android Studio（自带 JDK）或 JDK 17/21，然后：flutter config --jdk-dir <路径>")))
+		is := warn(i18n.S("no Java (JDK 17+) found", "未找到 Java（需要 JDK 17+）"), i18n.S("install Android Studio (bundles a JDK) or a JDK 17/21, then: flutter config --jdk-dir <path>", "安装 Android Studio（自带 JDK）或 JDK 17/21，然后：flutter config --jdk-dir <路径>"))
+		is.NotReady = true
+		out = append(out, is)
 	} else if env.JavaVersion > 0 && env.JavaVersion < 17 {
-		out = append(out, warn(i18n.F("Java %d is too old for current Android Gradle Plugin (needs 17+)", "Java %d 版本过低，当前 Android Gradle 插件需要 17+", env.JavaVersion), "flutter config --jdk-dir <JDK 17/21>"))
+		is := warn(i18n.F("Java %d is too old for current Android Gradle Plugin (needs 17+)", "Java %d 版本过低，当前 Android Gradle 插件需要 17+", env.JavaVersion), "flutter config --jdk-dir <JDK 17/21>")
+		is.NotReady = true
+		out = append(out, is)
 	}
 	return out
 }

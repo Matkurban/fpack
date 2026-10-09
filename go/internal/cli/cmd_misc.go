@@ -105,7 +105,7 @@ func listCommand() *command {
 				r.Buildable, r.Reason = false, i18n.F("no %s/ in project", "项目无 %s/", t.Platform())
 			} else if ctxT != nil {
 				for _, is := range t.Preflight(ctxT) {
-					if is.Fatal {
+					if is.Fatal || is.NotReady {
 						r.Buildable, r.Reason = false, firstLine(is.Msg)
 						break
 					}

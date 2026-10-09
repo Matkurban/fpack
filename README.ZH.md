@@ -140,7 +140,7 @@ fpack help <命令>     查看命令帮助
 | `-a, --all` | 构建本机能构建的全部目标，其余跳过并说明原因 |
 | `-n, --dry-run` | 打印完整计划与精确命令，不执行任何操作 |
 | `-m, --mode` / `--release` `--profile` `--debug` | 构建模式（默认 release） |
-| `--flavor NAME` | Android productFlavor / Xcode scheme |
+| `--flavor NAME` | Android productFlavor / Xcode scheme。名称不在检测到的 flavor 中时报错（退出码 3，并给出建议）；如果项目中未检测到任何 flavor，则只给出警告 |
 | `-t, --target FILE` | 入口文件，例如 `lib/main_prod.dart` |
 | `--dart-define K=V`（可重复） / `--dart-define-from-file FILE` | 编译期变量 |
 | `--build-name X.Y.Z` / `--build-number N` | 覆盖 pubspec 中的版本 |
@@ -201,6 +201,10 @@ fpack -C apps/client build web --base-href /app/
 Flutter 不能跨系统编译 iOS/macOS/Windows/Linux 桌面应用。`fpack build --all` 会跳过本机不能构建的目标并说明原因；显式指定时（如在 Linux 上 `fpack build ipa`）会报错并提示用对应系统的 CI 机器。`--dry-run` 下仍会显示这类目标的参考计划。
 
 同一次运行中共享 flutter 构建：`macos` + `dmg` + `pkg` 只构建一次，`linux` + `deb` + `rpm` + `appimage` 只构建一次，`windows` + `exe` + `msix` 只构建一次。
+
+命令行和 `build.targets` 都接受目标别名：`bundle`/`appbundle` → `aab`，`android` → `apk`，`ios` → `ipa`，`mac`/`osx`/`app` → `macos`，`win`/`zip`/`portable` → `windows`，`setup`/`installer`/`inno` → `exe`，`tar`/`tgz`/`tar.gz` → `linux`，`debian` → `deb`，`fedora` → `rpm`，`image`/`AppImage` → `appimage`。
+
+`fpack doctor` 只有在所需工具齐全时才把目标列为“当前可构建”；对 `apk`/`aab` 来说包括 Java（JDK 17+）——不过没有检测到 Java 时构建仍会尝试（Gradle 可能找到 fpack 看不到的 JDK）。
 
 ---
 
@@ -274,7 +278,7 @@ web:
   source_maps: true
 ```
 
-**钩子**（`hooks`）：`pre_build`（第一次 flutter build 前执行一次，失败则停止）、`pre_package.<目标>` / `post_package.<目标>`（打包前后，提供 `FPACK_TARGET`、`FPACK_ARTIFACT`、`FPACK_ARTIFACTS`）、`post_build`（最后执行一次，提供 `FPACK_ARTIFACTS`、`FPACK_SUCCESS`）。所有钩子都在项目根目录用 `sh -c`（Windows：`cmd /C`）执行，并提供 `FPACK_PROJECT_ROOT`、`FPACK_OUTPUT_DIR`、`FPACK_VERSION`、`FPACK_BUILD_NUMBER`、`FPACK_MODE`、`FPACK_FLAVOR`；钩子运行时才有的变量请写 `$VAR`（`${VAR}` 会在加载配置时被替换）。钩子失败时退出码为 1。
+**钩子**（`hooks`）：`pre_build`（第一次 flutter build 前执行一次，失败则停止）、`pre_package.<目标>` / `post_package.<目标>`（打包前后，提供 `FPACK_TARGET`、`FPACK_ARTIFACT`、`FPACK_ARTIFACTS`）、`post_build`（最后执行一次，提供 `FPACK_ARTIFACTS`、`FPACK_SUCCESS` = `1`/`0`；构建失败后也会执行，但如果所有目标都未通过构建前检查（例如缺少工具、flavor 不存在）则跳过）。所有钩子都在项目根目录用 `sh -c`（Windows：`cmd /C`）执行，并提供 `FPACK_PROJECT_ROOT`、`FPACK_OUTPUT_DIR`、`FPACK_VERSION`、`FPACK_BUILD_NUMBER`、`FPACK_MODE`、`FPACK_FLAVOR`；钩子运行时才有的变量请写 `$VAR`（`${VAR}` 会在加载配置时被替换）。钩子失败时退出码为 1。
 
 ---
 

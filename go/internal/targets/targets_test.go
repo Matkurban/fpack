@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -771,5 +772,100 @@ func TestDMGResetsStage(t *testing.T) {
 	}
 	if _, err := os.Stat(stale); !os.IsNotExist(err) {
 		t.Fatalf("stale DMG survived the stage reset (%s)", p.Ops[0].Desc)
+	}
+}
+
+func preflightOf(t *testing.T, tg Target, c *Context) (fatal, warns []Issue) {
+	t.Helper()
+	c.CurrentTarget = tg.Name()
+	for _, is := range tg.Preflight(c) {
+		if is.Fatal {
+			fatal = append(fatal, is)
+		} else {
+			warns = append(warns, is)
+		}
+	}
+	return
+}
+
+func TestUnknownFlavorIsFatalWhenFlavorsAreDetected(t *testing.T) {
+	c := newCtx(t, "linux", "build:\n  flavor: dve\n", "")
+	c.Project.AndroidFlavors = []string{"dev", "prod"}
+	fatal, _ := preflightOf(t, &APK{}, c)
+	if len(fatal) != 1 || !strings.Contains(fatal[0].Msg, `flavor "dve" not found`) || !strings.Contains(fatal[0].Msg, "dev, prod") ||
+		!strings.Contains(fatal[0].Fix, `did you mean "dev"?`) || !strings.Contains(fatal[0].Fix, "fpack build apk --flavor dev") {
+		t.Fatalf("%+v", fatal)
+	}
+
+	c = newCtx(t, "linux", "build:\n  flavor: nope\n", "")
+	c.Project.AndroidFlavors = []string{"dev", "prod"}
+	fatal, _ = preflightOf(t, &APK{}, c)
+	if len(fatal) != 1 || !strings.Contains(fatal[0].Fix, "available: dev, prod") {
+		t.Fatalf("%+v", fatal)
+	}
+
+	// Case-insensitive match is fine.
+	c = newCtx(t, "linux", "build:\n  flavor: Prod\n", "")
+	c.Project.AndroidFlavors = []string{"dev", "prod"}
+	if fatal, _ = preflightOf(t, &APK{}, c); len(fatal) != 0 {
+		t.Fatalf("%+v", fatal)
+	}
+}
+
+func TestFlavorOnlyWarnsWhenNoneDetected(t *testing.T) {
+	c := newCtx(t, "linux", "build:\n  flavor: dev\n", "")
+	fatal, warns := preflightOf(t, &APK{}, c)
+	if len(fatal) != 0 {
+		t.Fatalf("must not be fatal: %+v", fatal)
+	}
+	found := false
+	for _, w := range warns {
+		found = found || strings.Contains(w.Msg, "no flavors detected")
+	}
+	if !found {
+		t.Fatalf("%+v", warns)
+	}
+}
+
+func TestMissingJavaIsNotReady(t *testing.T) {
+	c := newCtx(t, "linux", "", "")
+	c.SetAndroidEnv(&AndroidEnv{SDK: "/android", Licenses: true})
+	fatal, warns := preflightOf(t, &APK{}, c)
+	if len(fatal) != 0 {
+		t.Fatalf("missing Java stays a warning for builds: %+v", fatal)
+	}
+	notReady := false
+	for _, w := range warns {
+		notReady = notReady || (w.NotReady && strings.Contains(w.Msg, "Java"))
+	}
+	if !notReady {
+		t.Fatalf("%+v", warns)
+	}
+	c.SetAndroidEnv(&AndroidEnv{SDK: "/android", Licenses: true, Java: "/jdk/bin/java", JavaVersion: 11})
+	_, warns = preflightOf(t, &AAB{}, c)
+	notReady = false
+	for _, w := range warns {
+		notReady = notReady || w.NotReady
+	}
+	if !notReady {
+		t.Fatalf("Java 11: %+v", warns)
+	}
+}
+
+func TestTargetAliasesMatchConfig(t *testing.T) {
+	var got []string
+	for a := range aliases {
+		got = append(got, a)
+	}
+	sort.Strings(got)
+	want := append([]string{}, config.TargetAliases...)
+	sort.Strings(want)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("config.TargetAliases out of sync:\n got %v\nwant %v", got, want)
+	}
+	for _, a := range config.TargetAliases {
+		if _, ok := Get(a); !ok {
+			t.Fatalf("alias %q does not resolve", a)
+		}
 	}
 }

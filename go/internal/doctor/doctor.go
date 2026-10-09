@@ -172,6 +172,9 @@ func Run(in Input) *Report {
 				c.CurrentTarget = ""
 				for _, is := range issues {
 					lv := Warn
+					if is.NotReady {
+						fatal = true // still a warning, but not "ready"
+					}
 					if is.Fatal {
 						lv = Fail
 						fatal = true

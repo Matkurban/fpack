@@ -140,7 +140,7 @@ var Keys = []Key{
 
 	// ---- build ----
 	k("build.targets", KList, none, "—", "[apk, aab, ipa, dmg]",
-		d("Targets built by `fpack build` without arguments.", "执行 `fpack build` 且不带目标时构建的目标。")),
+		d("Targets built by `fpack build` without arguments. Aliases accepted by the command line (e.g. `bundle`, `ios`, `setup`) work here too.", "执行 `fpack build` 且不带目标时构建的目标。命令行接受的别名（如 `bundle`、`ios`、`setup`）这里同样可用。")),
 	k("build.mode", KEnum, d("release", "release"), "all", "release",
 		d("Build mode.", "构建模式。"), enum("release", "profile", "debug"), env("FPACK_MODE"), flag("--mode")),
 	k("build.flavor", KString, none, "apk, aab, ipa, macos, dmg, pkg", "prod",
@@ -182,7 +182,7 @@ var Keys = []Key{
 	k("hooks.pre_build", KList, none, "all", "[dart run build_runner build --delete-conflicting-outputs]",
 		d("Commands run once before the first flutter build; a failure stops the build.", "第一次 flutter build 之前执行一次；失败则停止构建。")),
 	k("hooks.post_build", KList, none, "all", "[./scripts/upload.sh]",
-		d("Commands run once after all targets; FPACK_ARTIFACTS lists the produced files (one per line), FPACK_SUCCESS is true/false.", "全部目标完成后执行一次；FPACK_ARTIFACTS 为产物列表（每行一个），FPACK_SUCCESS 为 true/false。")),
+		d("Commands run once after all targets (also after build failures, but not when every target already failed its checks); FPACK_ARTIFACTS lists the produced files (one per line), FPACK_SUCCESS is 1/0.", "全部目标完成后执行一次（构建失败后也会执行，但所有目标都未通过构建前检查时跳过）；FPACK_ARTIFACTS 为产物列表（每行一个），FPACK_SUCCESS 为 1/0。")),
 	k("hooks.pre_package", KListMap, none, "all", "{apk: [./scripts/check_size.sh]}",
 		d("Per target (target → commands), before its packaging steps; FPACK_TARGET is set.", "按目标（目标 → 命令）在打包步骤之前执行；提供 FPACK_TARGET。")),
 	k("hooks.post_package", KListMap, none, "all", "{dmg: [./scripts/upload_dmg.sh \"$FPACK_ARTIFACT\"]}",

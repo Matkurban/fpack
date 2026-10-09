@@ -97,7 +97,7 @@ Flutter SDK 选择。
 
 | 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
 | --- | --- | --- | --- | --- | --- |
-| `build.targets` | list（或单个字符串） | — | — |  | 执行 `fpack build` 且不带目标时构建的目标。 示例：`[apk, aab, ipa, dmg]` |
+| `build.targets` | list（或单个字符串） | — | — |  | 执行 `fpack build` 且不带目标时构建的目标。命令行接受的别名（如 `bundle`、`ios`、`setup`）这里同样可用。 示例：`[apk, aab, ipa, dmg]` |
 | `build.mode` | `release` \\| `profile` \\| `debug` | `release` | 全部 | `FPACK_MODE`<br>`--mode` | 构建模式。 示例：`release` |
 | `build.flavor` | string | — | apk, aab, ipa, macos, dmg, pkg | `FPACK_FLAVOR`<br>`--flavor` | flavor / Xcode scheme（--flavor）；文件名中的 {flavor}。 示例：`prod` |
 | `build.target` | path | `lib/main.dart` | 全部 | `FPACK_ENTRY`<br>`-t, --target` | 入口文件（flutter -t）。 示例：`lib/main_prod.dart` |
@@ -130,7 +130,7 @@ Flutter SDK 选择。
 | 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
 | --- | --- | --- | --- | --- | --- |
 | `hooks.pre_build` | list（或单个字符串） | — | 全部 |  | 第一次 flutter build 之前执行一次；失败则停止构建。 示例：`[dart run build_runner build --delete-conflicting-outputs]` |
-| `hooks.post_build` | list（或单个字符串） | — | 全部 |  | 全部目标完成后执行一次；FPACK_ARTIFACTS 为产物列表（每行一个），FPACK_SUCCESS 为 true/false。 示例：`[./scripts/upload.sh]` |
+| `hooks.post_build` | list（或单个字符串） | — | 全部 |  | 全部目标完成后执行一次（构建失败后也会执行，但所有目标都未通过构建前检查时跳过）；FPACK_ARTIFACTS 为产物列表（每行一个），FPACK_SUCCESS 为 1/0。 示例：`[./scripts/upload.sh]` |
 | `hooks.pre_package` | map：目标 → 命令列表 | — | 全部 |  | 按目标（目标 → 命令）在打包步骤之前执行；提供 FPACK_TARGET。 示例：`{apk: [./scripts/check_size.sh]}` |
 | `hooks.post_package` | map：目标 → 命令列表 | — | 全部 |  | 按目标在产物生成后执行；提供 FPACK_ARTIFACT（第一个产物）和 FPACK_ARTIFACTS。 示例：`{dmg: [./scripts/upload_dmg.sh "$FPACK_ARTIFACT"]}` |
 
@@ -440,7 +440,7 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 
 **Linux 软件包**：安装到 `linux.prefix`（默认 `/opt/<包名>`），`/usr/bin/<包名>` 为符号链接；`.desktop` 文件包含 `Name`、`GenericName`、`Comment`、`Categories`、`Keywords`、`MimeType`、`StartupWMClass`；图标按 `icon_sizes` 缩放到 `/usr/share/icons/hicolor/<N>x<N>/apps/`（不会放大），另放一份到 `/usr/share/pixmaps/`；`metainfo` 安装到 `/usr/share/metainfo/`；`/usr/share/doc/<包名>/copyright` 写入 `app.copyright` 和 `app.license`。deb 的维护脚本、rpm 的 `%pre/%post/%preun/%postun` 来自对应的文件。AppImage 的 `.desktop` 额外包含 `X-AppImage-Version`，`update_information` 会嵌入 AppImage（`appimagetool --updateinformation`）。
 
-**钩子**：`hooks.pre_build` 在第一个 flutter build 之前运行一次（失败则停止构建）；`hooks.pre_package.<目标>` / `hooks.post_package.<目标>` 在该目标打包前后运行；`hooks.post_build` 在最后运行一次（即使有目标失败）。命令在项目根目录用 `sh -c`（Windows 为 `cmd /C`）执行，可用环境变量：`FPACK_PROJECT_ROOT`、`FPACK_OUTPUT_DIR`、`FPACK_VERSION`、`FPACK_BUILD_NUMBER`、`FPACK_MODE`、`FPACK_FLAVOR`；打包钩子另有 `FPACK_TARGET`、`FPACK_ARTIFACT`（第一个产物）、`FPACK_ARTIFACTS`（换行分隔）；`post_build` 另有 `FPACK_ARTIFACTS` 与 `FPACK_SUCCESS`（`1`/`0`）。注意 `${VAR}` 会在加载 fpack.yaml 时被替换，钩子运行时才有的变量请写成 `$FPACK_ARTIFACT`（不带花括号）。`--dry-run` 会列出所有钩子命令。
+**钩子**：`hooks.pre_build` 在第一个 flutter build 之前运行一次（失败则停止构建）；`hooks.pre_package.<目标>` / `hooks.post_package.<目标>` 在该目标打包前后运行；`hooks.post_build` 在最后运行一次（即使有目标构建失败；但如果所有目标都未通过构建前检查——例如缺少工具、flavor 不存在——则跳过，并提示 “已跳过 hooks.post_build”）。命令在项目根目录用 `sh -c`（Windows 为 `cmd /C`）执行，可用环境变量：`FPACK_PROJECT_ROOT`、`FPACK_OUTPUT_DIR`、`FPACK_VERSION`、`FPACK_BUILD_NUMBER`、`FPACK_MODE`、`FPACK_FLAVOR`；打包钩子另有 `FPACK_TARGET`、`FPACK_ARTIFACT`（第一个产物）、`FPACK_ARTIFACTS`（换行分隔）；`post_build` 另有 `FPACK_ARTIFACTS` 与 `FPACK_SUCCESS`（`1`/`0`）。注意 `${VAR}` 会在加载 fpack.yaml 时被替换，钩子运行时才有的变量请写成 `$FPACK_ARTIFACT`（不带花括号）。`--dry-run` 会列出所有钩子命令。
 
 **Web**：Flutter 3.x 已移除 `--pwa-strategy` 与 `--web-renderer`，因此没有对应的键；`web.wasm`、`source_maps`、`csp`、`optimization_level`、`static_assets_url`、`web_resources_cdn`、`web_define` 分别对应 `flutter build web` 的同名参数。zip 文件名可用 `output.names.web` 修改。
 

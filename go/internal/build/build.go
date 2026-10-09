@@ -316,8 +316,10 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 		for _, op := range targets.BuildHookOps(c, false, nil, true) {
 			s.Hooks = append(s.Hooks, op.Cmd.String())
 		}
-		for _, op := range targets.BuildHookOps(c, true, nil, true) {
-			s.Hooks = append(s.Hooks, op.Cmd.String())
+		if hasPlanned(s) { // post_build is skipped when nothing would build
+			for _, op := range targets.BuildHookOps(c, true, nil, true) {
+				s.Hooks = append(s.Hooks, op.Cmd.String())
+			}
 		}
 		printPlan(c, u, s, steps)
 		return finish(c, u, s, start, "", logDir)
@@ -350,6 +352,9 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 		}
 	}
 	defer c.Signing.Cleanup()
+	// Whether any target got past preflight; if none did, post_build is
+	// skipped (there is nothing to upload or notify about).
+	attempted := hasPlanned(s)
 
 	// pre_build hooks run once, before the first flutter build.
 	if hasPlanned(s) {
@@ -441,8 +446,15 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 		}
 	}
 
-	// 6. post_build hooks (also after failures; FPACK_SUCCESS tells which).
-	if !interrupted {
+	// 6. post_build hooks (also after build failures; FPACK_SUCCESS tells
+	// which), but not when every target already failed preflight.
+	if !interrupted && !attempted {
+		if ops := targets.BuildHookOps(c, true, nil, false); len(ops) > 0 {
+			u.Blank()
+			u.Info(i18n.S("hooks.post_build skipped: no target got past the checks", "已跳过 hooks.post_build：没有目标通过构建前检查"))
+		}
+	}
+	if !interrupted && attempted {
 		var paths []string
 		for _, tr := range s.Targets {
 			for _, a := range tr.Artifacts {
