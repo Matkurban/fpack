@@ -3,6 +3,7 @@ package targets
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,6 +19,9 @@ type fakeNotary struct {
 	calls   []string
 	printed []string
 	waitErr error
+	// submitFail makes the first n submits fail with submitOut.
+	submitFail int
+	submitOut  string
 }
 
 func (f *fakeNotary) env() OpEnv {
@@ -29,6 +33,10 @@ func (f *fakeNotary) env() OpEnv {
 			}
 			switch cm.Args[1] {
 			case "submit":
+				if f.submitFail > 0 {
+					f.submitFail--
+					return runner.Result{Tail: []string{f.submitOut}}, errors.New("xcrun exited with code 1")
+				}
 				return runner.Result{Output: "Conducting pre-submission checks...\n{\"id\":\"2efe2717-52ef-43a5-96dc-0797e4ca1041\",\"message\":\"Successfully uploaded file\",\"path\":\"x\"}\n"}, nil
 			case "wait", "info":
 				if f.waitErr != nil {
@@ -230,5 +238,54 @@ func TestNotaryLogSummary(t *testing.T) {
 	issues, fixes := NotaryLogSummary([]byte(`{"statusSummary":"Archive contains critical validation errors","issues":[{"severity":"error","path":"x.zip/A.app/Contents/MacOS/A","message":"The binary is not signed with a valid Developer ID certificate."},{"severity":"error","path":"x.zip/A.app/Contents/MacOS/A","message":"The signature does not include a secure timestamp."}]}`))
 	if len(issues) != 3 || len(fixes) != 2 || !strings.Contains(issues[1], ".../A.app/Contents/MacOS/A") {
 		t.Fatal(issues, fixes)
+	}
+}
+
+const s3Timeout = `Error: abortedUpload(resumeRequest: SotoS3.S3.ResumeMultipartUploadRequest(uploadRequest: SotoS3.S3.CreateMultipartUploadRequest(bucket: "notary-submissions-prod"), completedParts: []), error: HTTPClientError.deadlineExceeded)`
+
+func shortRetries(t *testing.T) {
+	old := submitRetryDelays
+	submitRetryDelays = []time.Duration{time.Millisecond, time.Millisecond}
+	t.Cleanup(func() { submitRetryDelays = old })
+}
+
+func TestNotarizeRetriesUploadTimeouts(t *testing.T) {
+	shortRetries(t)
+	c, file, dst := notaryCtx(t, "")
+	f := &fakeNotary{status: "Accepted", submitFail: 2, submitOut: s3Timeout}
+	note, err := runNotarize(context.Background(), c, f.env(), "dmg", file, dst, "", []string{"--keychain-profile", "XueHua"}, nil, true)
+	if err != nil || !strings.Contains(note, "notarized") {
+		t.Fatal(note, err)
+	}
+	submits := 0
+	for _, cl := range f.calls {
+		if strings.Contains(cl, "notarytool submit") {
+			submits++
+		}
+	}
+	if submits != 3 || !strings.Contains(strings.Join(f.printed, "\n"), "retrying") {
+		t.Fatalf("submits=%d printed=%v", submits, f.printed)
+	}
+}
+
+func TestNotarizeGivesUpAfterRetries(t *testing.T) {
+	shortRetries(t)
+	c, file, dst := notaryCtx(t, "")
+	f := &fakeNotary{status: "Accepted", submitFail: 5, submitOut: s3Timeout}
+	_, err := runNotarize(context.Background(), c, f.env(), "dmg", file, dst, "", []string{"--keychain-profile", "XueHua"}, nil, true)
+	if err == nil || !strings.Contains(err.Error(), "failed 3 times") || f.submitFail != 2 {
+		t.Fatalf("err=%v left=%d", err, f.submitFail)
+	}
+	if _, statErr := os.Stat(filepath.Join(c.OutDir, NotaryJSONFile)); statErr == nil {
+		t.Fatal("no submission must be recorded")
+	}
+}
+
+func TestNotarizeDoesNotRetryAuthErrors(t *testing.T) {
+	shortRetries(t)
+	c, file, dst := notaryCtx(t, "")
+	f := &fakeNotary{submitFail: 5, submitOut: `Error: No Keychain password item found for profile: XueHua`}
+	if _, err := runNotarize(context.Background(), c, f.env(), "dmg", file, dst, "", []string{"--keychain-profile", "XueHua"}, nil, true); err == nil || f.submitFail != 4 {
+		t.Fatalf("err=%v left=%d", err, f.submitFail)
 	}
 }

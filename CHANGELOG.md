@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- macOS notarization: `notarytool submit` uploads that fail because of the network (e.g. `abortedUpload … HTTPClientError.deadlineExceeded` from Apple's S3 storage) are retried twice (after 20 s and 60 s) instead of failing the target; nothing is recorded until Apple returns a submission id.
+- Failed build steps now pick their hint from the command output first: an upload timeout no longer suggests re-creating the keychain profile ("create the profile once …"); it explains that the network failed and nothing was submitted.
+
 ## 1.1.1
 
 ### Launcher: verified prebuilt cores first

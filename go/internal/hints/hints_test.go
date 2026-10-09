@@ -23,6 +23,7 @@ func TestMatch(t *testing.T) {
 		"Encountered error while creating the IPA:":                                       "ios-export",
 		"  status: Invalid": "notary-invalid",
 		"productbuild: error: Could not find appropriate signing identity for “Developer ID Installer: Acme (TEAM123456)”.":           "pkg-identity",
+		"Error: abortedUpload(resumeRequest: SotoS3.S3.ResumeMultipartUploadRequest(...), error: HTTPClientError.deadlineExceeded)":   "notary-network",
 		"Error: No Keychain password item found for profile: XueHua":                                                                  "notary-auth",
 		"hdiutil: create failed - Resource busy":                                                                                      "hdiutil-busy",
 		"CMake Error: CMake was unable to find a build program corresponding to \"Ninja\".":                                           "linux-ninja",

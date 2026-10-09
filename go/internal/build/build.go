@@ -826,7 +826,11 @@ func runOps(ctx context.Context, c *targets.Context, u *ui.UI, ops []targets.Op,
 					continue
 				}
 				f := &opFailure{err: op.Desc + ": " + err.Error(), excerpt: hints.Excerpt(last.Tail, 20), cmd: true, hint: op.Hint}
-				if h, ok := hints.Match([]string{err.Error()}); ok {
+				// The command output knows more than the exit code (e.g. a
+				// network timeout vs. missing credentials).
+				if h, ok := hints.Match(last.Tail); ok {
+					f.hint = h.Text()
+				} else if h, ok := hints.Match([]string{err.Error()}); ok {
 					f.hint = h.Text()
 				}
 				return f

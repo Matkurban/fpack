@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -568,6 +569,45 @@ func NotaryStaple(env OpEnv, s *NotarySubmission, workDir string) error {
 	return nil
 }
 
+// submitRetryDelays are the pauses before retrying an upload that failed
+// because of the network (tests shorten them). Apple's upload goes to S3 and
+// large files occasionally time out; nothing is submitted in that case.
+var submitRetryDelays = []time.Duration{20 * time.Second, 60 * time.Second}
+
+// notaryTransient matches notarytool output for network/upload failures that
+// are worth retrying (no submission was created).
+var notaryTransient = regexp.MustCompile(`(?i)(abortedUpload|deadlineExceeded|HTTPClientError|NSURLErrorDomain|network connection was lost|request timed out|timed out|Could not connect to the server|connection reset|remoteConnectionClosed|HTTP status code: 5\d\d|Service Unavailable)`)
+
+// NotaryTransient reports whether notarytool failed because of the network.
+func NotaryTransient(output string) bool { return notaryTransient.MatchString(output) }
+
+// submitNotary runs `notarytool submit`, retrying network/upload failures.
+func submitNotary(ctx context.Context, env OpEnv, file string, auth, secrets []string) (runner.Result, error) {
+	cmd := runner.Cmd{Name: "xcrun", Args: append(append([]string{"notarytool", "submit", file}, auth...), "--output-format", "json"), Capture: true, Secret: secrets}
+	attempts := len(submitRetryDelays) + 1
+	for i := 0; ; i++ {
+		env.Status(i18n.S("uploading to Apple…", "正在上传到 Apple…"))
+		res, err := env.Run(cmd)
+		if err == nil || errors.Is(err, runner.ErrInterrupted) || ctx.Err() != nil {
+			return res, err
+		}
+		text := res.Output + "\n" + strings.Join(res.Tail, "\n") + "\n" + err.Error()
+		if !NotaryTransient(text) {
+			return res, err
+		}
+		if i == len(submitRetryDelays) {
+			return res, fmt.Errorf("%w – %s", err, i18n.F("upload to Apple failed %d times (network timeout); nothing was submitted", "上传到 Apple 失败 %d 次（网络超时），没有创建任何提交", attempts))
+		}
+		d := submitRetryDelays[i]
+		env.Print("warn", i18n.F("upload to Apple failed (network timeout); nothing was submitted – retrying in %s (attempt %d/%d)", "上传到 Apple 失败（网络超时），没有创建提交 —— %s 后重试（第 %d/%d 次）", d, i+2, attempts))
+		select {
+		case <-ctx.Done():
+			return res, runner.ErrInterrupted
+		case <-time.After(d):
+		}
+	}
+}
+
 // heartbeatEvery is how often waiting progress is reported (tests shorten it).
 var heartbeatEvery = 30 * time.Second
 
@@ -586,9 +626,10 @@ func notarizeOp(c *Context, target, file, artifact, app string) Op {
 	} else {
 		desc = i18n.F("submit for notarization with %s (record in %s, don't wait)", "使用 %s 提交公证（记录到 %s，不等待）", c.Mac.NotaryLabel(), NotaryMDFile)
 	}
-	hint := i18n.S("check the notarization credentials (macos.sign.notary_*)", "请检查公证凭证（macos.sign.notary_*）")
+	hint := i18n.S("check the notarization credentials (macos.sign.notary_*) and the network; details are in the log", "请检查公证凭证（macos.sign.notary_*）和网络；详情见日志")
 	if c.Mac.Profile != "" || (c.Mac.APIKey == "" && c.Mac.AppleID == "") {
-		hint = i18n.F("create the profile once: xcrun notarytool store-credentials %s --apple-id <apple-id> --team-id <team-id>", "先创建凭证：xcrun notarytool store-credentials %s --apple-id <Apple ID> --team-id <团队ID>", auth[1])
+		hint = i18n.F("check the profile with `xcrun notarytool history --keychain-profile %s` (create it once with: xcrun notarytool store-credentials %s --apple-id <apple-id> --team-id <team-id>) and the network; details are in the log",
+			"用 `xcrun notarytool history --keychain-profile %s` 检查凭证（首次创建：xcrun notarytool store-credentials %s --apple-id <Apple ID> --team-id <团队ID>），并检查网络；详情见日志", auth[1], auth[1])
 	}
 	return Op{Desc: desc, Preview: preview, Hint: hint, Run: func(ctx context.Context, env OpEnv) (string, error) {
 		return runNotarize(ctx, c, env, target, file, artifact, app, auth, secrets, wait)
@@ -600,8 +641,7 @@ func runNotarize(ctx context.Context, c *Context, env OpEnv, target, file, artif
 	if err != nil {
 		return "", err
 	}
-	env.Status(i18n.S("uploading to Apple…", "正在上传到 Apple…"))
-	res, err := env.Run(runner.Cmd{Name: "xcrun", Args: append(append([]string{"notarytool", "submit", file}, auth...), "--output-format", "json"), Capture: true, Secret: secrets})
+	res, err := submitNotary(ctx, env, file, auth, secrets)
 	if err != nil {
 		return "", err
 	}
