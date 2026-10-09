@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.1
+
+### Launcher: verified prebuilt cores first
+- The Dart launcher now prefers a verified prebuilt binary over a local `go build`. Resolution order: `FPACK_CORE` → cached core of the matching version → bundled `prebuilt/` binary (SHA-256 from `manifest.json`) → download from the GitHub Release (SHA-256 from `checksums.txt`) → **only if the download fails or is disabled**, a local build from the bundled Go sources.
+- The local fallback is announced clearly: `fpack: note: no verified prebuilt core available (<reason>)` followed by the Go version and path used, and a confirmation after the build.
+- Controls: `FPACK_NO_DOWNLOAD=1` (offline: bundled binary or local build), `FPACK_DOWNLOAD_URL` (mirror), `FPACK_GO=<path>` / `FPACK_GO=none` (pick Go / never build locally — a failed download is then a clear error with download links), `FPACK_REBUILD=1` (developers: build locally first), `FPACK_HOME`.
+- `fpack --wrapper-info` shows the Go version and the resolution order.
+- When nothing works, the error lists every attempt plus concrete fixes (network / mirror, install Go, or download the binary and set `FPACK_CORE`).
+
+### Documentation
+- `README.md` is now English (shown on pub.dev); the Chinese README moved to `README.ZH.md`; `README.en.md` was removed. Both have a language switch at the top.
+- New section on obtaining macOS signing and notarization credentials (README, README.ZH and `doc/configuration.md` §2.13): Developer ID Application/Installer certificates, `notarytool store-credentials` keychain profile (Apple ID + app-specific password from account.apple.com + Team ID), App Store Connect API key (.p8, Key ID, Issuer ID), exporting certificates as .p12 from Keychain Access and importing them on CI runners, mapped to the fpack.yaml keys and `FPACK_*` variables.
+- Hints in the core point to `README.md` / `README.ZH.md` / `doc/configuration.md`.
+
 ## 1.1.0
 
 ### Everything configurable
