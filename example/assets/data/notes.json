@@ -1,0 +1,5 @@
+[
+  {"title": "Welcome to Aurora Notes", "body": "Packaged for every platform with one fpack command."},
+  {"title": "Flavors", "body": "Build with --flavor dev or --flavor prod; each reads its own config/<flavor>.json."},
+  {"title": "Release files", "body": "Artifacts and SHA256SUMS are written to dist/<version>+<build>/."}
+]

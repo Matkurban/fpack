@@ -1,0 +1,26 @@
+name: fpack_example
+description: "Aurora Notes - a small Flutter app packaged with fpack."
+publish_to: 'none'
+
+# fpack reads the version from here: artifacts land in dist/1.0.0+1/.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  # Only needed for the `msix` target (fpack runs `dart run msix:create`).
+  msix: ^3.18.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/data/

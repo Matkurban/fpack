@@ -1,0 +1,2 @@
+MIT License – Aurora Notes example for fpack.
+This text is shown by the Windows installer (windows.inno_setup.license_file).

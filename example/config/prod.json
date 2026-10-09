@@ -1,0 +1,4 @@
+{
+  "API_BASE": "https://api.aurora.example",
+  "FLAVOR_NAME": "prod"
+}

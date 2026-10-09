@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.fpack.aurora_notes</id>
+  <name>Aurora Notes</name>
+  <summary>A small notes app packaged with fpack</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <launchable type="desktop-id">aurora-notes.desktop</launchable>
+  <releases><release version="1.0.0" date="2026-10-10"/></releases>
+</component>

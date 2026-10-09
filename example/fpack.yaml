@@ -1,0 +1,152 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Matkurban/fpack/main/schema/fpack.schema.json
+#
+# fpack configuration for the Aurora Notes example.
+# Docs: https://matkurban.github.io/fpack/configuration
+#
+# Every key is optional – fpack works without this file. This one shows
+# common real-world setups. Precedence (highest first):
+#   command-line flags > FPACK_* environment variables > fpack.yaml > defaults
+# ${VAR} / ${VAR:-default} are read from the environment when the file is
+# loaded (in any value, also booleans and numbers).
+# Relative paths are relative to this project. fpack never edits project files.
+
+# ---------------------------------------------------------------- app info
+# Metadata used by installers and packages (Inno Setup, MSIX, deb/rpm,
+# .desktop files, DMG/pkg titles).
+app:
+  display_name: Aurora Notes
+  description: A small notes app packaged with fpack
+  publisher: fpack
+  homepage: https://github.com/Matkurban/fpack
+  support_url: https://github.com/Matkurban/fpack/issues
+  maintainer: fpack <fpack@example.com>
+  copyright: © 2026 fpack contributors
+  license: MIT
+
+# ---------------------------------------------------------------- build
+build:
+  # Built by a plain `fpack build`; name others explicitly
+  # (`fpack build dmg pkg`) or use `fpack build --all`.
+  targets: [apk, web]
+
+  # Android productFlavors `dev` / `prod` (android/app/build.gradle.kts).
+  # The Xcode projects of this example define no custom schemes, so fpack
+  # does not pass the flavor to iOS/macOS builds (with a note).
+  # Switch both the flavor and its defines with: FPACK_FLAVOR=dev fpack build apk
+  flavor: ${FPACK_FLAVOR:-prod}
+
+  # Compile-time values, read in lib/main.dart with String.fromEnvironment.
+  dart_define_from_file: ["config/${FPACK_FLAVOR:-prod}.json"]
+  dart_define:
+    BUILD_CHANNEL: ${BUILD_CHANNEL:-local}
+
+  # Obfuscate release builds; symbols go to dist/<version>/debug-info/.
+  # obfuscate: true
+
+# ---------------------------------------------------------------- output
+output:
+  # dist/1.0.0+1/aurora-notes-prod-1.0.0+1-android-universal.apk …
+  dir: "dist/{version}{+build}"
+  name: "aurora-notes{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}"
+  names:
+    web: "aurora-notes-web-{version}"
+  checksum_algorithm: sha256     # writes SHA256SUMS next to the artifacts
+
+# ---------------------------------------------------------------- hooks
+# Hooks run in the project root with sh -c (Windows: cmd /C).
+# Write $VAR (not ${VAR}) for variables that only exist while a hook runs.
+hooks:
+  # pre_build: [dart run build_runner build --delete-conflicting-outputs]
+  post_package:
+    apk: [sh scripts/post_package.sh]
+    deb: [sh scripts/post_package.sh]
+  # post_build: ['./scripts/upload.sh "$FPACK_OUTPUT_DIR"']
+
+# ---------------------------------------------------------------- Android
+android:
+  split_per_abi: both            # universal APK + one APK per ABI
+  abis: [arm64-v8a, armeabi-v7a, x86_64]
+  # Release signing. Keep keystores and passwords out of git: either set the
+  # environment variables (CI: FPACK_ANDROID_KEYSTORE_BASE64 with the
+  # base64 of the .jks)
+  #   FPACK_ANDROID_KEYSTORE=~/keys/upload.jks
+  #   FPACK_ANDROID_KEYSTORE_PASSWORD=…
+  #   FPACK_ANDROID_KEY_ALIAS=upload
+  # or point to them here:
+  # signing:
+  #   store_file: ~/keys/aurora-upload.jks
+  #   store_password: ${AURORA_KEYSTORE_PASSWORD}
+  #   key_alias: upload
+  # Without signing, release builds use the debug key (fine for testing).
+
+# ---------------------------------------------------------------- iOS
+ios:
+  export_method: ad-hoc          # app-store-connect | ad-hoc | development | enterprise | release-testing
+  # team_id: ABCDE12345          # fpack then generates ExportOptions.plist
+  # provisioning_profiles: { dev.fpack.fpackExample: Aurora AdHoc }
+
+# ---------------------------------------------------------------- macOS
+macos:
+  # Developer ID signing + notarization (outside the App Store). Off unless
+  # configured; prefer environment variables / CI secrets:
+  #   FPACK_MACOS_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+  #   FPACK_MACOS_INSTALLER_IDENTITY="Developer ID Installer: Your Name (TEAMID)"
+  #   FPACK_MACOS_NOTARY_PROFILE=aurora-notary   # xcrun notarytool store-credentials
+  # sign:
+  #   identity: "Developer ID Application: Your Name (TEAMID)"
+  #   installer_identity: "Developer ID Installer: Your Name (TEAMID)"
+  #   notary_profile: aurora-notary
+  notarize:
+    wait: true                   # false: submit and exit; later `fpack notarize finish`
+  dmg:
+    volume_name: Aurora Notes
+    window_size: [640, 400]
+    icon_size: 112
+    app_position: [170, 190]
+    applications_position: [470, 190]
+    format: ULFO
+  pkg:
+    title: Aurora Notes
+    min_os: "11.0"
+
+# ---------------------------------------------------------------- Windows
+windows:
+  inno_setup:                    # fpack build exe (Inno Setup 6 must be installed)
+    languages: [en, zh-CN]
+    privileges: user             # per-user install, no admin prompt
+    desktop_icon: checked
+    group_name: Aurora Notes
+    license_file: LICENSE.txt
+  msix:                          # fpack build msix (msix dev dependency in pubspec.yaml)
+    display_name: Aurora Notes
+    publisher_display_name: fpack
+    identity_name: dev.fpack.aurora
+    capabilities: [internetClient]
+  # Code signing (exe, installer and MSIX), via env vars in CI:
+  #   FPACK_WINDOWS_CERTIFICATE=C:\certs\codesign.pfx
+  #   FPACK_WINDOWS_CERTIFICATE_PASSWORD=…
+  # sign:
+  #   certificate: C:/certs/codesign.pfx
+  #   password: ${WINDOWS_CERT_PASSWORD}
+
+# ---------------------------------------------------------------- Linux
+linux:
+  package_name: aurora-notes     # deb/rpm/AppImage name; installs to /opt/aurora-notes
+  icon: packaging/icon.png
+  categories: [Office, Utility]
+  generic_name: Notes
+  keywords: [notes, fpack]
+  metainfo: packaging/linux/dev.fpack.aurora_notes.metainfo.xml
+  deb:
+    depends: ["libgtk-3-0 | libgtk-3-0t64"]
+    postinst: packaging/linux/postinst
+  rpm:
+    requires: [gtk3]
+    license: MIT
+    post: packaging/linux/rpm-post.sh
+
+# ---------------------------------------------------------------- Web
+web:
+  base_href: /                   # e.g. /aurora/ when served from a sub-path
+  source_maps: false
+  # wasm: true
