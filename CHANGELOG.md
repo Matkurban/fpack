@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- `${VAR}` interpolation now works in every key, including booleans, numbers, enums and lists (e.g. `sign: ${SIGN}`), as documented; previously typed keys failed to parse.
+- `build.targets` in `fpack.yaml` is validated even when targets are given on the command line, with "did you mean" suggestions (typo suggestions now treat swapped letters as one edit: `wbe` → `web`).
+- Unknown placeholders in `output.name` / `output.names.<target>` are reported by validation instead of ending up literally in file names.
+- Wrong-type sections now say "expected a section of keys" instead of Go type names.
+- JSON schema: accepts `${VAR}` for non-string keys, validates `android.abis` and the target names under `output.names`.
+- All missing tools of a target are reported at once (not one per run); flavor hints no longer have a missing target name; `doctor` no longer repeats the same tool line for deb/rpm/appimage.
+- The monorepo hint quotes project paths with spaces (`fpack -C 'my app'`).
+- Launcher download: honors `HTTPS_PROXY`/`HTTP_PROXY`/`NO_PROXY`, and gives up after 30 s without data (instead of hanging) so it falls back to the next resolution step.
+- README: accurate key count and description of environment overrides.
+
+### CI
+- E2E builds projects in paths with spaces and CJK characters on Linux and Windows, including the monorepo-root hint and running from a subdirectory.
+
 ## 1.1.2
 
 ### Fixed

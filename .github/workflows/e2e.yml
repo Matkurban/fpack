@@ -60,6 +60,22 @@ jobs:
           python "$env:GITHUB_WORKSPACE\scripts\e2e_check.py" result.json windows exe msix
           if ($code -ne 0 -or $LASTEXITCODE -ne 0) { Get-Content result.json; exit 1 }
           Get-ChildItem -Recurse dist | Format-Table FullName, Length
+      - name: project in a path with spaces and CJK characters
+        shell: pwsh
+        run: |
+          $dst = Join-Path $env:RUNNER_TEMP "路径 测试\my app"
+          New-Item -ItemType Directory -Force (Split-Path $dst) | Out-Null
+          Copy-Item -Recurse "$env:RUNNER_TEMP\sample" $dst
+          Remove-Item -Recurse -Force (Join-Path $dst "dist"), (Join-Path $dst "build") -ErrorAction SilentlyContinue
+          fpack -C $dst build windows exe --dry-run
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $spaced = Join-Path $env:RUNNER_TEMP "path with space\my app"
+          New-Item -ItemType Directory -Force (Split-Path $spaced) | Out-Null
+          Copy-Item -Recurse $dst $spaced
+          fpack -C $spaced build windows exe --json > "$env:RUNNER_TEMP\spaced.json"
+          $code = $LASTEXITCODE
+          python "$env:GITHUB_WORKSPACE\scripts\e2e_check.py" "$env:RUNNER_TEMP\spaced.json" windows exe
+          if ($code -ne 0 -or $LASTEXITCODE -ne 0) { Get-Content "$env:RUNNER_TEMP\spaced.json"; exit 1 }
       # Custom configuration: Chinese display name, a Chinese + English Inno
       # Setup installer for the current user, MSIX metadata and signtool
       # signing with a throwaway self-signed certificate.
@@ -464,6 +480,22 @@ jobs:
           [ $code -eq 0 ] || { cat result.json; exit 1; }
           dpkg-deb --info dist/*/*.deb
           rpm -qip dist/*/*.rpm
+      - name: project in a path with spaces and CJK characters
+        run: |
+          dst="$RUNNER_TEMP/路径 测试/my app"
+          mkdir -p "$(dirname "$dst")"
+          cp -r "$RUNNER_TEMP/sample" "$dst"
+          rm -rf "$dst/dist" "$dst/build"
+          cd "$RUNNER_TEMP/路径 测试"
+          # monorepo root: lists the app and exits 2 with a quoted -C hint
+          set +e; fpack build web > out.txt 2>&1; code=$?; set -e
+          cat out.txt; [ $code -eq 2 ] && grep -q "fpack -C 'my app'" out.txt
+          cd "my app/lib"   # a subdirectory finds the project
+          set +e
+          fpack build web linux deb --json > ../../result.json
+          code=$?
+          python3 "$GITHUB_WORKSPACE/scripts/e2e_check.py" ../../result.json web linux deb || code=1
+          [ $code -eq 0 ] || { cat ../../result.json; exit 1; }
       # Custom configuration like the demo project: Chinese metadata, APK
       # v1-v4 signing with a throwaway keystore, hooks, per-target names,
       # SHA512SUMS, deb/rpm metadata + maintainer scripts, hicolor icons,
