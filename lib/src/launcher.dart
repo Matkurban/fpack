@@ -84,6 +84,7 @@ Future<String> packageRoot() async {
 }
 
 Future<int> _wrapperInfo(CoreResolver r) async {
+  final go = r.env['FPACK_GO'] == 'none' ? null : r.findGo();
   final b = StringBuffer()
     ..writeln('fpack wrapper $packageVersion')
     ..writeln('  host:      ${r.host.id}')
@@ -96,8 +97,15 @@ Future<int> _wrapperInfo(CoreResolver r) async {
       '  cache:     ${r.cachedPath}'
       '${File(r.cachedPath).existsSync() ? '' : '  (empty)'}',
     )
-    ..writeln('  go:        ${r.findGo() ?? '(not found)'}')
-    ..writeln('  download:  ${r.downloadBase}');
+    ..writeln('  download:  ${r.downloadBase}')
+    ..writeln(
+      '  go:        ${go ?? '(not found)'}'
+      '${go == null ? '' : ' (${await r.goVersion(go) ?? '?'}; only used '
+                'when no verified prebuilt core is available)'}',
+    )
+    ..writeln(
+      '  order:     FPACK_CORE → cache → bundled → download → local go build',
+    );
   try {
     final core = await r.resolve();
     b.writeln('  using:     $core');

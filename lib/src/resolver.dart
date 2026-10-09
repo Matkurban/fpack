@@ -31,14 +31,20 @@ typedef Downloader = Future<void> Function(Uri url, File dest);
 
 /// Finds or provisions the `fpack-core` binary for this package version.
 ///
-/// Order:
+/// Order (verified prebuilt binaries first, a local build only as the
+/// last resort):
 ///   1. `FPACK_CORE` (explicit path, for development)
 ///   2. the per-user cache (`<cache>/<version>/<os>-<arch>/fpack-core`),
 ///      filled by one of the steps below on first run
 ///   3. the prebuilt binary bundled in `prebuilt/<os>-<arch>/`, verified
 ///      against `prebuilt/manifest.json` and copied into the cache
-///   4. `go build` from the bundled Go sources with a local Go toolchain
-///   5. download from the GitHub release, verified against `checksums.txt`
+///   4. download from the GitHub release, verified against `checksums.txt`
+///      (skipped with `FPACK_NO_DOWNLOAD=1`)
+///   5. only when 3 and 4 are unavailable: `go build` from the bundled Go
+///      sources with a local Go toolchain (`FPACK_GO=<path>` picks it,
+///      `FPACK_GO=none` disables it), with a note naming the Go version
+///
+/// `FPACK_REBUILD=1` forces step 5 first (development).
 ///
 /// Every candidate must report exactly [packageVersion] via
 /// `fpack-core --core-version`, so the wrapper and core never drift.
@@ -102,31 +108,36 @@ class CoreResolver {
     }
 
     final rebuild = _flag('FPACK_REBUILD');
-    if (!rebuild) {
-      if (await _cacheValid()) {
-        return ResolvedCore(cachedPath, CoreSource.cache);
-      }
-      final b = await _fromBundled();
-      if (b != null) return b;
-    }
-    final g = await _fromGo();
-    if (g != null) return g;
     if (rebuild) {
-      final b = await _fromBundled();
-      if (b != null) return b;
+      final g = await _fromGo(reason: 'FPACK_REBUILD=1');
+      if (g != null) return g;
+    } else if (await _cacheValid()) {
+      return ResolvedCore(cachedPath, CoreSource.cache);
     }
+    final b = await _fromBundled();
+    if (b != null) return b;
     final d = await _fromDownload();
     if (d != null) return d;
+    if (!rebuild) {
+      final g = await _fromGo(reason: _downloadFailure ?? 'download failed');
+      if (g != null) return g;
+    }
     throw ResolveException(
-      'fpack: could not find or build the native core for ${host.id} '
-      '(version $version).',
+      'fpack: could not find, download or build the native core for '
+      '${host.id} (version $version).',
       [
         ...attempts,
-        'fix: install Go (https://go.dev/dl) and run fpack again, or '
-            'download fpack-core from the GitHub release and set FPACK_CORE',
+        'fix: check the network (or set FPACK_DOWNLOAD_URL to a mirror of '
+            'the GitHub release), or install Go (https://go.dev/dl) for a '
+            'local build, or download fpack-core-${host.id} from '
+            'https://github.com/Matkurban/fpack/releases/tag/v$version '
+            'and set FPACK_CORE',
       ],
     );
   }
+
+  /// Why the download step did not produce a core (for the fallback note).
+  String? _downloadFailure;
 
   // ------------------------------------------------------------------ cache
 
@@ -306,9 +317,27 @@ class CoreResolver {
     return null;
   }
 
-  Future<ResolvedCore?> _fromGo() async {
+  /// `go env GOVERSION` of [go] (e.g. go1.27.2), or null.
+  Future<String?> goVersion(String go) async {
+    try {
+      final r = await Process.run(go, [
+        'env',
+        'GOVERSION',
+      ]).timeout(const Duration(seconds: 20));
+      final v = '${r.stdout}'.trim();
+      return r.exitCode == 0 && v.isNotEmpty ? v : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<ResolvedCore?> _fromGo({required String reason}) async {
     if (!File(_join([goModuleDir, 'go.mod'])).existsSync()) {
       attempts.add('go build: Go sources not found in $goModuleDir');
+      return null;
+    }
+    if (env['FPACK_GO'] == 'none') {
+      attempts.add('go build: disabled by FPACK_GO=none');
       return null;
     }
     final go = findGo();
@@ -319,7 +348,12 @@ class CoreResolver {
       );
       return null;
     }
-    log('fpack: building the native core with $go (first run only, ~30s)…');
+    final gv = await goVersion(go) ?? 'unknown Go version';
+    log(
+      'fpack: note: no verified prebuilt core available ($reason);\n'
+      'fpack: falling back to a local build from the bundled sources with '
+      '$gv ($go) – first run only, ~30s…',
+    );
     final out = File(cachedPath).parent;
     try {
       out.createSync(recursive: true);
@@ -367,6 +401,7 @@ class CoreResolver {
       );
       return null;
     }
+    log('fpack: built the native core locally with $gv.');
     return ResolvedCore(installed, CoreSource.built);
   }
 
@@ -383,8 +418,13 @@ class CoreResolver {
   }
 
   Future<ResolvedCore?> _fromDownload() async {
+    void fail(String why) {
+      attempts.add('download: $why');
+      _downloadFailure = 'download: $why';
+    }
+
     if (_flag('FPACK_NO_DOWNLOAD')) {
-      attempts.add('download: disabled by FPACK_NO_DOWNLOAD');
+      fail('disabled by FPACK_NO_DOWNLOAD');
       return null;
     }
     final base = downloadBase;
@@ -399,12 +439,12 @@ class CoreResolver {
       final want = parseChecksums(sums.readAsStringSync())[host.assetName];
       final got = await sha256OfFile(tmp);
       if (want == null) {
-        attempts.add('download: ${host.assetName} missing from checksums.txt');
+        fail('${host.assetName} missing from checksums.txt');
         return null;
       }
       if (want != got) {
-        attempts.add(
-          'download: SHA-256 mismatch for ${host.assetName} '
+        fail(
+          'SHA-256 mismatch for ${host.assetName} '
           '(expected $want, got $got) – refusing to run it',
         );
         return null;
@@ -412,12 +452,12 @@ class CoreResolver {
       final installed = await _install(tmp, 'download', got, move: true);
       if (installed == null) return null;
       if (await coreVersion(installed) != version) {
-        attempts.add('download: core does not report version $version');
+        fail('core does not report version $version');
         return null;
       }
       return ResolvedCore(installed, CoreSource.downloaded);
     } catch (e) {
-      attempts.add('download: $e');
+      fail('$e');
       return null;
     } finally {
       for (final f in [tmp, sums]) {

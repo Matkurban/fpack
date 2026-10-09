@@ -166,6 +166,144 @@ void main() {
     expect(r2.attempts.join('\n'), contains('SHA-256 mismatch'));
   });
 
+  /// A fake `go` that answers `go env GOVERSION` and "builds" a core that
+  /// reports [coreVersion]; every call is appended to calls.log.
+  String fakeGo({String coreVersion = '1.0.0'}) {
+    Directory('$pkg/go').createSync(recursive: true);
+    File('$pkg/go/go.mod').writeAsStringSync('module x\n');
+    final f = File('${tmp.path}/fakego')
+      ..writeAsStringSync(
+        '#!/bin/sh\n'
+        'echo "\$*" >> ${tmp.path}/calls.log\n'
+        'if [ "\$1" = env ]; then echo go1.99.0; exit 0; fi\n'
+        'out=""; prev=""\n'
+        'for a in "\$@"; do [ "\$prev" = -o ] && out=\$a; prev=\$a; done\n'
+        "printf '%s' '${fakeCore(coreVersion)}' > \"\$out\"\n",
+      );
+    Process.runSync('chmod', ['755', f.path]);
+    return f.path;
+  }
+
+  bool goCalled() => File('${tmp.path}/calls.log').existsSync();
+
+  Future<void> Function(Uri, File) server(String core) {
+    final served = <String, String>{
+      'checksums.txt':
+          '${sha256Hex(utf8.encode(core))}  fpack-core-linux-amd64\n',
+      'fpack-core-linux-amd64': core,
+    };
+    return (u, dest) async =>
+        dest.writeAsStringSync(served[u.pathSegments.last]!);
+  }
+
+  Future<void> offline(Uri u, File dest) async =>
+      throw const SocketException('network is unreachable');
+
+  const dlEnv = {'FPACK_NO_DOWNLOAD': '', 'FPACK_DOWNLOAD_URL': 'https://x/y'};
+
+  test('order: a verified download wins over a local go build', () async {
+    final go = fakeGo();
+    final r = resolver(
+      env: {...dlEnv, 'FPACK_GO': go},
+      downloader: server(fakeCore('1.0.0')),
+    );
+    final core = await r.resolve();
+    expect(core.source, CoreSource.downloaded);
+    expect(goCalled(), isFalse);
+    expect(logs.join('\n'), isNot(contains('local build')));
+  });
+
+  test('order: the bundled binary wins over download and go', () async {
+    bundle(fakeCore('1.0.0'));
+    final go = fakeGo();
+    var downloads = 0;
+    final r = resolver(
+      env: {...dlEnv, 'FPACK_GO': go},
+      downloader: (u, d) async => downloads++,
+    );
+    expect((await r.resolve()).source, CoreSource.bundled);
+    expect(downloads, 0);
+    expect(goCalled(), isFalse);
+  });
+
+  test('order: go build only when the download fails, with a note', () async {
+    final go = fakeGo();
+    final r = resolver(env: {...dlEnv, 'FPACK_GO': go}, downloader: offline);
+    final core = await r.resolve();
+    expect(core.source, CoreSource.built);
+    final log = logs.join('\n');
+    expect(log, contains('falling back to a local build'));
+    expect(log, contains('go1.99.0'));
+    expect(log, contains(go));
+    expect(log, contains('network is unreachable'));
+    expect(await r.coreVersion(core.path), '1.0.0');
+    // Next run: cache, no new build.
+    File('${tmp.path}/calls.log').deleteSync();
+    expect(
+      (await resolver(env: {'FPACK_GO': go}).resolve()).source,
+      CoreSource.cache,
+    );
+    expect(goCalled(), isFalse);
+  });
+
+  test('order: a tampered download falls back to go build', () async {
+    final go = fakeGo();
+    final good = fakeCore('1.0.0');
+    final r = resolver(
+      env: {...dlEnv, 'FPACK_GO': go},
+      downloader: (u, dest) async => dest.writeAsStringSync(
+        u.pathSegments.last == 'checksums.txt'
+            ? '${sha256Hex(utf8.encode(good))}  fpack-core-linux-amd64\n'
+            : '${good}evil',
+      ),
+    );
+    expect((await r.resolve()).source, CoreSource.built);
+    expect(logs.join('\n'), contains('SHA-256 mismatch'));
+  });
+
+  test('FPACK_NO_DOWNLOAD=1 goes straight to the local build', () async {
+    final go = fakeGo();
+    var downloads = 0;
+    final r = resolver(
+      env: {'FPACK_GO': go},
+      downloader: (u, d) async => downloads++,
+    );
+    expect((await r.resolve()).source, CoreSource.built);
+    expect(downloads, 0);
+    expect(logs.join('\n'), contains('disabled by FPACK_NO_DOWNLOAD'));
+  });
+
+  test('FPACK_GO=none and no download: clear error with fixes', () async {
+    fakeGo(); // sources present, but Go disabled
+    final r = resolver(env: {...dlEnv}, downloader: offline);
+    final e = await r.resolve().then<Object?>((_) => null, onError: (e) => e);
+    expect(e, isA<ResolveException>());
+    final text = e.toString();
+    expect(text, contains('network is unreachable'));
+    expect(text, contains('disabled by FPACK_GO=none'));
+    expect(text, contains('FPACK_DOWNLOAD_URL'));
+    expect(text, contains('set FPACK_CORE'));
+  });
+
+  test('FPACK_REBUILD=1 builds locally even when a download works', () async {
+    final go = fakeGo();
+    var downloads = 0;
+    final r = resolver(
+      env: {...dlEnv, 'FPACK_GO': go, 'FPACK_REBUILD': '1'},
+      downloader: (u, d) async => downloads++,
+    );
+    expect((await r.resolve()).source, CoreSource.built);
+    expect(downloads, 0);
+    expect(logs.join('\n'), contains('FPACK_REBUILD=1'));
+  });
+
+  test('a failed go build after a failed download reports both', () async {
+    final go = fakeGo(coreVersion: '0.0.1');
+    final r = resolver(env: {...dlEnv, 'FPACK_GO': go}, downloader: offline);
+    await expectLater(r.resolve(), throwsA(isA<ResolveException>()));
+    expect(r.attempts.join('\n'), contains('expected 1.0.0'));
+  });
+
   test('default download URL is the GitHub release of this version', () {
     expect(
       resolver(env: {}).downloadBase.toString(),
@@ -194,7 +332,8 @@ void main() {
     );
     final core = await r.resolve();
     expect(core.source, CoreSource.built);
-    expect(logs.single, contains('building the native core'));
+    expect(logs.join('\n'), contains('falling back to a local build'));
+    expect(logs.join('\n'), contains('FPACK_REBUILD=1'));
   }, timeout: const Timeout(Duration(minutes: 3)));
 
   test('parseChecksums handles sha256sum and shasum formats', () {
