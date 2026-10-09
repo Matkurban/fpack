@@ -3,6 +3,8 @@ title: "macOS"
 description: "Developer ID signing, notarization, DMG and pkg installers, and how to get certificates and credentials."
 ---
 
+## Signing and notarization
+
 For distribution outside the App Store (Developer ID). Enabled **only** through fpack's own settings (low → high precedence):
 
 1. `macos.sign` in `fpack.yaml` (`fpack init` writes a commented section with placeholders and lists the Developer ID certificates found in your keychain)

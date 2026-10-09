@@ -4,6 +4,8 @@ description: "Developer ID 签名、公证、DMG 与 pkg 安装包，以及如�
 lang: zh-CN
 ---
 
+## 签名与公证
+
 用于 App Store 之外的分发（Developer ID）。**只**通过 fpack 自己的配置开启（低 → 高）：
 
 1. `fpack.yaml` 的 `macos.sign`（`fpack init` 会生成带占位符的注释段，并在注释中列出本机钥匙串里的 Developer ID 证书）

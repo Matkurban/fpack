@@ -12,6 +12,7 @@ import 'package:jaspr_content/jaspr_content.dart';
 import 'package:jaspr_content/theme.dart';
 
 import 'components/site_extras.dart';
+import 'grammars.dart';
 import 'main.server.options.dart';
 import 'nav.dart';
 
@@ -22,7 +23,7 @@ void main() {
     dataLoaders: [FilesystemDataLoader('content/_data')],
     parsers: [MarkdownParser()],
     extensions: [HeadingAnchorsExtension(), TableOfContentsExtension()],
-    components: [Callout(), CodeBlock()],
+    components: [Callout(), CodeBlock(defaultLanguage: 'text', grammars: docGrammars)],
     layouts: [
       DocsLayout(
         header: Header(
