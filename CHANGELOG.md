@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.2
 
 ### Fixed
 - macOS notarization: `notarytool submit` uploads that fail because of the network (e.g. `abortedUpload … HTTPClientError.deadlineExceeded` from Apple's S3 storage) are retried twice (after 20 s and 60 s) instead of failing the target; nothing is recorded until Apple returns a submission id.
