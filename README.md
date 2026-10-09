@@ -2,6 +2,10 @@
 
 **English** · [中文](README.ZH.md)
 
+### 📖 [Documentation → matkurban.github.io/fpack](https://matkurban.github.io/fpack/)
+
+Guides for every platform (signing, notarization, installers), every command and config key, CI recipes and troubleshooting. A complete sample app with a commented `fpack.yaml` lives in [`example/`](example/).
+
 **One command turns a Flutter project into release artifacts for every platform.**
 Android (APK / per-ABI APKs / AAB), iOS (IPA), macOS (.app zip / DMG / pkg installer, signed + notarized), Windows (zip / Inno Setup installer / MSIX), Linux (tar.gz / deb / rpm / AppImage) and Web (zip).
 
@@ -210,7 +214,7 @@ Target aliases work on the command line and in `build.targets`: `bundle`/`appbun
 
 ## Configuration: fpack.yaml
 
-> 📖 **Full configuration reference** (every fpack.yaml key, every `FPACK_*` variable, every flag, precedence rules and a complete example): [doc/configuration.md](doc/configuration.md)
+> 📖 **Full configuration reference** (every fpack.yaml key, every `FPACK_*` variable, every flag, precedence rules and a complete example): [doc/configuration.md](doc/configuration.md) · [website](https://matkurban.github.io/fpack/configuration)
 
 Every key is optional. `fpack init` writes a file that **lists every key**, each with an English (`--lang zh`: Chinese) comment describing what it does, its allowed values, default, an example and the matching environment variable / flag, pre-filled with values detected in the project (application ID, flavors, version, team ID, Inno AppId…); leave the keys you do not need commented out.
 

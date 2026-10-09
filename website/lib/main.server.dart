@@ -23,7 +23,10 @@ void main() {
     dataLoaders: [FilesystemDataLoader('content/_data')],
     parsers: [MarkdownParser()],
     extensions: [HeadingAnchorsExtension(), TableOfContentsExtension()],
-    components: [Callout(), CodeBlock(defaultLanguage: 'text', grammars: docGrammars)],
+    components: [
+      Callout(),
+      CodeBlock(defaultLanguage: 'text', grammars: docGrammars),
+    ],
     layouts: [
       DocsLayout(
         header: Header(

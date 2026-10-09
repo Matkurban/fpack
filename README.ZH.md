@@ -2,6 +2,10 @@
 
 [English](README.md) · **中文**
 
+### 📖 [完整文档 → matkurban.github.io/fpack/zh](https://matkurban.github.io/fpack/zh/)
+
+各平台指南（签名、公证、安装包）、全部命令与配置键、CI 示例和问题排查。带完整注释 `fpack.yaml` 的示例应用见 [`example/`](example/)。
+
 **一条命令，把 Flutter 项目打包成所有平台的发布文件。**
 Android（APK / 按 ABI 拆分 APK / AAB）、iOS（IPA）、macOS（.app zip / DMG / pkg 安装包，可签名 + 公证）、Windows（zip / Inno Setup 安装包 / MSIX）、Linux（tar.gz / deb / rpm / AppImage）、Web（zip）。
 
@@ -210,7 +214,7 @@ Flutter 不能跨系统编译 iOS/macOS/Windows/Linux 桌面应用。`fpack buil
 
 ## 配置 fpack.yaml
 
-> 📖 **完整配置参考**（每个 fpack.yaml 键、每个 `FPACK_*` 环境变量、每个命令行参数、优先级规则和完整示例）：[doc/configuration.md](doc/configuration.md)
+> 📖 **完整配置参考**（每个 fpack.yaml 键、每个 `FPACK_*` 环境变量、每个命令行参数、优先级规则和完整示例）：[doc/configuration.md](doc/configuration.md) · [文档网站](https://matkurban.github.io/fpack/zh/configuration)
 
 所有键都是可选的，`fpack init` 会生成**列出全部键**的文件：每个键都有中文（`--lang en` 为英文）注释，说明作用、可选值、默认值、示例以及对应的环境变量/命令行参数，并预填从项目检测到的值（应用 ID、flavor、版本号、团队 ID、Inno AppId…）；不需要的键保持注释即可。
 

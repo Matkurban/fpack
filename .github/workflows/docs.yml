@@ -1,0 +1,62 @@
+name: Docs
+
+# Builds the Jaspr documentation site in website/ and deploys it to GitHub
+# Pages (https://matkurban.github.io/fpack/). Pull requests only build it.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - name: generated reference pages are up to date
+        working-directory: go
+        run: go test ./internal/cli -run TestWebsiteUpToDate
+      - name: analyze
+        working-directory: website
+        run: |
+          dart pub get
+          dart format --output=none --set-exit-if-changed lib
+          dart analyze --fatal-infos
+      - name: jaspr build
+        working-directory: website
+        run: |
+          dart pub global activate jaspr_cli 0.23.5
+          "$HOME/.pub-cache/bin/jaspr" build
+          python3 tool/postbuild.py --dir build/jaspr --base /fpack/ --site-url https://matkurban.github.io/fpack/
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: website/build/jaspr
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

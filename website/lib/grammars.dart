@@ -13,7 +13,10 @@ final Map<String, String> docGrammars = () {
     {'match': r"'[^']*'", 'name': 'string.quoted.single.shell'},
     {'match': r'\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*', 'name': 'variable.other.shell'},
     {'match': r'(?<=^|\s)--?[A-Za-z][\w-]*', 'name': 'constant.other.option.shell'},
-    {'match': r'^\s*(?:fpack|dart|flutter|export|cd|git|sudo|base64|xcrun|security|keytool|echo|wget|chmod)\b', 'name': 'keyword.control.shell'},
+    {
+      'match': r'^\s*(?:fpack|dart|flutter|export|cd|git|sudo|base64|xcrun|security|keytool|echo|wget|chmod)\b',
+      'name': 'keyword.control.shell',
+    },
   ]);
   final yaml = g('yaml', [
     {'match': r'(^|\s)#.*$', 'name': 'comment.line.number-sign.yaml'},
@@ -24,8 +27,16 @@ final Map<String, String> docGrammars = () {
     {'match': r'\b(?:true|false|null)\b|\b\d+(?:\.\d+)?\b', 'name': 'constant.language.yaml'},
   ]);
   return {
-    'text': text, 'plain': text, 'txt': text, 'console': bash,
-    'bash': bash, 'sh': bash, 'shell': bash, 'zsh': bash, 'powershell': bash,
-    'yaml': yaml, 'yml': yaml,
+    'text': text,
+    'plain': text,
+    'txt': text,
+    'console': bash,
+    'bash': bash,
+    'sh': bash,
+    'shell': bash,
+    'zsh': bash,
+    'powershell': bash,
+    'yaml': yaml,
+    'yml': yaml,
   };
 }();
