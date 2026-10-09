@@ -2,7 +2,7 @@
   "$id": "https://raw.githubusercontent.com/Matkurban/fpack/main/schema/fpack.schema.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
-  "description": "fpack configuration – https://github.com/Matkurban/fpack/blob/main/doc/configuration.md",
+  "description": "fpack configuration – https://matkurban.github.io/fpack/configuration",
   "properties": {
     "android": {
       "additionalProperties": false,
