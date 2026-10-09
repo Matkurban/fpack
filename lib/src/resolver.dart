@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -58,7 +59,13 @@ class CoreResolver {
     Downloader? downloader,
     this.log = _stderrLog,
   }) : env = environment ?? Platform.environment,
-       _downloader = downloader ?? _httpDownload {
+       _downloader =
+           downloader ??
+           ((url, dest) => httpDownload(
+             url,
+             dest,
+             environment: environment ?? Platform.environment,
+           )) {
     this.cacheRoot = cacheRoot ?? defaultCacheRoot(env, host);
   }
 
@@ -494,19 +501,44 @@ Map<String, String> parseChecksums(String text) {
 
 void _stderrLog(String s) => stderr.writeln(s);
 
-Future<void> _httpDownload(Uri url, File dest) async {
-  final client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
+/// Downloads [url] to [dest]. Honors HTTPS_PROXY / HTTP_PROXY / NO_PROXY
+/// from [environment] (dart:io does not by default) and gives up when the
+/// connection stalls for [stallTimeout], so a blocked or throttled GitHub
+/// download falls through to the next resolution step instead of hanging.
+Future<void> httpDownload(
+  Uri url,
+  File dest, {
+  Map<String, String>? environment,
+  Duration stallTimeout = const Duration(seconds: 30),
+}) async {
+  final env = environment ?? Platform.environment;
+  final client = HttpClient()
+    ..connectionTimeout = const Duration(seconds: 20)
+    ..findProxy = (uri) =>
+        HttpClient.findProxyFromEnvironment(uri, environment: env);
   try {
-    final req = await client.getUrl(url);
+    final req = await client.getUrl(url).timeout(stallTimeout);
     req.followRedirects = true;
     req.maxRedirects = 10;
-    final res = await req.close();
+    final res = await req.close().timeout(stallTimeout);
     if (res.statusCode != 200) {
       await res.drain<void>();
       throw HttpException('HTTP ${res.statusCode}', uri: url);
     }
-    final sink = dest.openWrite();
-    await res.pipe(sink);
+    final out = dest.openSync(mode: FileMode.write);
+    try {
+      // Stream.timeout fires when no chunk arrives within stallTimeout.
+      await for (final chunk in res.timeout(stallTimeout)) {
+        out.writeFromSync(chunk);
+      }
+    } on TimeoutException {
+      throw TimeoutException(
+        'no data for ${stallTimeout.inSeconds}s from ${url.host} '
+        '(connection stalled)',
+      );
+    } finally {
+      out.closeSync();
+    }
   } finally {
     client.close(force: true);
   }

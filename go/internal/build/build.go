@@ -201,12 +201,23 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 		var issues []targets.Issue
 		if hostOK {
 			issues = append(projectIssues(c), targets.ConfigIssues(c, t.Name())...)
+			c.CurrentTarget = t.Name() // fixes name the target ("fpack build apk --flavor dev")
 			issues = append(issues, t.Preflight(c)...)
+			c.CurrentTarget = ""
 		}
+		// Report every blocking problem at once (missing ninja and
+		// dpkg-deb), not one per run.
 		var fatalIssue *targets.Issue
+		var fatalMsgs, fatalFixes []string
 		for i := range issues {
-			if issues[i].Fatal && fatalIssue == nil {
-				fatalIssue = &issues[i]
+			if issues[i].Fatal {
+				if fatalIssue == nil {
+					fatalIssue = &issues[i]
+				}
+				fatalMsgs = appendUnique(fatalMsgs, issues[i].Msg)
+				if issues[i].Fix != "" {
+					fatalFixes = appendUnique(fatalFixes, issues[i].Fix)
+				}
 			} else if !issues[i].Fatal {
 				w := issues[i].Msg
 				if issues[i].Fix != "" {
@@ -220,8 +231,8 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 			}
 		}
 		if fatalIssue != nil {
-			tr.Reason = fatalIssue.Msg
-			tr.Fix = fatalIssue.Fix
+			tr.Reason = strings.Join(fatalMsgs, "; ")
+			tr.Fix = strings.Join(fatalFixes, "\n")
 			if req.All && t.Optional() {
 				tr.Status = Skipped
 				continue

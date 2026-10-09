@@ -243,15 +243,22 @@ func runBuild(e *Env, p *parsed) int {
 	if err != nil {
 		return contextError(u, err)
 	}
+	// build.targets is checked even when targets are given on the command
+	// line, so a typo in fpack.yaml does not wait for the next plain run.
+	for _, n := range ctxT.Config.Build.Targets {
+		if _, ok := targets.Get(n); !ok {
+			msg := i18n.F("fpack.yaml build.targets: unknown target %q", "fpack.yaml build.targets：未知目标 %q", n)
+			if s := config.Suggest(n, targets.Names()); s != "" {
+				msg += i18n.F(" (did you mean %q?)", "（你是不是想用 %q？）", s)
+			}
+			u.Errorf("%s", msg)
+			u.Info(i18n.S("available: ", "可用目标：") + strings.Join(targets.Names(), ", "))
+			return build.ExitUsage
+		}
+	}
 	names := p.pos
 	if !p.b("all") && len(names) == 0 {
 		names = ctxT.Config.Build.Targets
-		for _, n := range names {
-			if _, ok := targets.Get(n); !ok {
-				u.Errorf("%s", i18n.F("fpack.yaml build.targets: unknown target %q", "fpack.yaml build.targets：未知目标 %q", n))
-				return build.ExitUsage
-			}
-		}
 	}
 	if !p.b("all") && len(names) == 0 {
 		u.Errorf("%s", i18n.S("which targets? e.g. `fpack build apk`, `fpack build apk ipa`, or `fpack build --all`", "要构建哪些目标？例如 `fpack build apk`、`fpack build apk ipa` 或 `fpack build --all`"))

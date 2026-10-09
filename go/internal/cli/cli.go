@@ -15,6 +15,7 @@ import (
 	"github.com/Matkurban/fpack/go/internal/flutter"
 	"github.com/Matkurban/fpack/go/internal/i18n"
 	"github.com/Matkurban/fpack/go/internal/project"
+	"github.com/Matkurban/fpack/go/internal/runner"
 	"github.com/Matkurban/fpack/go/internal/targets"
 	"github.com/Matkurban/fpack/go/internal/ui"
 	"github.com/Matkurban/fpack/go/internal/version"
@@ -220,7 +221,7 @@ func contextError(u *ui.UI, err error) int {
 			for _, cnd := range nf.Candidates {
 				u.Info("  " + cnd)
 			}
-			u.Hint(i18n.F("cd into one of them, or run: fpack -C %s …", "进入其中一个目录，或运行：fpack -C %s …", nf.Candidates[0]))
+			u.Hint(i18n.F("cd into one of them, or run: fpack -C %s …", "进入其中一个目录，或运行：fpack -C %s …", runner.Quote(nf.Candidates[0])))
 		} else {
 			u.Hint(i18n.S("run fpack inside a Flutter app (the folder with pubspec.yaml), or pass -C <dir>", "请在 Flutter 应用目录（含 pubspec.yaml）中运行，或使用 -C <目录>"))
 		}

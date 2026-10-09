@@ -167,7 +167,10 @@ func Run(in Input) *Report {
 		if c != nil {
 			for _, t := range ts {
 				fatal := false
-				for _, is := range t.Preflight(c) {
+				c.CurrentTarget = t.Name()
+				issues := t.Preflight(c)
+				c.CurrentTarget = ""
+				for _, is := range issues {
 					lv := Warn
 					if is.Fatal {
 						lv = Fail
@@ -176,14 +179,17 @@ func Run(in Input) *Report {
 							lv = Warn
 						}
 					}
+					// One line per problem: the linux toolchain check is
+					// shared by linux, deb, rpm and appimage.
+					if seen[is.Msg] {
+						continue
+					}
+					seen[is.Msg] = true
 					text := is.Msg
 					if t.Optional() && is.Fatal {
 						text += i18n.F("  (needed for %s)", "（%s 需要）", t.Name())
 					}
-					if !seen[text] {
-						seen[text] = true
-						g.Lines = append(g.Lines, Line{lv, text, is.Fix})
-					}
+					g.Lines = append(g.Lines, Line{lv, text, is.Fix})
 				}
 				if !fatal {
 					readyHere[t.Name()] = true

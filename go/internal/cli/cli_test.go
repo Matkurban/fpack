@@ -230,6 +230,14 @@ func TestUsageErrors(t *testing.T) {
 	}
 }
 
+func TestBadBuildTargetsInConfigAlwaysReported(t *testing.T) {
+	proj, sdk := fixture(t, "build:\n  targets: [web, wbe]\n")
+	r := run(t, nil, "build", "web", "--dry-run", "-C", proj, "--flutter", sdk)
+	if r.code != build.ExitUsage || !strings.Contains(r.all(), `unknown target "wbe" (did you mean "web"?)`) {
+		t.Fatalf("exit %d\n%s", r.code, r.all())
+	}
+}
+
 func TestNoTargetsAndNoConfigIsUsageError(t *testing.T) {
 	proj, sdk := fixture(t, "")
 	r := run(t, nil, "build", "-C", proj, "--flutter", sdk)

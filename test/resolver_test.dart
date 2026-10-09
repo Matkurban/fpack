@@ -1,6 +1,7 @@
 @TestOn('linux || mac-os')
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' show Abi;
 import 'dart:io';
@@ -373,5 +374,51 @@ void main() {
       r'C:\L\fpack',
     );
     expect(defaultCacheRoot({'FPACK_HOME': '/f', 'HOME': '/h'}, host), '/f');
+  });
+
+  test('httpDownload gives up when the connection stalls', () async {
+    final srv = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    srv.listen((req) async {
+      req.response
+        ..statusCode = 200
+        ..contentLength = 100
+        ..add([1, 2, 3]);
+      await req.response.flush(); // then stall
+    });
+    final dir = Directory.systemTemp.createTempSync('fpack-dl');
+    final sw = Stopwatch()..start();
+    await expectLater(
+      httpDownload(
+        Uri.parse('http://127.0.0.1:${srv.port}/core'),
+        File('${dir.path}/core'),
+        environment: const {},
+        stallTimeout: const Duration(milliseconds: 300),
+      ),
+      throwsA(isA<TimeoutException>()),
+    );
+    expect(sw.elapsed, lessThan(const Duration(seconds: 10)));
+    await srv.close(force: true);
+    dir.deleteSync(recursive: true);
+  });
+
+  test('httpDownload uses HTTP_PROXY from the environment', () async {
+    final seen = <String>[];
+    final proxy = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    proxy.listen((req) async {
+      seen.add('${req.uri}');
+      req.response.write('via proxy');
+      await req.response.close();
+    });
+    final dir = Directory.systemTemp.createTempSync('fpack-dl');
+    final dest = File('${dir.path}/sums');
+    await httpDownload(
+      Uri.parse('http://downloads.example.invalid/checksums.txt'),
+      dest,
+      environment: {'HTTP_PROXY': 'http://127.0.0.1:${proxy.port}'},
+    );
+    expect(dest.readAsStringSync(), 'via proxy');
+    expect(seen.single, contains('downloads.example.invalid/checksums.txt'));
+    await proxy.close(force: true);
+    dir.deleteSync(recursive: true);
   });
 }
