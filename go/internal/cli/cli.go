@@ -231,7 +231,7 @@ func contextError(u *ui.UI, err error) int {
 		for _, l := range strings.Split(ce.Error(), "\n") {
 			u.Info(l)
 		}
-		u.Hint(i18n.S("see doc/configuration.md (https://github.com/Matkurban/fpack/blob/main/doc/configuration.md) or run fpack init", "参见 doc/configuration.md（https://github.com/Matkurban/fpack/blob/main/doc/configuration.md），或运行 fpack init"))
+		u.Hint(i18n.S("see https://matkurban.github.io/fpack/configuration or run fpack init", "参见 https://matkurban.github.io/fpack/zh/configuration，或运行 fpack init"))
 		return build.ExitUsage
 	case errors.As(err, &ns):
 		u.Errorf("%s", ns.Error())
@@ -274,7 +274,7 @@ func mainHelp() string {
   fpack build apk --dry-run     # ` + i18n.S("show the commands without running them", "只显示将执行的命令，不实际执行") + `
 `)
 	b.WriteString("\n" + i18n.S("Targets: ", "目标：") + strings.Join(targets.Names(), ", ") + "\n")
-	b.WriteString(i18n.S("Docs: https://github.com/Matkurban/fpack#readme\n", "文档：https://github.com/Matkurban/fpack#readme\n"))
+	b.WriteString(i18n.S("Docs: https://matkurban.github.io/fpack/\n", "文档：https://matkurban.github.io/fpack/zh/\n"))
 	return b.String()
 }
 

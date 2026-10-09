@@ -142,7 +142,7 @@ func Schema() ([]byte, error) {
 		"$schema":              "http://json-schema.org/draft-07/schema#",
 		"$id":                  SchemaURL,
 		"title":                "fpack.yaml",
-		"description":          "fpack configuration – https://github.com/Matkurban/fpack/blob/main/doc/configuration.md",
+		"description":          "fpack configuration – https://matkurban.github.io/fpack/configuration",
 		"type":                 "object",
 		"properties":           obj{},
 		"additionalProperties": false,

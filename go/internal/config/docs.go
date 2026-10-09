@@ -45,8 +45,15 @@ func mdCell(s string) string {
 	return strings.NewReplacer("|", "\\|", "\n", " ").Replace(s)
 }
 
-// Markdown renders the key reference tables (one per section).
-func Markdown(lang string) string {
+// Markdown renders the key reference tables (one per section) with
+// numbered headings for doc/configuration.md.
+func Markdown(lang string) string { return markdownKeys(lang, true) }
+
+// SiteMarkdown renders the key reference for the documentation website
+// (plain ### / #### headings).
+func SiteMarkdown(lang string) string { return markdownKeys(lang, false) }
+
+func markdownKeys(lang string, numbered bool) string {
 	zh := lang == "zh"
 	var b strings.Builder
 	head := "| Key | Type | Default | Targets | Env / flag | Description |\n| --- | --- | --- | --- | --- | --- |\n"
@@ -95,7 +102,11 @@ func Markdown(lang string) string {
 		}
 		if !strings.Contains(s.Path, ".") {
 			n++
-			fmt.Fprintf(&b, "### 2.%d `%s`\n\n%s\n\n", n, s.Path, s.Doc.Text(lang))
+			if numbered {
+				fmt.Fprintf(&b, "### 2.%d `%s`\n\n%s\n\n", n, s.Path, s.Doc.Text(lang))
+			} else {
+				fmt.Fprintf(&b, "### `%s`\n\n%s\n\n", s.Path, s.Doc.Text(lang))
+			}
 		} else {
 			fmt.Fprintf(&b, "#### `%s`\n\n%s\n\n", s.Path, s.Doc.Text(lang))
 		}

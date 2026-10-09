@@ -123,8 +123,8 @@ func ResolveMacSigning(p *project.Project, cfg *config.Config) (MacSigning, erro
 
 // unsignedHowTo explains how to turn on Developer ID signing in fpack.yaml.
 func unsignedHowTo() string {
-	return i18n.S("to sign + notarize, set macos.sign.identity (\"Developer ID Application: …\") and macos.sign.notary_profile in fpack.yaml (see doc/configuration.md)",
-		"如需签名 + 公证，请在 fpack.yaml 中设置 macos.sign.identity（“Developer ID Application: …”）和 macos.sign.notary_profile（见 doc/configuration.md）")
+	return i18n.S("to sign + notarize, set macos.sign.identity (\"Developer ID Application: …\") and macos.sign.notary_profile in fpack.yaml (see https://matkurban.github.io/fpack/platforms/macos)",
+		"如需签名 + 公证，请在 fpack.yaml 中设置 macos.sign.identity（“Developer ID Application: …”）和 macos.sign.notary_profile（见 https://matkurban.github.io/fpack/zh/platforms/macos）")
 }
 
 // IdentityLabel is the identity as shown/passed to codesign.
