@@ -232,8 +232,12 @@ class CoreResolver {
       return cachedPath;
     } on FileSystemException catch (e) {
       attempts.add(
-        'cache: cannot write ${File(cachedPath).parent.path}: '
-        '${e.message} (set FPACK_HOME to a writable directory)',
+        tr(
+          'cache: cannot write ${File(cachedPath).parent.path}: '
+              '${e.message} (set FPACK_HOME to a writable directory)',
+          '缓存：无法写入 ${File(cachedPath).parent.path}：'
+              '${e.message}（请把 FPACK_HOME 设为可写目录）',
+        ),
       );
       return null;
     }
@@ -273,25 +277,36 @@ class CoreResolver {
   Future<ResolvedCore?> _fromBundled() async {
     final bin = File(bundledPath);
     if (!bin.existsSync()) {
-      attempts.add('bundled: no prebuilt binary at $bundledPath');
+      attempts.add(
+        tr(
+          'bundled: no prebuilt binary at $bundledPath',
+          '随包：$bundledPath 没有预编译二进制',
+        ),
+      );
       return null;
     }
     final mf = File(manifestPath);
     if (!mf.existsSync()) {
-      attempts.add('bundled: $manifestPath missing');
+      attempts.add(tr('bundled: $manifestPath missing', '随包：缺少 $manifestPath'));
       return null;
     }
     Map manifest;
     try {
       manifest = jsonDecode(mf.readAsStringSync()) as Map;
     } catch (e) {
-      attempts.add('bundled: invalid manifest.json ($e)');
+      attempts.add(
+        tr('bundled: invalid manifest.json ($e)', '随包：manifest.json 无效（$e）'),
+      );
       return null;
     }
     if (manifest['version'] != version) {
       attempts.add(
-        'bundled: prebuilt version ${manifest['version']} != '
-        'wrapper $version (rebuild with scripts/build_binaries.sh)',
+        tr(
+          'bundled: prebuilt version ${manifest['version']} != '
+              'wrapper $version (rebuild with scripts/build_binaries.sh)',
+          '随包：预编译版本 ${manifest['version']} 与包装器版本 $version '
+              '不一致（请用 scripts/build_binaries.sh 重新构建）',
+        ),
       );
       return null;
     }
@@ -299,7 +314,12 @@ class CoreResolver {
     final want = entry?['sha256'] as String?;
     final got = await sha256OfFile(bin);
     if (want == null || want != got) {
-      attempts.add('bundled: checksum mismatch for $bundledPath');
+      attempts.add(
+        tr(
+          'bundled: checksum mismatch for $bundledPath',
+          '随包：$bundledPath 校验和不匹配',
+        ),
+      );
       return null;
     }
     final installed = await _install(bin, 'bundled', got);
@@ -310,7 +330,9 @@ class CoreResolver {
     if (installed == null && await coreVersion(bin.path) == version) {
       return ResolvedCore(bin.path, CoreSource.bundled);
     }
-    attempts.add('bundled: binary does not run on this machine');
+    attempts.add(
+      tr('bundled: binary does not run on this machine', '随包：该二进制无法在本机运行'),
+    );
     return null;
   }
 
@@ -362,18 +384,32 @@ class CoreResolver {
 
   Future<ResolvedCore?> _fromGo({required String reason}) async {
     if (!File(_join([goModuleDir, 'go.mod'])).existsSync()) {
-      attempts.add('go build: Go sources not found in $goModuleDir');
+      attempts.add(
+        tr(
+          'go build: Go sources not found in $goModuleDir',
+          'go build：在 $goModuleDir 中找不到 Go 源码',
+        ),
+      );
       return null;
     }
     if (env['FPACK_GO'] == 'none') {
-      attempts.add('go build: disabled by FPACK_GO=none');
+      attempts.add(
+        tr(
+          'go build: disabled by FPACK_GO=none',
+          'go build：已被 FPACK_GO=none 禁用',
+        ),
+      );
       return null;
     }
     final go = findGo();
     if (go == null) {
       attempts.add(
-        'go build: no Go toolchain found (PATH, /usr/local/go/bin, '
-        '/opt/homebrew/bin; or set FPACK_GO)',
+        tr(
+          'go build: no Go toolchain found (PATH, /usr/local/go/bin, '
+              '/opt/homebrew/bin; or set FPACK_GO)',
+          'go build：找不到 Go 工具链（PATH、/usr/local/go/bin、'
+              '/opt/homebrew/bin；或设置 FPACK_GO）',
+        ),
       );
       return null;
     }
@@ -391,7 +427,12 @@ class CoreResolver {
     try {
       out.createSync(recursive: true);
     } on FileSystemException catch (e) {
-      attempts.add('go build: cannot create ${out.path}: ${e.message}');
+      attempts.add(
+        tr(
+          'go build: cannot create ${out.path}: ${e.message}',
+          'go build：无法创建 ${out.path}：${e.message}',
+        ),
+      );
       return null;
     }
     final tmp = '$cachedPath.build$pid';
@@ -417,7 +458,12 @@ class CoreResolver {
     );
     if (r.exitCode != 0) {
       final err = '${r.stderr}'.trim().split('\n').take(8).join('\n    ');
-      attempts.add('go build failed (exit ${r.exitCode}):\n    $err');
+      attempts.add(
+        tr(
+          'go build failed (exit ${r.exitCode}):\n    $err',
+          'go build 失败（退出码 ${r.exitCode}）：\n    $err',
+        ),
+      );
       try {
         File(tmp).deleteSync();
       } catch (_) {}
@@ -429,8 +475,11 @@ class CoreResolver {
     final v = await coreVersion(installed);
     if (v != version) {
       attempts.add(
-        'go build: built core reports ${v ?? "nothing"}, '
-        'expected $version',
+        tr(
+          'go build: built core reports ${v ?? "nothing"}, '
+              'expected $version',
+          'go build：构建出的核心版本为 ${v ?? "空"}，应为 $version',
+        ),
       );
       return null;
     }
@@ -457,12 +506,13 @@ class CoreResolver {
 
   Future<ResolvedCore?> _fromDownload() async {
     void fail(String why) {
-      attempts.add('download: $why');
-      _downloadFailure = 'download: $why';
+      final line = tr('download: $why', '下载：$why');
+      attempts.add(line);
+      _downloadFailure = line;
     }
 
     if (_flag('FPACK_NO_DOWNLOAD')) {
-      fail('disabled by FPACK_NO_DOWNLOAD');
+      fail(tr('disabled by FPACK_NO_DOWNLOAD', '已被 FPACK_NO_DOWNLOAD 禁用'));
       return null;
     }
     final base = downloadBase;
@@ -482,20 +532,29 @@ class CoreResolver {
       final want = parseChecksums(sums.readAsStringSync())[host.assetName];
       final got = await sha256OfFile(tmp);
       if (want == null) {
-        fail('${host.assetName} missing from checksums.txt');
+        fail(
+          tr(
+            '${host.assetName} missing from checksums.txt',
+            'checksums.txt 中没有 ${host.assetName}',
+          ),
+        );
         return null;
       }
       if (want != got) {
         fail(
-          'SHA-256 mismatch for ${host.assetName} '
-          '(expected $want, got $got) – refusing to run it',
+          tr(
+            'SHA-256 mismatch for ${host.assetName} '
+                '(expected $want, got $got) – refusing to run it',
+            '${host.assetName} 的 SHA-256 不匹配'
+                '（应为 $want，实际为 $got）——拒绝运行',
+          ),
         );
         return null;
       }
       final installed = await _install(tmp, 'download', got, move: true);
       if (installed == null) return null;
       if (await coreVersion(installed) != version) {
-        fail('core does not report version $version');
+        fail(tr('core does not report version $version', '核心报告的版本不是 $version'));
         return null;
       }
       return ResolvedCore(installed, CoreSource.downloaded);

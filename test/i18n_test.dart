@@ -43,4 +43,11 @@ void main() {
     expect(langFlag(['--', '--lang', 'zh']), isNull);
     expect(firstAppleLanguage('(\n    "zh-Hans-CN",\n    en\n)'), 'zh-Hans-CN');
   });
+
+  test('tr follows --lang', () {
+    initLang(['--lang', 'zh']);
+    expect(tr('downloading', '正在下载'), '正在下载');
+    initLang(['--lang', 'en']);
+    expect(tr('downloading', '正在下载'), 'downloading');
+  });
 }

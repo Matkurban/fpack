@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:fpack/src/platform.dart';
 import 'package:fpack/src/resolver.dart';
 import 'package:fpack/src/sha256.dart';
+import 'package:fpack/src/i18n.dart';
 import 'package:test/test.dart';
 
 const host = HostTarget('linux', 'amd64');
@@ -17,6 +18,8 @@ String fakeCore(String version) =>
     '#!/bin/sh\nif [ "\$1" = "--core-version" ]; then echo $version; fi\n';
 
 void main() {
+  // Messages are asserted in English whatever the machine's language.
+  setUpAll(() => initLang(['--lang', 'en']));
   late Directory tmp;
   late String pkg;
   late String cache;
