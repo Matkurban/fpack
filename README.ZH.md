@@ -527,6 +527,7 @@ fpack 附带一个[包技能（package skill）](https://dart.dev/tools/pub/pack
 ```sh
 dart pub add dev:fpack                  # 技能从依赖中安装
 dart run skills@ get --package fpack    # 选择你的助手，或加 --agent cursor|claude|codex|…
+dart run skills@ get --package fpack --skill fpack-cli   # 非交互式（CI / 脚本）
 ```
 
 升级 fpack 后重新运行即可。详见 [AI 智能体技能](https://matkurban.github.io/fpack/zh/skills/)。

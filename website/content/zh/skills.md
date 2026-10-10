@@ -13,6 +13,7 @@ fpack 在 pub 包中附带一个名为 **`fpack-cli`** 的[包技能（package s
 dart pub add dev:fpack
 dart run skills@ get --package fpack          # 交互式选择你的 AI 助手
 dart run skills@ get --package fpack --agent cursor   # 或直接指定：claude、codex、copilot、cline……
+dart run skills@ get --package fpack --skill fpack-cli   # 非交互式（CI / 脚本）
 ```
 
 技能会被复制到项目的智能体目录（例如 `.agents/skills/fpack-cli/`）；如果团队使用同一种助手，可以把它提交到仓库。升级 fpack 后重新运行该命令即可：技能随包的版本一起更新。

@@ -13,6 +13,7 @@ Skills are installed from your project's dependencies, so add fpack as a dev dep
 dart pub add dev:fpack
 dart run skills@ get --package fpack          # pick your agent interactively
 dart run skills@ get --package fpack --agent cursor   # or name it: claude, codex, copilot, cline, …
+dart run skills@ get --package fpack --skill fpack-cli   # non-interactive (CI/scripts)
 ```
 
 The skill is copied into your project's agent folder (for example `.agents/skills/fpack-cli/`); commit it if your team uses the same agent. Re-run the command after upgrading fpack: the skill is versioned with the package.

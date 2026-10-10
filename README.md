@@ -527,6 +527,7 @@ fpack ships a [package skill](https://dart.dev/tools/pub/package-skills), [`fpac
 ```sh
 dart pub add dev:fpack                  # skills are installed from dependencies
 dart run skills@ get --package fpack    # choose your agent, or add --agent cursor|claude|codex|…
+dart run skills@ get --package fpack --skill fpack-cli   # non-interactive (CI/scripts)
 ```
 
 Re-run after upgrading fpack. Details: [AI agent skill](https://matkurban.github.io/fpack/skills/).
