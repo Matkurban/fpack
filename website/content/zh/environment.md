@@ -25,6 +25,19 @@ lang: zh-CN
 | `FPACK_GO` | 回退编译时使用的 Go（`none` 表示禁止本机编译） |
 | `FPACK_NO_DOWNLOAD=1` / `FPACK_DOWNLOAD_URL` | 禁止下载（直接本机编译） / 自定义下载地址（内网镜像）；见[启动器如何找到原生核心](/zh/installation#launcher) |
 
+## 输出语言
+
+fpack（Go 核心和 Dart 启动器）在操作系统语言为中文（任何 `zh` 变体：简体、繁体、香港等）时使用中文，其余情况一律使用英文。所有内容都随之切换：提示信息、帮助、`doctor` / `list` 输出、错误提示、`fpack init` 生成的 `fpack.yaml` 注释，以及 `NOTARIZATION.md`。
+
+优先级（先匹配者生效）：
+
+1. `--lang zh|en`
+2. `FPACK_LANG=zh|en`
+3. 操作系统语言：
+   - **macOS**：系统设置 → 通用 → 语言与地区 中的第一个语言（`defaults read -g AppleLanguages`），其次 `AppleLocale`。终端通常按“地区”设置 `LANG`（即使界面是中文也常为 `en_US.UTF-8`），所以只有读取失败时才使用 `LANG` / `LANGUAGE`；显式设置的 `LC_ALL` 或 `LC_MESSAGES` 仍然优先。结果缓存在 `~/Library/Caches/fpack/os-language`，系统偏好设置变化后自动刷新。
+   - **Windows**：用户的显示语言（`GetUserDefaultUILanguage`，不启动子进程）；忽略 Git Bash/MSYS 设置的 `LANG`，显式的 `LC_ALL` / `LC_MESSAGES` 仍然优先。
+   - **Linux 等**：依次读取 `LC_ALL`、`LC_MESSAGES`、`LANGUAGE`（第一项）、`LANG`；跳过 `C` / `POSIX`。
+
 ## 对应 fpack.yaml 键的变量
 
 由键注册表生成。它们覆盖 `fpack.yaml`，又会被命令行参数覆盖。`fpack.yaml` 中的任何值也都可以用 `${VAR}` / `${VAR:-默认值}` 引用任意环境变量。

@@ -534,7 +534,7 @@ CI 中签名 + 公证 macOS 产物的证书导入步骤见上文[获取 macOS �
 | `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_NOTARIZE_WAIT` `FPACK_DMG_TOOL` | macOS |
 | `FPACK_NOTARY_APPLE_ID` `FPACK_NOTARY_TEAM_ID` `FPACK_NOTARY_PASSWORD` `FPACK_NOTARY_API_KEY` `FPACK_NOTARY_API_KEY_ID` `FPACK_NOTARY_API_ISSUER` | macOS 公证凭证（Apple ID / API 密钥） |
 | `FPACK_WINDOWS_CERTIFICATE` `FPACK_WINDOWS_CERTIFICATE_PASSWORD` `FPACK_WINDOWS_CERT_THUMBPRINT` | Windows 代码签名 |
-| `FPACK_LANG` | `zh` / `en`（默认依次读取 `LC_ALL`、`LC_MESSAGES`、`LANG`、macOS/Windows 系统语言） |
+| `FPACK_LANG` | `zh` / `en`（默认跟随系统语言：macOS 界面语言、Windows 显示语言、Linux 的 `LC_ALL`/`LC_MESSAGES`/`LANGUAGE`/`LANG`；中文 → 中文，其他 → 英文；[详情](https://matkurban.github.io/fpack/zh/environment#输出语言)） |
 | `NO_COLOR` / `FPACK_NO_COLOR` / `FORCE_COLOR` | 颜色控制 |
 | `FPACK_CORE` | 指定原生核心二进制（开发用） |
 | `FPACK_HOME` | 核心缓存目录 |

@@ -4,6 +4,13 @@ description: "Changes in every fpack release."
 ---
 
 <!-- BEGIN GENERATED CHANGELOG -->
+## 1.1.5
+
+### Changed
+- The output language follows the operating system language: Chinese (any `zh` variant) → Chinese, everything else → English. Precedence: `--lang` > `FPACK_LANG` > OS language. On macOS the UI language (`AppleLanguages`) now wins over Terminal's `LANG` (usually derived from the region, e.g. `en_US.UTF-8` on a Chinese system); on Windows the display language (`GetUserDefaultUILanguage`) wins over `LANG` from Git Bash; explicit `LC_ALL` / `LC_MESSAGES` still override. Linux reads `LC_ALL`, `LC_MESSAGES`, `LANGUAGE`, `LANG`. The macOS lookup is cached and refreshed when the system preferences change.
+- The Dart launcher's own messages (downloading/building the core, errors and fixes) are now localized too.
+- Every user-facing text follows the selected language: config validation errors, usage lines, "did you mean" suggestions, the `error:` prefix, example values in the `fpack init` template and docs. Tests check that English output contains no Chinese and Chinese output (including the generated `fpack.yaml` and `NOTARIZATION.md`) has no English prose left.
+
 ## 1.1.4
 
 ### Added

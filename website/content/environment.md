@@ -22,6 +22,19 @@ description: "All FPACK_* variables and the variables fpack reads."
 | `FPACK_GO` | the Go used for the fallback build (`none` disables local builds) |
 | `FPACK_NO_DOWNLOAD=1` / `FPACK_DOWNLOAD_URL` | never download (build locally) / download mirror (intranet); see [how the launcher finds the native core](/installation#launcher) |
 
+## Output language
+
+fpack (the Go core and the Dart launcher) speaks Chinese when your operating system's language is Chinese (any `zh` variant: Simplified, Traditional, Hong Kong…) and English otherwise. Everything follows it: messages, help, `doctor` / `list` output, error hints, the comments of the `fpack.yaml` written by `fpack init`, and `NOTARIZATION.md`.
+
+Precedence (first match wins):
+
+1. `--lang zh|en`
+2. `FPACK_LANG=zh|en`
+3. the operating system language:
+   - **macOS**: the first language in System Settings → General → Language & Region (`defaults read -g AppleLanguages`), then `AppleLocale`. Terminal usually sets `LANG` from the *region* (often `en_US.UTF-8` even with a Chinese UI), so `LANG` / `LANGUAGE` are only used if that lookup fails; an explicit `LC_ALL` or `LC_MESSAGES` still wins. The result is cached in `~/Library/Caches/fpack/os-language` and refreshed when the system preferences change.
+   - **Windows**: the user's display language (`GetUserDefaultUILanguage`, no subprocess); `LANG` set by Git Bash/MSYS is ignored, an explicit `LC_ALL` / `LC_MESSAGES` still wins.
+   - **Linux and others**: `LC_ALL`, `LC_MESSAGES`, `LANGUAGE` (first entry), `LANG`; `C` / `POSIX` are skipped.
+
 ## Variables that map to fpack.yaml keys
 
 Generated from the key registry. They override `fpack.yaml` and are overridden by command-line flags. Any value in `fpack.yaml` can also reference arbitrary variables with `${VAR}` / `${VAR:-default}`.

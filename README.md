@@ -534,7 +534,7 @@ Full details (type, default, affected targets): [doc/configuration.md](doc/confi
 | `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_NOTARIZE_WAIT` `FPACK_DMG_TOOL` | macOS |
 | `FPACK_NOTARY_APPLE_ID` `FPACK_NOTARY_TEAM_ID` `FPACK_NOTARY_PASSWORD` `FPACK_NOTARY_API_KEY` `FPACK_NOTARY_API_KEY_ID` `FPACK_NOTARY_API_ISSUER` | macOS notary credentials (Apple ID / API key) |
 | `FPACK_WINDOWS_CERTIFICATE` `FPACK_WINDOWS_CERTIFICATE_PASSWORD` `FPACK_WINDOWS_CERT_THUMBPRINT` | Windows code signing |
-| `FPACK_LANG` | `zh` / `en` (default: `LC_ALL`, `LC_MESSAGES`, `LANG`, then the macOS/Windows system language) |
+| `FPACK_LANG` | `zh` / `en` (default: the OS language – macOS UI language, Windows display language, Linux `LC_ALL`/`LC_MESSAGES`/`LANGUAGE`/`LANG`; Chinese → Chinese, anything else → English; [details](https://matkurban.github.io/fpack/environment#output-language)) |
 | `NO_COLOR` / `FPACK_NO_COLOR` / `FORCE_COLOR` | colors |
 | `FPACK_CORE` | use this native core binary (development) |
 | `FPACK_HOME` | core cache directory |
