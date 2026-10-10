@@ -151,16 +151,16 @@ class CoreResolver {
       [
         ...attempts,
         tr(
-              'fix: check the network (or set FPACK_DOWNLOAD_URL to a mirror of '
-                  'the GitHub release), or install Go (https://go.dev/dl) for a '
-                  'local build, or download fpack-core-${host.id} from '
-                  'https://github.com/Matkurban/fpack/releases/tag/v$version '
-                  'and set FPACK_CORE',
-              '修复：检查网络（或把 FPACK_DOWNLOAD_URL 设为 GitHub Release 的镜像），'
-                  '或安装 Go（https://go.dev/dl）在本地构建，或从 '
-                  'https://github.com/Matkurban/fpack/releases/tag/v$version '
-                  '下载 fpack-core-${host.id} 并设置 FPACK_CORE',
-            ),
+          'fix: check the network (or set FPACK_DOWNLOAD_URL to a mirror of '
+              'the GitHub release), or install Go (https://go.dev/dl) for a '
+              'local build, or download fpack-core-${host.id} from '
+              'https://github.com/Matkurban/fpack/releases/tag/v$version '
+              'and set FPACK_CORE',
+          '修复：检查网络（或把 FPACK_DOWNLOAD_URL 设为 GitHub Release 的镜像），'
+              '或安装 Go（https://go.dev/dl）在本地构建，或从 '
+              'https://github.com/Matkurban/fpack/releases/tag/v$version '
+              '下载 fpack-core-${host.id} 并设置 FPACK_CORE',
+        ),
       ],
     );
   }
