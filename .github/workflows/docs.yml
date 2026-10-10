@@ -35,8 +35,8 @@ jobs:
         working-directory: website
         run: |
           dart pub get
-          dart run slang
-          git diff --exit-code lib/l10n   # generated accessors match the ARB files
+          tool/l10n.sh
+          git diff --exit-code lib/l10n   # app_en.arb and lib/l10n/gen match the messages
           dart format --output=none --set-exit-if-changed lib test
           dart analyze --fatal-infos
           dart test

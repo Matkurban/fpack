@@ -1,36 +1,152 @@
 {
   "@@locale": "en",
   "siteDescription": "Package Flutter apps for every platform with one command.",
+  "@siteDescription": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navOverview": "Overview",
+  "@navOverview": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navGettingStarted": "Getting started",
+  "@navGettingStarted": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navInstallation": "Installation",
+  "@navInstallation": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navReference": "Reference",
-  "@navReference": {"description": "Sidebar group title"},
+  "@navReference": {
+    "description": "Sidebar group title",
+    "type": "text",
+    "placeholders": {}
+  },
   "navCommands": "Commands",
+  "@navCommands": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navTargets": "Targets and artifacts",
+  "@navTargets": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navConfiguration": "Configuration",
+  "@navConfiguration": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navEnvironment": "Environment variables",
+  "@navEnvironment": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navPlatforms": "Platform guides",
-  "@navPlatforms": {"description": "Sidebar group title"},
+  "@navPlatforms": {
+    "description": "Sidebar group title",
+    "type": "text",
+    "placeholders": {}
+  },
   "navMacos": "macOS (signing, notarization)",
+  "@navMacos": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navMore": "More",
-  "@navMore": {"description": "Sidebar group title"},
+  "@navMore": {
+    "description": "Sidebar group title",
+    "type": "text",
+    "placeholders": {}
+  },
   "navCi": "CI recipes",
+  "@navCi": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navSkills": "AI agent skill",
+  "@navSkills": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navTroubleshooting": "Troubleshooting",
+  "@navTroubleshooting": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navFaq": "FAQ",
+  "@navFaq": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navArchitecture": "Architecture",
+  "@navArchitecture": {
+    "type": "text",
+    "placeholders": {}
+  },
   "navChangelog": "Changelog",
+  "@navChangelog": {
+    "type": "text",
+    "placeholders": {}
+  },
   "searchPlaceholder": "Search docs… (/)",
+  "@searchPlaceholder": {
+    "type": "text",
+    "placeholders": {}
+  },
   "searchLabel": "Search",
+  "@searchLabel": {
+    "type": "text",
+    "placeholders": {}
+  },
   "searchNoResults": "No results",
+  "@searchNoResults": {
+    "type": "text",
+    "placeholders": {}
+  },
   "languageSwitch": "中文",
-  "@languageSwitch": {"description": "Label of the button that switches to the other language"},
+  "@languageSwitch": {
+    "description": "Label of the button that switches to the other language",
+    "type": "text",
+    "placeholders": {}
+  },
   "languageSwitchTitle": "切换到中文",
+  "@languageSwitchTitle": {
+    "type": "text",
+    "placeholders": {}
+  },
   "tocTitle": "On this page",
+  "@tocTitle": {
+    "type": "text",
+    "placeholders": {}
+  },
   "footerLicense": "fpack is MIT licensed.",
+  "@footerLicense": {
+    "type": "text",
+    "placeholders": {}
+  },
   "footerEdit": "Edit this page on GitHub",
+  "@footerEdit": {
+    "type": "text",
+    "placeholders": {}
+  },
   "notFoundTitle": "Page not found",
+  "@notFoundTitle": {
+    "type": "text",
+    "placeholders": {}
+  },
   "notFoundMessage": "This page does not exist or has moved.",
-  "notFoundHome": "Go to the documentation home"
+  "@notFoundMessage": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "notFoundHome": "Go to the documentation home",
+  "@notFoundHome": {
+    "type": "text",
+    "placeholders": {}
+  }
 }

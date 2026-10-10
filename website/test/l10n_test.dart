@@ -13,6 +13,13 @@ Map<String, Object?> arb(AppLocale locale) =>
 Set<String> messageKeys(Map<String, Object?> arb) => arb.keys.where((k) => !k.startsWith('@')).toSet();
 
 void main() {
+  setUpAll(loadLocalizations);
+
+  test('typed accessors resolve every locale', () {
+    expect(AppLocale.en.strings.tocTitle, 'On this page');
+    expect(AppLocale.zh.strings.tocTitle, '本页内容');
+  });
+
   group('ARB files', () {
     final template = messageKeys(arb(SiteLocale.fallback));
 

@@ -1,9 +1,17 @@
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
-import '../../l10n/strings.g.dart';
+import '../../l10n/app_localizations.dart';
 
-export '../../l10n/strings.g.dart' show AppLocale, Translations;
+export '../../l10n/app_localizations.dart' show AppLocalizations, loadLocalizations;
+
+/// The site's locales (see `supportedLocales` and the ARB files in lib/l10n).
+enum AppLocale {
+  en,
+  zh;
+
+  String get languageCode => name;
+}
 
 /// Locale metadata used by the site (content files, `<html lang>`, storage).
 extension SiteLocale on AppLocale {
@@ -19,13 +27,9 @@ extension SiteLocale on AppLocale {
   /// Suffix of this locale's content files: `page.md` (default) or `page.zh.md`.
   String get fileSuffix => this == fallback ? '' : '.$languageCode';
 
-  /// The typed translations generated from `lib/l10n/app_<locale>.arb`.
-  Translations get strings => _strings[this]!;
+  /// The UI strings of this locale (`lib/l10n/app_<locale>.arb`).
+  AppLocalizations get strings => AppLocalizations(languageCode);
 }
-
-final Map<AppLocale, Translations> _strings = {
-  for (final locale in AppLocale.values) locale: locale.buildSync(),
-};
 
 /// Attributes marking an element as belonging to [locale]. CSS hides elements
 /// of every locale except the active one (`<html data-locale>`), see web/site.css.
@@ -39,7 +43,7 @@ Map<String, String> localeAttributes(AppLocale locale) => {
 class Localized extends StatelessComponent {
   const Localized(this.message, {super.key});
 
-  final String Function(Translations t) message;
+  final String Function(AppLocalizations t) message;
 
   @override
   Component build(BuildContext context) => Component.fragment([
@@ -64,6 +68,6 @@ class LocalizedBlock extends StatelessComponent {
 
 /// `data-*` attributes carrying an attribute value for every locale, applied by
 /// web/site.js when the language changes (e.g. `data-l10n-placeholder-zh`).
-Map<String, String> localizedAttribute(String name, String Function(Translations t) message) => {
+Map<String, String> localizedAttribute(String name, String Function(AppLocalizations t) message) => {
   for (final locale in AppLocale.values) 'data-l10n-$name-${locale.languageCode}': message(locale.strings),
 };

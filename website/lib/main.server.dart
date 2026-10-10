@@ -19,10 +19,12 @@ import 'src/components/site_footer.dart';
 import 'src/components/site_navigation.dart';
 import 'src/content/localized_headings.dart';
 import 'src/content/localized_loader.dart';
+import 'src/l10n/locales.dart';
 import 'src/layout/site_layout.dart';
 
-void main() {
+Future<void> main() async {
   Jaspr.initializeApp(options: defaultServerOptions);
+  await loadLocalizations();
 
   runApp(
     ContentApp.custom(

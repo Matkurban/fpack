@@ -4,7 +4,7 @@ import 'package:jaspr_content/components/sidebar.dart';
 import '../l10n/locales.dart';
 
 /// The sidebar: one definition, titles from the ARB files.
-List<SidebarGroup> sidebarGroups(Translations t) => [
+List<SidebarGroup> sidebarGroups(AppLocalizations t) => [
   SidebarGroup(
     links: [
       SidebarLink(text: t.navOverview, href: '/'),
