@@ -55,10 +55,6 @@ func TestWebsiteUpToDate(t *testing.T) {
 	}
 	changelog := changelogMarkdown(t)
 	for _, lang := range []string{"en", "zh"} {
-		dir := content
-		if lang == "zh" {
-			dir = filepath.Join(content, "zh")
-		}
 		pages := map[string]map[string]string{
 			"configuration.md": {"KEYS": config.SiteMarkdown(lang)},
 			"environment.md":   {"ENV": config.EnvMarkdown(lang)},
@@ -66,7 +62,7 @@ func TestWebsiteUpToDate(t *testing.T) {
 			"changelog.md":     {"CHANGELOG": changelog},
 		}
 		for page, blocks := range pages {
-			path := filepath.Join(dir, page)
+			path := filepath.Join(content, localizedPage(page, lang))
 			b, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatal(err)
@@ -88,4 +84,13 @@ func TestWebsiteUpToDate(t *testing.T) {
 			}
 		}
 	}
+}
+
+// localizedPage maps a content page to its file for lang: the English page is
+// <name>.md, every other locale <name>.<lang>.md next to it.
+func localizedPage(page, lang string) string {
+	if lang == "en" {
+		return page
+	}
+	return strings.TrimSuffix(page, ".md") + "." + lang + ".md"
 }

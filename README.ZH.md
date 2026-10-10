@@ -2,7 +2,7 @@
 
 [English](README.md) · **中文**
 
-### 📖 [完整文档 → matkurban.github.io/fpack/zh](https://matkurban.github.io/fpack/zh/)
+### 📖 [完整文档 → matkurban.github.io/fpack](https://matkurban.github.io/fpack/?lang=zh)
 
 各平台指南（签名、公证、安装包）、全部命令与配置键、CI 示例和问题排查。带完整注释 `fpack.yaml` 的示例应用见 [`example/`](example/)。
 
@@ -215,7 +215,7 @@ Flutter 不能跨系统编译 iOS/macOS/Windows/Linux 桌面应用。`fpack buil
 
 ## 配置 fpack.yaml
 
-> 📖 **完整配置参考**（每个 fpack.yaml 键、每个 `FPACK_*` 环境变量、每个命令行参数、优先级规则和完整示例）：[doc/configuration.md](doc/configuration.md) · [文档网站](https://matkurban.github.io/fpack/zh/configuration)
+> 📖 **完整配置参考**（每个 fpack.yaml 键、每个 `FPACK_*` 环境变量、每个命令行参数、优先级规则和完整示例）：[doc/configuration.md](doc/configuration.md) · [文档网站](https://matkurban.github.io/fpack/configuration?lang=zh)
 
 所有键都是可选的，`fpack init` 会生成**列出全部键**的文件：每个键都有中文（`--lang en` 为英文）注释，说明作用、可选值、默认值、示例以及对应的环境变量/命令行参数，并预填从项目检测到的值（应用 ID、flavor、版本号、团队 ID、Inno AppId…）；不需要的键保持注释即可。
 
@@ -530,7 +530,7 @@ dart run skills@ get --package fpack    # 选择你的助手，或加 --agent cu
 dart run skills@ get --package fpack --skill fpack-cli   # 非交互式（CI / 脚本）
 ```
 
-升级 fpack 后重新运行即可。详见 [AI 智能体技能](https://matkurban.github.io/fpack/zh/skills/)。
+升级 fpack 后重新运行即可。详见 [AI 智能体技能](https://matkurban.github.io/fpack/skills/?lang=zh)。
 
 ---
 
@@ -549,7 +549,7 @@ dart run skills@ get --package fpack --skill fpack-cli   # 非交互式（CI / �
 | `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_NOTARIZE_WAIT` `FPACK_DMG_TOOL` | macOS |
 | `FPACK_NOTARY_APPLE_ID` `FPACK_NOTARY_TEAM_ID` `FPACK_NOTARY_PASSWORD` `FPACK_NOTARY_API_KEY` `FPACK_NOTARY_API_KEY_ID` `FPACK_NOTARY_API_ISSUER` | macOS 公证凭证（Apple ID / API 密钥） |
 | `FPACK_WINDOWS_CERTIFICATE` `FPACK_WINDOWS_CERTIFICATE_PASSWORD` `FPACK_WINDOWS_CERT_THUMBPRINT` | Windows 代码签名 |
-| `FPACK_LANG` | `zh` / `en`（默认跟随系统语言：macOS 界面语言、Windows 显示语言、Linux 的 `LC_ALL`/`LC_MESSAGES`/`LANGUAGE`/`LANG`；中文 → 中文，其他 → 英文；[详情](https://matkurban.github.io/fpack/zh/environment#输出语言)） |
+| `FPACK_LANG` | `zh` / `en`（默认跟随系统语言：macOS 界面语言、Windows 显示语言、Linux 的 `LC_ALL`/`LC_MESSAGES`/`LANGUAGE`/`LANG`；中文 → 中文，其他 → 英文；[详情](https://matkurban.github.io/fpack/environment?lang=zh#输出语言)） |
 | `NO_COLOR` / `FPACK_NO_COLOR` / `FORCE_COLOR` | 颜色控制 |
 | `FPACK_CORE` | 指定原生核心二进制（开发用） |
 | `FPACK_HOME` | 核心缓存目录 |

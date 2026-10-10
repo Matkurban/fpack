@@ -158,7 +158,7 @@ func renderInitYAML(v initValues) string {
 	var b strings.Builder
 	w := func(format string, a ...any) { fmt.Fprintf(&b, format+"\n", a...) }
 	w("# yaml-language-server: $schema=%s", config.SchemaURL)
-	w("# fpack %s – %s", S("configuration", "配置文件"), S("https://matkurban.github.io/fpack/configuration", "https://matkurban.github.io/fpack/zh/configuration"))
+	w("# fpack %s – %s", S("configuration", "配置文件"), S("https://matkurban.github.io/fpack/configuration", "https://matkurban.github.io/fpack/configuration?lang=zh"))
 	w("# %s", S("Precedence: command-line flags > FPACK_* environment variables > this file > defaults.", "优先级：命令行参数 > FPACK_* 环境变量 > 本文件 > 默认值。"))
 	w("# %s", S("Every key is optional: uncomment what you need. ${VAR} / ${VAR:-default} read environment variables when the file is loaded.", "所有键都是可选的：需要哪个就取消注释。${VAR} / ${VAR:-默认值} 会在加载时读取环境变量。"))
 	w("# %s", S("Relative paths are relative to the project root. fpack never edits your project files; it only reads them.", "相对路径均相对于项目根目录。fpack 只读取项目文件，绝不修改。"))
@@ -196,7 +196,7 @@ func renderInitYAML(v initValues) string {
 	if len(skipped) > 0 {
 		w("")
 		w("# %s %s", S("Not shown (the project has no folder for them):", "未列出（项目中没有对应平台目录）："), strings.Join(skipped, ", "))
-		w("# %s", S("see https://matkurban.github.io/fpack/configuration or `fpack schema` for their keys.", "这些键见 https://matkurban.github.io/fpack/zh/configuration 或 `fpack schema`。"))
+		w("# %s", S("see https://matkurban.github.io/fpack/configuration or `fpack schema` for their keys.", "这些键见 https://matkurban.github.io/fpack/configuration?lang=zh 或 `fpack schema`。"))
 	}
 	return b.String()
 }

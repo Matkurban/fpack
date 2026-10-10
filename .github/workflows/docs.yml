@@ -31,12 +31,15 @@ jobs:
       - name: generated reference pages are up to date
         working-directory: go
         run: go test ./internal/cli -run TestWebsiteUpToDate
-      - name: analyze
+      - name: analyze and test
         working-directory: website
         run: |
           dart pub get
-          dart format --output=none --set-exit-if-changed lib
+          dart run slang
+          git diff --exit-code lib/l10n   # generated accessors match the ARB files
+          dart format --output=none --set-exit-if-changed lib test
           dart analyze --fatal-infos
+          dart test
       - name: jaspr build
         working-directory: website
         run: |

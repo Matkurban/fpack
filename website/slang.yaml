@@ -1,0 +1,13 @@
+# Typed accessors for the ARB files in lib/l10n (`dart run slang`).
+base_locale: en
+fallback_strategy: none
+input_directory: lib/l10n
+input_file_pattern: .arb
+output_directory: lib/l10n
+output_file_name: strings.g.dart
+translate_var: t
+enum_name: AppLocale
+class_name: Translations
+locale_handling: false
+flutter_integration: false
+lazy: false

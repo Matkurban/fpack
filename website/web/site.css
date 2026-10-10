@@ -1,4 +1,4 @@
-/* fpack docs: header search, language switch and small content tweaks. */
+/* fpack docs: header search, language switch, localization and small content tweaks. */
 .header-items { display: flex; align-items: center; gap: .75rem; }
 .lang-switch {
   font-size: .85rem; font-weight: 600; text-decoration: none; padding: .25rem .55rem;
@@ -29,3 +29,12 @@
 .content table { display: block; overflow-x: auto; }
 .hero-badges p { display: flex; gap: .4rem; flex-wrap: wrap; }
 .hero-badges img { margin: 0 !important; }
+
+/* Localization: every page contains all locales; <html data-locale> picks one.
+   Without JavaScript the default (English) is shown. */
+html:not([data-locale="zh"]) [data-l10n="zh"],
+html[data-locale="zh"] [data-l10n="en"] { display: none !important; }
+.l10n-block { display: contents; }
+.lang-switch { background: transparent; cursor: pointer; font-family: inherit; }
+.site-footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid rgba(127,127,127,.25); font-size: .85rem; opacity: .8; }
+.not-found { padding: 3rem 0; }

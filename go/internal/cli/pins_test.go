@@ -15,7 +15,7 @@ var pinnedDocs = []string{
 	"README.md",
 	"README.ZH.md",
 	filepath.Join("website", "content", "ci.md"),
-	filepath.Join("website", "content", "zh", "ci.md"),
+	filepath.Join("website", "content", "ci.zh.md"),
 	filepath.Join("skills", "fpack-cli", "SKILL.md"),
 }
 
