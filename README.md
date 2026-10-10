@@ -34,6 +34,7 @@ fpack build --all                 # everything this machine can build; the rest 
 - [Configuration: fpack.yaml](#configuration-fpackyaml)
 - [Signing](#signing) ([Android](#android-signing) · [iOS](#ios-export-and-signing) · [macOS](#macos-signing-and-notarization) · [getting macOS credentials](#getting-macos-signing-certificates-and-notarization-credentials))
 - [CI example](#ci-example)
+- [AI agent skill](#ai-agent-skill)
 - [Environment variables](#environment-variables)
 - [Exit codes](#exit-codes)
 - [FAQ](#faq)
@@ -481,7 +482,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.5 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.6 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build apk aab --split-per-abi=both
         env:
           FPACK_ANDROID_KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -494,14 +495,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.5 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.6 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build ipa dmg --json > result.json
   windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.5
+      - run: dart pub global activate fpack 1.1.6
       - run: fpack build windows exe
   linux:
     runs-on: ubuntu-latest
@@ -509,13 +510,26 @@ jobs:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
       - run: sudo apt-get install -y ninja-build libgtk-3-dev rpm
-      - run: dart pub global activate fpack 1.1.5 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.6 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build linux deb rpm web
 ```
 
 For signed + notarized macOS builds in CI, see the [certificate import steps](#getting-macos-signing-certificates-and-notarization-credentials) above.
 
 Without a TTY, spinners and colors are turned off and a heartbeat line is printed every 60 seconds so CI does not time out on silence.
+
+---
+
+## AI agent skill
+
+fpack ships a [package skill](https://dart.dev/tools/pub/package-skills), [`fpack-cli`](skills/fpack-cli/SKILL.md), that teaches AI coding agents (Cursor, Claude Code, Gemini, Copilot, Cline, Codex…) how to use fpack: install, `init`, `doctor`, build targets, config keys and `FPACK_*` variables, signing, macOS notarization, CI and troubleshooting. Install it into your project's agent folder:
+
+```sh
+dart pub add dev:fpack                  # skills are installed from dependencies
+dart run skills@ get --package fpack    # choose your agent, or add --agent cursor|claude|codex|…
+```
+
+Re-run after upgrading fpack. Details: [AI agent skill](https://matkurban.github.io/fpack/skills/).
 
 ---
 

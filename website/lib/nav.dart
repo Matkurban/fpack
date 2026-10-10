@@ -37,6 +37,7 @@ List<SidebarGroup> sidebarGroups(String lang) {
       title: t('More', '更多'),
       links: [
         SidebarLink(text: t('CI recipes', 'CI 示例'), href: '$p/ci'),
+        SidebarLink(text: t('AI agent skill', 'AI 智能体技能'), href: '$p/skills'),
         SidebarLink(text: t('Troubleshooting', '故障排查'), href: '$p/troubleshooting'),
         SidebarLink(text: t('FAQ', '常见问题'), href: '$p/faq'),
         SidebarLink(text: t('Architecture', '架构'), href: '$p/architecture'),

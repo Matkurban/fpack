@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.6
+
+### Added
+- AI agent skill: the package now ships the [package skill](https://dart.dev/tools/pub/package-skills) `fpack-cli` (`skills/fpack-cli/SKILL.md`), which teaches AI coding agents how to use fpack (install, `init`, `doctor`, targets, configuration and `FPACK_*` variables, signing, macOS notarization, CI, troubleshooting). Install it with `dart pub add dev:fpack` and `dart run skills@ get --package fpack`. Documented on the website (AI agent skill page) and in the READMEs.
+
+### Changed
+- The CI examples in the READMEs, the website and the skill pin the current fpack version and the action versions used by fpack's own workflows; a test keeps them current.
+
 ## 1.1.5
 
 ### Changed

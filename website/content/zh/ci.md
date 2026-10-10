@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.5 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.6 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build apk aab --split-per-abi=both
         env:
           FPACK_ANDROID_KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -24,14 +24,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.5 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.6 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build ipa dmg --json > result.json
   windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.5
+      - run: dart pub global activate fpack 1.1.6
       - run: fpack build windows exe
   linux:
     runs-on: ubuntu-latest
@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
       - run: sudo apt-get install -y ninja-build libgtk-3-dev rpm
-      - run: dart pub global activate fpack 1.1.5 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.6 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build linux deb rpm web
 ```
 
@@ -48,7 +48,7 @@ jobs:
 
 ## 提示
 
-- **固定版本**：`dart pub global activate fpack 1.1.5` 让 CI 可复现。
+- **固定版本**：`dart pub global activate fpack 1.1.6` 让 CI 可复现。
 - **缓存核心**：原生核心每个版本只下载一次，位于 `~/.cache/fpack`（Linux）、`~/Library/Caches/fpack`（macOS）或 `%LOCALAPPDATA%\fpack`（Windows）；缓存该目录可省去约 4 MB 的下载。
 - **机器可读结果**：`fpack build … --json > result.json` 输出每个产物的路径、大小、SHA-256 和公证状态；人类可读的输出写到 stderr。
 - **尽早失败**：退出码 3 表示缺少前置条件——什么都没有构建。

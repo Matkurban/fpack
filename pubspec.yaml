@@ -3,7 +3,7 @@ description: >-
   Package Flutter apps into release artifacts for every platform (apk, aab,
   ipa, dmg, exe, msix, deb, rpm, AppImage, web) with one command. Native Go
   core, thin Dart launcher.
-version: 1.1.5
+version: 1.1.6
 repository: https://github.com/Matkurban/fpack
 documentation: https://matkurban.github.io/fpack/
 issue_tracker: https://github.com/Matkurban/fpack/issues

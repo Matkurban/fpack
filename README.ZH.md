@@ -34,6 +34,7 @@ fpack build --all                 # 本机能打的全部打出来，打不了�
 - [配置 fpack.yaml](#配置-fpackyaml)
 - [签名](#签名)（[Android](#android-签名) · [iOS](#ios-导出与签名) · [macOS](#macos-签名与公证) · [获取 macOS 证书与公证凭证](#获取-macos-签名证书与公证凭证)）
 - [CI 示例](#ci-示例)
+- [AI 智能体技能](#ai-智能体技能)
 - [环境变量](#环境变量)
 - [退出码](#退出码)
 - [常见问题](#常见问题)
@@ -481,7 +482,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.5 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.6 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build apk aab --split-per-abi=both
         env:
           FPACK_ANDROID_KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -494,14 +495,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.5 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.6 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build ipa dmg --json > result.json
   windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.5
+      - run: dart pub global activate fpack 1.1.6
       - run: fpack build windows exe
   linux:
     runs-on: ubuntu-latest
@@ -509,13 +510,26 @@ jobs:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
       - run: sudo apt-get install -y ninja-build libgtk-3-dev rpm
-      - run: dart pub global activate fpack 1.1.5 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.6 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build linux deb rpm web
 ```
 
 CI 中签名 + 公证 macOS 产物的证书导入步骤见上文[获取 macOS 签名证书与公证凭证](#获取-macos-签名证书与公证凭证)。
 
 非 TTY 环境下自动关闭动画与颜色，每 60 秒输出一次心跳，避免 CI 因长时间无输出而超时。
+
+---
+
+## AI 智能体技能
+
+fpack 附带一个[包技能（package skill）](https://dart.dev/tools/pub/package-skills) [`fpack-cli`](skills/fpack-cli/SKILL.md)，教 AI 编程助手（Cursor、Claude Code、Gemini、Copilot、Cline、Codex 等）正确使用 fpack：安装、`init`、`doctor`、构建目标、配置键与 `FPACK_*` 环境变量、签名、macOS 公证、CI 和故障排查。安装到项目的智能体目录：
+
+```sh
+dart pub add dev:fpack                  # 技能从依赖中安装
+dart run skills@ get --package fpack    # 选择你的助手，或加 --agent cursor|claude|codex|…
+```
+
+升级 fpack 后重新运行即可。详见 [AI 智能体技能](https://matkurban.github.io/fpack/zh/skills/)。
 
 ---
 
