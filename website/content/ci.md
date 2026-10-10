@@ -8,37 +8,37 @@ jobs:
   android:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.5 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build apk aab --split-per-abi=both
         env:
           FPACK_ANDROID_KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           FPACK_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           FPACK_ANDROID_KEY_ALIAS: upload
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: android, path: dist/ }
   apple:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.5 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build ipa dmg --json > result.json
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack
+      - run: dart pub global activate fpack 1.1.5
       - run: fpack build windows exe
   linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
       - run: sudo apt-get install -y ninja-build libgtk-3-dev rpm
-      - run: dart pub global activate fpack && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.5 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build linux deb rpm web
 ```
 
@@ -47,7 +47,7 @@ Without a TTY, spinners and colors are turned off and a heartbeat line is printe
 
 ## Tips
 
-- **Pin the version**: `dart pub global activate fpack 1.1.4` makes CI reproducible.
+- **Pin the version**: `dart pub global activate fpack 1.1.5` makes CI reproducible.
 - **Cache the core**: the native core is downloaded once per version into `~/.cache/fpack` (Linux), `~/Library/Caches/fpack` (macOS) or `%LOCALAPPDATA%\fpack` (Windows); cache that folder to skip the ~4 MB download.
 - **Machine-readable results**: `fpack build … --json > result.json` writes every artifact with path, size, SHA-256 and notarization state; human output goes to stderr.
 - **Fail fast**: exit code 3 means a prerequisite is missing – nothing was built.
