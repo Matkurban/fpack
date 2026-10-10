@@ -3,6 +3,7 @@ package pack
 
 import (
 	"fmt"
+	"github.com/Matkurban/fpack/go/internal/i18n"
 	"regexp"
 	"strings"
 )
@@ -74,7 +75,7 @@ func Render(tmpl string, f Fields) (string, error) {
 		return sm[1] + v
 	})
 	if len(bad) > 0 {
-		return "", fmt.Errorf("unknown placeholder %s (available: %s)", strings.Join(bad, ", "), strings.Join(Placeholders, ", "))
+		return "", fmt.Errorf(i18n.S("unknown placeholder %s (available: %s)", "未知占位符 %s（可用：%s）"), strings.Join(bad, ", "), strings.Join(Placeholders, ", "))
 	}
 	return SanitizeName(out), nil
 }
@@ -106,7 +107,7 @@ func RenderDir(tmpl string, f Fields) (string, error) {
 		return sm[1] + v
 	})
 	if len(bad) > 0 {
-		return "", fmt.Errorf("output.dir: unknown placeholder %s", strings.Join(bad, ", "))
+		return "", fmt.Errorf(i18n.S("output.dir: unknown placeholder %s", "output.dir：未知占位符 %s"), strings.Join(bad, ", "))
 	}
 	return out, nil
 }

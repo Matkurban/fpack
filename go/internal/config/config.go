@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/Matkurban/fpack/go/internal/i18n"
 	"io"
 	"os"
 	"path/filepath"
@@ -355,14 +356,14 @@ func (l *List) UnmarshalYAML(n *yaml.Node) error {
 		var out []string
 		for _, c := range n.Content {
 			if c.Kind != yaml.ScalarNode {
-				return fmt.Errorf("line %d: expected a plain value in the list", c.Line)
+				return fmt.Errorf(i18n.S("line %d: expected a plain value in the list", "第 %d 行：列表中应为普通值"), c.Line)
 			}
 			out = append(out, c.Value)
 		}
 		*l = out
 		return nil
 	}
-	return fmt.Errorf("line %d: expected a list", n.Line)
+	return fmt.Errorf(i18n.S("line %d: expected a list", "第 %d 行：应为列表"), n.Line)
 }
 
 // Pair is an [x, y] / [width, height] value ("x,y" is accepted too).
@@ -384,13 +385,13 @@ func (p *Pair) UnmarshalYAML(n *yaml.Node) error {
 		parts = strings.FieldsFunc(n.Value, func(r rune) bool { return r == ',' || r == 'x' || r == ' ' })
 	}
 	if len(parts) != 2 {
-		return fmt.Errorf("line %d: expected two numbers like [600, 400]", n.Line)
+		return fmt.Errorf(i18n.S("line %d: expected two numbers like [600, 400]", "第 %d 行：应为两个数字，如 [600, 400]"), n.Line)
 	}
 	out := Pair{}
 	for _, v := range parts {
 		i, err := strconv.Atoi(strings.TrimSpace(v))
 		if err != nil || i < 0 {
-			return fmt.Errorf("line %d: expected two numbers like [600, 400] (got %q)", n.Line, v)
+			return fmt.Errorf(i18n.S("line %d: expected two numbers like [600, 400] (got %q)", "第 %d 行：应为两个数字，如 [600, 400]（实际为 %q）"), n.Line, v)
 		}
 		out = append(out, i)
 	}
@@ -404,7 +405,7 @@ type Scalar string
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *Scalar) UnmarshalYAML(n *yaml.Node) error {
 	if n.Kind != yaml.ScalarNode {
-		return fmt.Errorf("line %d: expected a single value", n.Line)
+		return fmt.Errorf(i18n.S("line %d: expected a single value", "第 %d 行：应为单个值"), n.Line)
 	}
 	if n.Tag == "!!null" {
 		*s = ""
@@ -434,13 +435,13 @@ func (d *Defines) UnmarshalYAML(n *yaml.Node) error {
 		}
 		for _, v := range l {
 			if !strings.Contains(v, "=") {
-				return fmt.Errorf("line %d: dart_define entry %q must be KEY=VALUE", n.Line, v)
+				return fmt.Errorf(i18n.S("line %d: dart_define entry %q must be KEY=VALUE", "第 %d 行：dart_define 条目 %q 必须是 KEY=VALUE 形式"), n.Line, v)
 			}
 		}
 		*d = Defines(l)
 		return nil
 	}
-	return fmt.Errorf("line %d: dart_define must be a map or a list of KEY=VALUE", n.Line)
+	return fmt.Errorf(i18n.S("line %d: dart_define must be a map or a list of KEY=VALUE", "第 %d 行：dart_define 必须是映射或 KEY=VALUE 列表"), n.Line)
 }
 
 // ABIMode is the APK split mode.
@@ -457,7 +458,7 @@ const (
 func (m *ABIMode) UnmarshalYAML(n *yaml.Node) error {
 	v, err := ParseABIMode(n.Value)
 	if err != nil {
-		return fmt.Errorf("line %d: %v", n.Line, err)
+		return fmt.Errorf(i18n.S("line %d: %v", "第 %d 行：%v"), n.Line, err)
 	}
 	*m = v
 	return nil
@@ -473,7 +474,7 @@ func ParseABIMode(v string) (ABIMode, error) {
 	case "both", "all":
 		return ABIBoth, nil
 	}
-	return "", fmt.Errorf("split_per_abi must be false, true or both (got %q)", v)
+	return "", fmt.Errorf(i18n.S("split_per_abi must be false, true or both (got %q)", "split_per_abi 必须是 false、true 或 both（实际为 %q）"), v)
 }
 
 // ---- loading ----
@@ -489,7 +490,7 @@ func Find(root, explicit string) (string, error) {
 			}
 		}
 		if _, err := os.Stat(p); err != nil {
-			return "", fmt.Errorf("config file %s not found", explicit)
+			return "", fmt.Errorf(i18n.S("config file %s not found", "找不到配置文件 %s"), explicit)
 		}
 		return p, nil
 	}
@@ -643,17 +644,17 @@ var typeError = regexp.MustCompile("^line (\\d+): cannot unmarshal !!(\\w+) (?:`
 func expectedFor(goType string) string {
 	switch {
 	case goType == "bool" || goType == "*bool":
-		return "true or false"
+		return i18n.S("true or false", "true 或 false")
 	case strings.Contains(goType, "int"):
-		return "a number"
+		return i18n.S("a number", "数字")
 	case strings.HasPrefix(goType, "map["):
-		return "a map (key: value)"
+		return i18n.S("a map (key: value)", "映射（key: value）")
 	case strings.HasPrefix(goType, "[]"):
-		return "a list"
+		return i18n.S("a list", "列表")
 	case goType == "string":
-		return "a text value"
+		return i18n.S("a text value", "文本值")
 	case strings.HasPrefix(goType, "config."):
-		return "a section of keys (key: value on indented lines)"
+		return i18n.S("a section of keys (key: value on indented lines)", "键的分组（缩进的 key: value 行）")
 	}
 	return goType
 }
@@ -670,12 +671,12 @@ func friendlyYAMLError(err error, keyLines map[int]string) error {
 		}
 		if m := unknownField.FindStringSubmatch(l); m != nil {
 			section := sectionName(m[3])
-			s := fmt.Sprintf("line %s: unknown key %q", m[1], m[2])
+			s := fmt.Sprintf(i18n.S("line %s: unknown key %q", "第 %s 行：未知键 %q"), m[1], m[2])
 			if section != "" {
-				s += fmt.Sprintf(" in %q", section)
+				s += fmt.Sprintf(i18n.S(" in %q", "（位于 %q）"), section)
 			}
 			if sug := suggest(m[2], keysOf(m[3])); sug != "" {
-				s += fmt.Sprintf(" (did you mean %q?)", sug)
+				s += fmt.Sprintf(i18n.S(" (did you mean %q?)", "（你是不是想写 %q？）"), sug)
 			}
 			l = s
 		} else if m := typeError.FindStringSubmatch(l); m != nil {
@@ -686,11 +687,11 @@ func friendlyYAMLError(err error, keyLines map[int]string) error {
 			}
 			got := m[3]
 			if m[2] == "map" || m[2] == "seq" {
-				got = map[string]string{"map": "a map", "seq": "a list"}[m[2]]
+				got = map[string]string{"map": i18n.S("a map", "映射"), "seq": i18n.S("a list", "列表")}[m[2]]
 			} else {
 				got = strconv.Quote(got)
 			}
-			l = fmt.Sprintf("line %s: %sexpected %s, got %s", m[1], where, expectedFor(m[4]), got)
+			l = fmt.Sprintf(i18n.S("line %s: %sexpected %s, got %s", "第 %s 行：%s应为 %s，实际为 %s"), m[1], where, expectedFor(m[4]), got)
 		}
 		lines = append(lines, l)
 	}
@@ -859,6 +860,13 @@ var extraEnv = [][2]string{
 	{"NO_COLOR", "disable colors"},
 }
 
+var extraEnvZH = map[string]string{
+	"FPACK_CONFIG":                  "配置文件路径",
+	"FPACK_ANDROID_KEYSTORE_BASE64": "Android keystore 内容，base64（CI）",
+	"FPACK_LANG":                    "zh | en",
+	"NO_COLOR":                      "关闭颜色",
+}
+
 // EnvVars documents every environment variable fpack reads (for --help and
 // the docs): one per registry key with Env, plus a few extras.
 func EnvVars() [][2]string {
@@ -868,7 +876,10 @@ func EnvVars() [][2]string {
 			out = append(out, [2]string{k.Env, k.Path})
 		}
 	}
-	return append(out, extraEnv...)
+	for _, e := range extraEnv {
+		out = append(out, [2]string{e[0], i18n.S(e[1], extraEnvZH[e[0]])})
+	}
+	return out
 }
 
 // ApplyEnv overlays FPACK_* environment variables onto c (see Keys).
@@ -903,7 +914,7 @@ func ParseBool(v string) (bool, error) {
 	if b, err := strconv.ParseBool(v); err == nil {
 		return b, nil
 	}
-	return false, fmt.Errorf("expected true or false, got %q", v)
+	return false, fmt.Errorf(i18n.S("expected true or false, got %q", "应为 true 或 false，实际为 %q"), v)
 }
 
 // ---- effective values with defaults ----
@@ -998,9 +1009,9 @@ func (c *Config) Validate() []string {
 		}
 		for _, v := range vals {
 			if v != "" && !contains(k.Enum, v) {
-				msg := fmt.Sprintf("%s must be one of %s (got %q)", k.Path, strings.Join(k.Enum, ", "), v)
+				msg := fmt.Sprintf(i18n.S("%s must be one of %s (got %q)", "%s 必须是 %s 之一（实际为 %q）"), k.Path, strings.Join(k.Enum, ", "), v)
 				if s := suggest(v, k.Enum); s != "" {
-					msg += fmt.Sprintf(" — did you mean %q?", s)
+					msg += fmt.Sprintf(i18n.S(" — did you mean %q?", "——你是不是想写 %q？"), s)
 				}
 				p = append(p, msg)
 			}
@@ -1008,57 +1019,57 @@ func (c *Config) Validate() []string {
 	}
 	for _, a := range c.Android.ABIs {
 		if !contains(KnownABIs, a) {
-			p = append(p, fmt.Sprintf("android.abis: unknown ABI %q (use %s)", a, strings.Join(KnownABIs, ", ")))
+			p = append(p, fmt.Sprintf(i18n.S("android.abis: unknown ABI %q (use %s)", "android.abis：未知 ABI %q（可用 %s）"), a, strings.Join(KnownABIs, ", ")))
 		}
 	}
 	for _, l := range c.Windows.InnoSetup.Languages {
 		if _, ok := InnoLanguages[strings.ToLower(l)]; !ok && !strings.HasSuffix(strings.ToLower(l), ".isl") {
-			p = append(p, fmt.Sprintf("windows.inno_setup.languages: unknown language %q (use %s, or a path to an .isl file)", l, strings.Join(InnoLanguageNames(), ", ")))
+			p = append(p, fmt.Sprintf(i18n.S("windows.inno_setup.languages: unknown language %q (use %s, or a path to an .isl file)", "windows.inno_setup.languages：未知语言 %q（可用 %s，或 .isl 文件路径）"), l, strings.Join(InnoLanguageNames(), ", ")))
 		}
 	}
 	if l := c.MacOS.Pkg.InstallLocation; l != "" && !strings.HasPrefix(l, "/") {
-		p = append(p, fmt.Sprintf("macos.pkg.install_location must be an absolute path (got %q)", l))
+		p = append(p, fmt.Sprintf(i18n.S("macos.pkg.install_location must be an absolute path (got %q)", "macos.pkg.install_location 必须是绝对路径（实际为 %q）"), l))
 	}
 	if l := c.Linux.Prefix; l != "" && (!strings.HasPrefix(l, "/") || l == "/") {
-		p = append(p, fmt.Sprintf("linux.prefix must be an absolute directory such as /opt (got %q)", l))
+		p = append(p, fmt.Sprintf(i18n.S("linux.prefix must be an absolute directory such as /opt (got %q)", "linux.prefix 必须是绝对目录，如 /opt（实际为 %q）"), l))
 	}
 	if o := c.Web.OptimizationLevel; o != nil && (*o < 0 || *o > 4) {
-		p = append(p, fmt.Sprintf("web.optimization_level must be 0-4 (got %d)", *o))
+		p = append(p, fmt.Sprintf(i18n.S("web.optimization_level must be 0-4 (got %d)", "web.optimization_level 必须在 0-4 之间（实际为 %d）"), *o))
 	}
 	if b := c.Web.BaseHref; b != "" && (!strings.HasPrefix(b, "/") || !strings.HasSuffix(b, "/")) {
-		p = append(p, fmt.Sprintf("web.base_href must start and end with \"/\" (got %q, e.g. \"/app/\")", b))
+		p = append(p, fmt.Sprintf(i18n.S("web.base_href must start and end with \"/\" (got %q, e.g. \"/app/\")", "web.base_href 必须以 \"/\" 开头和结尾（实际为 %q，例如 \"/app/\"）"), b))
 	}
 	if n := c.MacOS.DMG.IconSize; n != 0 && (n < 16 || n > 512) {
-		p = append(p, fmt.Sprintf("macos.dmg.icon_size must be 16-512 (got %d)", n))
+		p = append(p, fmt.Sprintf(i18n.S("macos.dmg.icon_size must be 16-512 (got %d)", "macos.dmg.icon_size 必须在 16-512 之间（实际为 %d）"), n))
 	}
 	for _, sz := range c.Linux.IconSizes {
 		if sz < 16 || sz > 1024 {
-			p = append(p, fmt.Sprintf("linux.icon_sizes: %d is out of range 16-1024", sz))
+			p = append(p, fmt.Sprintf(i18n.S("linux.icon_sizes: %d is out of range 16-1024", "linux.icon_sizes：%d 超出范围 16-1024"), sz))
 		}
 	}
 	if g := c.Windows.InnoSetup.AppID; g != "" && !guidRe.MatchString(strings.Trim(g, "{}")) {
-		p = append(p, fmt.Sprintf("windows.inno_setup.app_id must be a GUID like 8F0E7C2A-1B3D-4E5F-9A6B-7C8D9E0F1A2B (got %q)", g))
+		p = append(p, fmt.Sprintf(i18n.S("windows.inno_setup.app_id must be a GUID like 8F0E7C2A-1B3D-4E5F-9A6B-7C8D9E0F1A2B (got %q)", "windows.inno_setup.app_id 必须是 GUID，如 8F0E7C2A-1B3D-4E5F-9A6B-7C8D9E0F1A2B（实际为 %q）"), g))
 	}
 	for name, tmpl := range c.Output.Names {
 		if !contains(TargetNames, name) {
-			p = append(p, fmt.Sprintf("output.names: unknown target %q%s", name, didYouMean(name, TargetNames)))
+			p = append(p, fmt.Sprintf(i18n.S("output.names: unknown target %q%s", "output.names：未知目标 %q%s"), name, didYouMean(name, TargetNames)))
 		}
 		if bad := unknownPlaceholders(tmpl); len(bad) > 0 {
-			p = append(p, fmt.Sprintf("output.names.%s: unknown placeholder %s (available: %s)", name, strings.Join(bad, ", "), strings.Join(NamePlaceholders, ", ")))
+			p = append(p, fmt.Sprintf(i18n.S("output.names.%s: unknown placeholder %s (available: %s)", "output.names.%s：未知占位符 %s（可用：%s）"), name, strings.Join(bad, ", "), strings.Join(NamePlaceholders, ", ")))
 		}
 	}
 	if bad := unknownPlaceholders(c.Output.Name); len(bad) > 0 {
-		p = append(p, fmt.Sprintf("output.name: unknown placeholder %s (available: %s)", strings.Join(bad, ", "), strings.Join(NamePlaceholders, ", ")))
+		p = append(p, fmt.Sprintf(i18n.S("output.name: unknown placeholder %s (available: %s)", "output.name：未知占位符 %s（可用：%s）"), strings.Join(bad, ", "), strings.Join(NamePlaceholders, ", ")))
 	}
 	for _, m := range []map[string]List{c.Hooks.PrePackage, c.Hooks.PostPackage} {
 		for name := range m {
 			if !contains(TargetNames, name) {
-				p = append(p, fmt.Sprintf("hooks: unknown target %q%s", name, didYouMean(name, TargetNames)))
+				p = append(p, fmt.Sprintf(i18n.S("hooks: unknown target %q%s", "hooks：未知目标 %q%s"), name, didYouMean(name, TargetNames)))
 			}
 		}
 	}
 	if c.IOS.SigningStyle == "manual" && len(c.IOS.ProvisioningProfiles) == 0 {
-		p = append(p, "ios.signing_style is manual but ios.provisioning_profiles is empty (map bundle id -> profile name)")
+		p = append(p, i18n.S("ios.signing_style is manual but ios.provisioning_profiles is empty (map bundle id -> profile name)", "ios.signing_style 为 manual，但 ios.provisioning_profiles 为空（bundle id -> 描述文件名称 的映射）"))
 	}
 	s := c.Android.Signing
 	if s.StoreFile != "" && (s.StorePassword == "" || s.KeyAlias == "") {
@@ -1069,18 +1080,18 @@ func (c *Config) Validate() []string {
 		if s.KeyAlias == "" {
 			missing = append(missing, "key_alias (FPACK_ANDROID_KEY_ALIAS)")
 		}
-		p = append(p, "android.signing: store_file is set but missing "+strings.Join(missing, ", "))
+		p = append(p, i18n.S("android.signing: store_file is set but missing ", "android.signing：已设置 store_file，但缺少 ")+strings.Join(missing, i18n.S(", ", "、")))
 	}
 	ms := c.MacOS.Sign
 	if (ms.NotaryAppleID != "" || ms.NotaryPassword != "") && (ms.NotaryAppleID == "" || ms.NotaryTeamID == "" || ms.NotaryPassword == "") {
-		p = append(p, "macos.sign: Apple ID notarization needs notary_apple_id, notary_team_id and notary_password together")
+		p = append(p, i18n.S("macos.sign: Apple ID notarization needs notary_apple_id, notary_team_id and notary_password together", "macos.sign：Apple ID 公证需要同时设置 notary_apple_id、notary_team_id 和 notary_password"))
 	}
 	if (ms.NotaryAPIKey != "" || ms.NotaryAPIKeyID != "") && (ms.NotaryAPIKey == "" || ms.NotaryAPIKeyID == "") {
-		p = append(p, "macos.sign: API key notarization needs notary_api_key and notary_api_key_id (plus notary_api_issuer for team keys)")
+		p = append(p, i18n.S("macos.sign: API key notarization needs notary_api_key and notary_api_key_id (plus notary_api_issuer for team keys)", "macos.sign：API 密钥公证需要 notary_api_key 和 notary_api_key_id（团队密钥还需 notary_api_issuer）"))
 	}
 	ws := c.Windows.Sign
 	if ws.Certificate != "" && ws.Thumbprint != "" {
-		p = append(p, "windows.sign: set either certificate (.pfx) or thumbprint (certificate store), not both")
+		p = append(p, i18n.S("windows.sign: set either certificate (.pfx) or thumbprint (certificate store), not both", "windows.sign：certificate（.pfx）与 thumbprint（证书存储）只能设置其一"))
 	}
 	return p
 }
@@ -1115,7 +1126,7 @@ var TargetAliases = []string{"AppImage", "android", "app", "appbundle", "bundle"
 
 func didYouMean(v string, c []string) string {
 	if s := suggest(v, c); s != "" {
-		return fmt.Sprintf(" (did you mean %q?)", s)
+		return fmt.Sprintf(i18n.S(" (did you mean %q?)", "（你是不是想写 %q？）"), s)
 	}
 	return ""
 }

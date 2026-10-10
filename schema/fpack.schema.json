@@ -244,7 +244,7 @@
         "display_name": {
           "description": "Human-readable app name: installer title, Start menu, .desktop Name=. Default: macOS PRODUCT_NAME, else pubspec name. Targets: exe, msix, pkg, deb, rpm, appimage, linux.",
           "examples": [
-            "雪花IM"
+            "XueHua IM"
           ],
           "markdownDescription": "**Human-readable app name: installer title, Start menu, .desktop Name=.**  \n给人看的应用名：安装程序标题、开始菜单、.desktop 的 Name=。\n\nDefault / 默认: `macOS 的 PRODUCT_NAME，否则为 pubspec 的 name`\n\nTargets / 目标: exe, msix, pkg, deb, rpm, appimage, linux",
           "type": "string"
@@ -1902,7 +1902,7 @@
             "volume_name": {
               "description": "Volume name shown when the DMG is mounted. Default: .app name. Targets: dmg.",
               "examples": [
-                "雪花IM"
+                "XueHua IM"
               ],
               "markdownDescription": "**Volume name shown when the DMG is mounted.**  \n挂载 DMG 后显示的卷名。\n\nDefault / 默认: `.app 名称`\n\nTargets / 目标: dmg",
               "type": "string"
@@ -2136,7 +2136,7 @@
             "title": {
               "description": "Installer window title. Default: .app name. Targets: pkg.",
               "examples": [
-                "雪花IM"
+                "XueHua IM"
               ],
               "markdownDescription": "**Installer window title.**  \n安装器窗口标题。\n\nDefault / 默认: `.app 名称`\n\nTargets / 目标: pkg",
               "type": "string"
@@ -2898,7 +2898,7 @@
             "display_name": {
               "description": "Display name. Default: app.display_name. Targets: msix.",
               "examples": [
-                "雪花IM"
+                "XueHua IM"
               ],
               "markdownDescription": "**Display name.**  \n显示名称。\n\nDefault / 默认: `app.display_name`\n\nTargets / 目标: msix",
               "type": "string"

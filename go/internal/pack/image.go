@@ -2,6 +2,7 @@ package pack
 
 import (
 	"fmt"
+	"github.com/Matkurban/fpack/go/internal/i18n"
 	"image"
 	"image/color"
 	"image/draw"
@@ -19,7 +20,7 @@ func PNGSize(path string) (int, int, error) {
 	defer f.Close()
 	cfg, err := png.DecodeConfig(f)
 	if err != nil {
-		return 0, 0, fmt.Errorf("%s: not a PNG: %w", filepath.Base(path), err)
+		return 0, 0, fmt.Errorf(i18n.S("%s: not a PNG: %w", "%s：不是 PNG 文件：%w"), filepath.Base(path), err)
 	}
 	return cfg.Width, cfg.Height, nil
 }

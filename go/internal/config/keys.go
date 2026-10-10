@@ -41,16 +41,17 @@ const (
 
 // Key describes one fpack.yaml key.
 type Key struct {
-	Path    string
-	Kind    Kind
-	Enum    []string
-	Default T      // human readable default ("" = none / empty)
-	Targets string // affected targets ("all", "apk, aab", …)
-	Example string // YAML value used as example / placeholder
-	Doc     T
-	Env     string // FPACK_* variable that overrides it
-	Flag    string // command line flag that overrides it
-	Secret  bool   // never print the value; prefer ${ENV}
+	Path      string
+	Kind      Kind
+	Enum      []string
+	Default   T      // human readable default ("" = none / empty)
+	Targets   string // affected targets ("all", "apk, aab", …)
+	Example   string // YAML value used as example / placeholder
+	ExampleZH string // Chinese example where the value is prose (optional)
+	Doc       T
+	Env       string // FPACK_* variable that overrides it
+	Flag      string // command line flag that overrides it
+	Secret    bool   // never print the value; prefer ${ENV}
 }
 
 // Section describes a top-level or nested section for headings.
@@ -71,6 +72,15 @@ func enum(v ...string) func(*Key) { return func(k *Key) { k.Kind = KEnum; k.Enum
 func env(v string) func(*Key)     { return func(k *Key) { k.Env = v } }
 func flag(v string) func(*Key)    { return func(k *Key) { k.Flag = v } }
 func secret() func(*Key)          { return func(k *Key) { k.Secret = true } }
+func exZH(v string) func(*Key)    { return func(k *Key) { k.ExampleZH = v } }
+
+// ExampleText returns the example for lang ("zh" or "en").
+func (k Key) ExampleText(lang string) string {
+	if lang == "zh" && k.ExampleZH != "" {
+		return k.ExampleZH
+	}
+	return k.Example
+}
 
 var none = T{}
 
@@ -115,10 +125,10 @@ var Keys = []Key{
 	// ---- app ----
 	k("app.name", KString, d("pubspec name", "pubspec 的 name"), "all", "xue_hua_im",
 		d("Base name of artifact files ({app} in output.name).", "产物文件名前缀（output.name 中的 {app}）。")),
-	k("app.display_name", KString, d("macOS PRODUCT_NAME, else pubspec name", "macOS 的 PRODUCT_NAME，否则为 pubspec 的 name"), "exe, msix, pkg, deb, rpm, appimage, linux", "雪花IM",
-		d("Human-readable app name: installer title, Start menu, .desktop Name=.", "给人看的应用名：安装程序标题、开始菜单、.desktop 的 Name=。")),
+	k("app.display_name", KString, d("macOS PRODUCT_NAME, else pubspec name", "macOS 的 PRODUCT_NAME，否则为 pubspec 的 name"), "exe, msix, pkg, deb, rpm, appimage, linux", "XueHua IM",
+		d("Human-readable app name: installer title, Start menu, .desktop Name=.", "给人看的应用名：安装程序标题、开始菜单、.desktop 的 Name=。"), exZH("雪花IM")),
 	k("app.description", KString, d("pubspec description", "pubspec 的 description"), "deb, rpm, appimage, msix", "A fast and secure messenger",
-		d("Short description: deb Description, rpm Summary, .desktop Comment=, msix description.", "简短描述：deb 的 Description、rpm 的 Summary、.desktop 的 Comment=、msix 描述。")),
+		d("Short description: deb Description, rpm Summary, .desktop Comment=, msix description.", "简短描述：deb 的 Description、rpm 的 Summary、.desktop 的 Comment=、msix 描述。"), exZH("快速、安全的即时通讯应用")),
 	k("app.publisher", KString, d("CompanyName in windows/runner/Runner.rc", "windows/runner/Runner.rc 中的 CompanyName"), "exe, msix, deb, rpm", "XueHua Tech",
 		d("Company / author: Windows installer publisher, msix publisher display name, deb Maintainer fallback, rpm Vendor.", "公司 / 作者：Windows 安装程序发布者、msix 发布者显示名、deb Maintainer 的后备值、rpm Vendor。")),
 	k("app.identifier", KString, d("Linux APPLICATION_ID, Android applicationId or iOS bundle id", "Linux APPLICATION_ID、Android applicationId 或 iOS bundle id"), "exe, msix, pkg, appimage", "com.xuehua.im",
@@ -281,8 +291,8 @@ var Keys = []Key{
 	// ---- macos.dmg ----
 	k("macos.dmg.tool", KEnum, d("auto", "auto"), "dmg", "create-dmg",
 		d("auto = create-dmg when installed (or when layout keys are set), else hdiutil.", "auto：装了 create-dmg（或设置了布局键）时用 create-dmg，否则用 hdiutil。"), enum("auto", "hdiutil", "create-dmg"), env("FPACK_DMG_TOOL"), flag("--dmg-tool")),
-	k("macos.dmg.volume_name", KString, d(".app name", ".app 名称"), "dmg", "雪花IM",
-		d("Volume name shown when the DMG is mounted.", "挂载 DMG 后显示的卷名。")),
+	k("macos.dmg.volume_name", KString, d(".app name", ".app 名称"), "dmg", "XueHua IM",
+		d("Volume name shown when the DMG is mounted.", "挂载 DMG 后显示的卷名。"), exZH("雪花IM")),
 	k("macos.dmg.volume_icon", KPath, none, "dmg", "macos/dmg/volume.icns",
 		d("Volume icon (.icns). create-dmg.", "卷图标（.icns）。需要 create-dmg。")),
 	k("macos.dmg.background", KPath, none, "dmg", "macos/dmg/background.png",
@@ -311,8 +321,8 @@ var Keys = []Key{
 		d("Package version.", "安装包版本。")),
 	k("macos.pkg.install_location", KString, d("/Applications", "/Applications"), "pkg", "/Applications",
 		d("Absolute directory the app is installed into.", "App 安装到的绝对路径目录。")),
-	k("macos.pkg.title", KString, d(".app name", ".app 名称"), "pkg", "雪花IM",
-		d("Installer window title.", "安装器窗口标题。")),
+	k("macos.pkg.title", KString, d(".app name", ".app 名称"), "pkg", "XueHua IM",
+		d("Installer window title.", "安装器窗口标题。"), exZH("雪花IM")),
 	k("macos.pkg.welcome", KPath, none, "pkg", "macos/installer/welcome.html",
 		d("Welcome page (.html/.rtf/.txt).", "欢迎页（.html/.rtf/.txt）。")),
 	k("macos.pkg.readme", KPath, none, "pkg", "macos/installer/readme.html",
@@ -397,8 +407,8 @@ var Keys = []Key{
 		d("Description shown in the UAC prompt (/d).", "UAC 弹窗中显示的描述（/d）。")),
 
 	// ---- windows.msix ----
-	k("windows.msix.display_name", KString, d("app.display_name", "app.display_name"), "msix", "雪花IM",
-		d("Display name.", "显示名称。")),
+	k("windows.msix.display_name", KString, d("app.display_name", "app.display_name"), "msix", "XueHua IM",
+		d("Display name.", "显示名称。"), exZH("雪花IM")),
 	k("windows.msix.publisher_display_name", KString, d("app.publisher", "app.publisher"), "msix", "XueHua Tech",
 		d("Publisher display name.", "发布者显示名称。")),
 	k("windows.msix.identity_name", KString, d("app.identifier", "app.identifier"), "msix", "com.xuehua.im",
@@ -410,7 +420,7 @@ var Keys = []Key{
 	k("windows.msix.logo", KPath, d("msix default / app icon", "msix 默认 / 应用图标"), "msix", "windows/msix/logo.png",
 		d("Logo image (≥ 400×400 PNG).", "Logo 图片（≥ 400×400 的 PNG）。")),
 	k("windows.msix.description", KString, d("app.description", "app.description"), "msix", "A fast and secure messenger",
-		d("Package description.", "包描述。")),
+		d("Package description.", "包描述。"), exZH("快速、安全的即时通讯应用")),
 	k("windows.msix.capabilities", KList, none, "msix", "[internetClient, microphone, webcam]",
 		d("Capabilities.", "能力声明（capabilities）。")),
 	k("windows.msix.languages", KList, none, "msix", "[zh-cn, en-us]",

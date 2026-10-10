@@ -60,7 +60,7 @@ func buildCommand() *command {
 		for _, t := range targets.All() {
 			rows = append(rows, [2]string{t.Name(), t.Description()})
 		}
-		return cmdHelp(c, "fpack build [targets...] [options] [-- extra flutter args]",
+		return cmdHelp(c, i18n.S("fpack build [targets...] [options] [-- extra flutter args]", "fpack build [目标...] [选项] [-- 额外的 flutter 参数]"),
 			`  fpack build apk
   fpack build apk aab --flavor prod --dart-define-from-file env/prod.json
   fpack build apk --split-per-abi=both
@@ -132,7 +132,7 @@ func applyBuildFlags(p *parsed) (func(*config.Config) error, error) {
 		if len(p.l("dart-define")) > 0 {
 			for _, d := range p.l("dart-define") {
 				if !strings.Contains(d, "=") {
-					return fmt.Errorf("--dart-define %q must be KEY=VALUE", d)
+					return fmt.Errorf(i18n.S("--dart-define %q must be KEY=VALUE", "--dart-define %q 必须是 KEY=VALUE 形式"), d)
 				}
 			}
 			c.Build.DartDefine = append(c.Build.DartDefine, p.l("dart-define")...)

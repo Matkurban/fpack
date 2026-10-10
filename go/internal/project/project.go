@@ -6,6 +6,7 @@ package project
 import (
 	"errors"
 	"fmt"
+	"github.com/Matkurban/fpack/go/internal/i18n"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -63,7 +64,9 @@ type ErrNotFound struct {
 	NonFlutter string   // a pubspec.yaml that exists but is not a Flutter app
 }
 
-func (e *ErrNotFound) Error() string { return "no Flutter project found at " + e.Start }
+func (e *ErrNotFound) Error() string {
+	return i18n.S("no Flutter project found at ", "未找到 Flutter 项目：") + e.Start
+}
 
 // Find locates the Flutter project containing dir (walking up), or reports
 // Flutter apps found in subdirectories (monorepo roots).
@@ -73,7 +76,7 @@ func Find(dir string) (*Project, error) {
 		return nil, err
 	}
 	if st, err := os.Stat(abs); err != nil || !st.IsDir() {
-		return nil, fmt.Errorf("directory %s does not exist", dir)
+		return nil, fmt.Errorf(i18n.S("directory %s does not exist", "目录 %s 不存在"), dir)
 	}
 	nf := &ErrNotFound{Start: abs}
 	for d := abs; ; {
@@ -158,7 +161,7 @@ func Load(root string) (*Project, error) {
 	p := &Project{Root: root, Pubspec: m, Platforms: map[host.Platform]bool{}, Deps: map[string]Dep{}}
 	p.Name, _ = m["name"].(string)
 	if p.Name == "" {
-		return nil, errors.New("pubspec.yaml has no name")
+		return nil, errors.New(i18n.S("pubspec.yaml has no name", "pubspec.yaml 中没有 name"))
 	}
 	p.Description, _ = m["description"].(string)
 	p.Version, p.BuildNumber = SplitVersion(fmt.Sprint(valueOr(m["version"], "")))

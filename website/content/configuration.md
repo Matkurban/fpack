@@ -99,7 +99,7 @@ Application metadata used by installers and packages.
 | Key | Type | Default | Targets | Env / flag | Description |
 | --- | --- | --- | --- | --- | --- |
 | `app.name` | string | `pubspec name` | all |  | Base name of artifact files ({app} in output.name). Example: `xue_hua_im` |
-| `app.display_name` | string | `macOS PRODUCT_NAME, else pubspec name` | exe, msix, pkg, deb, rpm, appimage, linux |  | Human-readable app name: installer title, Start menu, .desktop Name=. Example: `雪花IM` |
+| `app.display_name` | string | `macOS PRODUCT_NAME, else pubspec name` | exe, msix, pkg, deb, rpm, appimage, linux |  | Human-readable app name: installer title, Start menu, .desktop Name=. Example: `XueHua IM` |
 | `app.description` | string | `pubspec description` | deb, rpm, appimage, msix |  | Short description: deb Description, rpm Summary, .desktop Comment=, msix description. Example: `A fast and secure messenger` |
 | `app.publisher` | string | `CompanyName in windows/runner/Runner.rc` | exe, msix, deb, rpm |  | Company / author: Windows installer publisher, msix publisher display name, deb Maintainer fallback, rpm Vendor. Example: `XueHua Tech` |
 | `app.identifier` | string | `Linux APPLICATION_ID, Android applicationId or iOS bundle id` | exe, msix, pkg, appimage |  | Reverse-DNS app id: Inno Setup AppId seed, msix identity name, pkg identifier fallback. Example: `com.xuehua.im` |
@@ -250,7 +250,7 @@ Disk image layout. Window/icon layout needs create-dmg (brew install create-dmg)
 | Key | Type | Default | Targets | Env / flag | Description |
 | --- | --- | --- | --- | --- | --- |
 | `macos.dmg.tool` | `auto` \\| `hdiutil` \\| `create-dmg` | `auto` | dmg | `FPACK_DMG_TOOL`<br>`--dmg-tool` | auto = create-dmg when installed (or when layout keys are set), else hdiutil. Example: `create-dmg` |
-| `macos.dmg.volume_name` | string | `.app name` | dmg |  | Volume name shown when the DMG is mounted. Example: `雪花IM` |
+| `macos.dmg.volume_name` | string | `.app name` | dmg |  | Volume name shown when the DMG is mounted. Example: `XueHua IM` |
 | `macos.dmg.volume_icon` | path | — | dmg |  | Volume icon (.icns). create-dmg. Example: `macos/dmg/volume.icns` |
 | `macos.dmg.background` | path | — | dmg |  | Window background image. create-dmg. Example: `macos/dmg/background.png` |
 | `macos.dmg.window_position` | `[x, y]` | `[200, 120]` | dmg |  | Window position [x, y]. create-dmg. Example: `[200, 120]` |
@@ -271,7 +271,7 @@ Installer package (pkgbuild + productbuild).
 | `macos.pkg.identifier` | string | `macOS bundle id` | pkg |  | Package identifier (pkgutil --pkgs). Example: `com.xuehua.im` |
 | `macos.pkg.version` | string | `build name` | pkg |  | Package version. Example: `1.2.0` |
 | `macos.pkg.install_location` | string | `/Applications` | pkg |  | Absolute directory the app is installed into. Example: `/Applications` |
-| `macos.pkg.title` | string | `.app name` | pkg |  | Installer window title. Example: `雪花IM` |
+| `macos.pkg.title` | string | `.app name` | pkg |  | Installer window title. Example: `XueHua IM` |
 | `macos.pkg.welcome` | path | — | pkg |  | Welcome page (.html/.rtf/.txt). Example: `macos/installer/welcome.html` |
 | `macos.pkg.readme` | path | — | pkg |  | Read-me page (.html/.rtf/.txt). Example: `macos/installer/readme.html` |
 | `macos.pkg.license` | path | — | pkg |  | License page the user must accept (.html/.rtf/.txt). Example: `macos/installer/license.rtf` |
@@ -339,7 +339,7 @@ MSIX package (needs the msix dev_dependency). These keys override pubspec msix_c
 
 | Key | Type | Default | Targets | Env / flag | Description |
 | --- | --- | --- | --- | --- | --- |
-| `windows.msix.display_name` | string | `app.display_name` | msix |  | Display name. Example: `雪花IM` |
+| `windows.msix.display_name` | string | `app.display_name` | msix |  | Display name. Example: `XueHua IM` |
 | `windows.msix.publisher_display_name` | string | `app.publisher` | msix |  | Publisher display name. Example: `XueHua Tech` |
 | `windows.msix.identity_name` | string | `app.identifier` | msix |  | Package identity name. Example: `com.xuehua.im` |
 | `windows.msix.publisher` | string | `from the certificate` | msix |  | Publisher (certificate subject); required for the Store. Example: `CN=XueHua Tech, O=XueHua Tech, C=CN` |

@@ -73,7 +73,7 @@ fpack -C apps/client build web --base-href /app/
 构建并打包目标到 dist/
 
 用法：
-  fpack build [targets...] [options] [-- extra flutter args]
+  fpack build [目标...] [选项] [-- 额外的 flutter 参数]
 
 选项：
   -a, --all                     构建本机能构建的所有目标（其余会被跳过并说明原因）
@@ -155,7 +155,7 @@ fpack -C apps/client build web --base-href /app/
 按目标检查环境，并给出缺失项的修复命令
 
 用法：
-  fpack doctor [targets...]
+  fpack doctor [目标...]
 
 全局选项：
   -h, --help         显示帮助
@@ -231,7 +231,7 @@ fpack -C apps/client build web --base-href /app/
 输出 fpack.yaml 的 JSON Schema（用于编辑器补全与校验）
 
 用法：
-  fpack schema [-o FILE]
+  fpack schema [-o 文件]
 
 选项：
   -o, --output FILE  写入 FILE 而不是标准输出
@@ -259,8 +259,8 @@ fpack -C apps/client build web --base-href /app/
 查询或完成 macOS 公证提交（Ctrl-C 或 --notarize-no-wait 之后）
 
 用法：
-  fpack notarize status [DIR|ID]
-  fpack notarize finish [DIR]
+  fpack notarize status [目录|ID]
+  fpack notarize finish [目录]
 
 全局选项：
   -h, --help         显示帮助

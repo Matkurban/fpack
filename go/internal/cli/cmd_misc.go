@@ -27,7 +27,7 @@ import (
 func doctorCommand() *command {
 	c := &command{name: "doctor", aliases: []string{"check"}, en: "check prerequisites per target and show how to fix what is missing", zh: "按目标检查环境，并给出缺失项的修复命令"}
 	c.help = func() string {
-		return cmdHelp(c, "fpack doctor [targets...]", "  fpack doctor\n  fpack doctor apk ipa dmg\n  fpack doctor --json\n")
+		return cmdHelp(c, i18n.S("fpack doctor [targets...]", "fpack doctor [目标...]"), "  fpack doctor\n  fpack doctor apk ipa dmg\n  fpack doctor --json\n")
 	}
 	c.run = func(e *Env, p *parsed) int {
 		u := newUI(e, p)
@@ -131,7 +131,7 @@ func listCommand() *command {
 		if ctxT != nil {
 			for _, pl := range []host.Platform{host.Android, host.IOS, host.MacOS} {
 				if fl := ctxT.Project.Flavors(pl); len(fl) > 0 {
-					u.Info(u.Dim(fmt.Sprintf("%s flavors: %s", pl, strings.Join(fl, ", "))))
+					u.Info(u.Dim(i18n.F("%s flavors: %s", "%s flavor：%s", pl, strings.Join(fl, ", "))))
 				}
 			}
 		}
@@ -313,7 +313,7 @@ func runInit(e *Env, p *parsed) int {
 	u.Info(i18n.S("platforms: ", "平台：") + strings.Join(plats, ", "))
 	for _, pl := range []host.Platform{host.Android, host.IOS, host.MacOS} {
 		if fl := proj.Flavors(pl); len(fl) > 0 {
-			u.Info(fmt.Sprintf("%s flavors: %s", pl, strings.Join(fl, ", ")))
+			u.Info(i18n.F("%s flavors: %s", "%s flavor：%s", pl, strings.Join(fl, ", ")))
 		}
 	}
 	u.Blank()
@@ -423,7 +423,7 @@ func runInit(e *Env, p *parsed) int {
 	})
 	var check config.Config
 	if err := config.Parse([]byte(content), &check); err != nil {
-		u.Errorf("internal error: generated config is invalid: %v", err)
+		u.Errorf(i18n.S("internal error: generated config is invalid: %v", "内部错误：生成的配置无效：%v"), err)
 		return build.ExitFailed
 	}
 	if exists && !p.b("force") {
@@ -537,7 +537,7 @@ func schemaCommand() *command {
 	c := &command{name: "schema", en: "print the JSON schema of fpack.yaml (editor autocompletion and validation)", zh: "输出 fpack.yaml 的 JSON Schema（用于编辑器补全与校验）",
 		flags: []flagSpec{{names: []string{"--output", "-o"}, kind: kString, metavar: "FILE", en: "write to FILE instead of stdout", zh: "写入 FILE 而不是标准输出"}}}
 	c.help = func() string {
-		return cmdHelp(c, "fpack schema [-o FILE]", "  fpack schema -o .vscode/fpack.schema.json\n"+
+		return cmdHelp(c, i18n.S("fpack schema [-o FILE]", "fpack schema [-o 文件]"), "  fpack schema -o .vscode/fpack.schema.json\n"+
 			"  # "+i18n.S("fpack init adds this line so VS Code / IntelliJ (YAML plugin) use it automatically:", "fpack init 会在 fpack.yaml 顶部加入下面这行，VS Code / IntelliJ（YAML 插件）会自动使用：")+"\n"+
 			"  # yaml-language-server: $schema="+config.SchemaURL+"\n")
 	}

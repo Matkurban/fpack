@@ -268,7 +268,7 @@ func platformInfo(pl host.Platform, in Input) []Line {
 				out = append(out, Line{OK, i18n.S("release signing: project's android/key.properties", "release 签名：使用项目的 android/key.properties"), ""})
 			}
 			if fl := in.Ctx.Project.AndroidFlavors; len(fl) > 0 {
-				out = append(out, Line{Info, "flavors: " + strings.Join(fl, ", "), ""})
+				out = append(out, Line{Info, i18n.S("flavors: ", "flavor：") + strings.Join(fl, ", "), ""})
 			}
 		}
 	case host.IOS, host.MacOS:

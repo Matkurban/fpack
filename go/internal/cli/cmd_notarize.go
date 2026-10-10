@@ -22,7 +22,7 @@ import (
 func notarizeCommand() *command {
 	c := &command{name: "notarize", en: "check or finish macOS notarization submissions (after Ctrl-C or --notarize-no-wait)", zh: "查询或完成 macOS 公证提交（Ctrl-C 或 --notarize-no-wait 之后）"}
 	c.help = func() string {
-		return cmdHelp(c, "fpack notarize status [DIR|ID]\n  fpack notarize finish [DIR]",
+		return cmdHelp(c, i18n.S("fpack notarize status [DIR|ID]\n  fpack notarize finish [DIR]", "fpack notarize status [目录|ID]\n  fpack notarize finish [目录]"),
 			i18n.S(`  fpack notarize status                  # every submission in the newest notarization.json
   fpack notarize status dist/1.2.0+5     # a specific output directory
   fpack notarize status 2efe2717-52ef-…  # one submission id

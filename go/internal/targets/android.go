@@ -81,7 +81,7 @@ func (s *AndroidSigning) Materialize() error {
 	}
 	data, err := base64.StdEncoding.DecodeString(strings.Join(strings.Fields(s.base64), ""))
 	if err != nil {
-		return fmt.Errorf("FPACK_ANDROID_KEYSTORE_BASE64 is not valid base64: %v", err)
+		return fmt.Errorf(i18n.S("FPACK_ANDROID_KEYSTORE_BASE64 is not valid base64: %v", "FPACK_ANDROID_KEYSTORE_BASE64 不是有效的 base64：%v"), err)
 	}
 	if err := os.MkdirAll(filepath.Dir(s.StoreFile), 0o700); err != nil {
 		return err

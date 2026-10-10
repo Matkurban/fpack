@@ -75,7 +75,8 @@ func Main(args []string, e *Env) int {
 	}
 	if langFlag != "" {
 		if _, ok := i18n.Parse(langFlag); !ok {
-			fmt.Fprintf(e.Stderr, "error: --lang must be zh or en (got %q)\n", langFlag)
+			i18n.Set(i18n.Detect("", e.Getenv))
+			fmt.Fprintf(e.Stderr, i18n.S("error: --lang must be zh or en (got %q)\n", "错误：--lang 只能是 zh 或 en（实际为 %q）\n"), langFlag)
 			return build.ExitUsage
 		}
 	}
@@ -142,7 +143,7 @@ func Main(args []string, e *Env) int {
 				msg += i18n.F(" (did you mean %q?)", "（你是不是想用 %q？）", s)
 			}
 		}
-		fmt.Fprintln(e.Stderr, "error: "+msg+"\n"+i18n.S("Run `fpack --help` for usage.", "运行 `fpack --help` 查看用法。"))
+		fmt.Fprintln(e.Stderr, i18n.S("error: ", "错误：")+msg+"\n"+i18n.S("Run `fpack --help` for usage.", "运行 `fpack --help` 查看用法。"))
 		return build.ExitUsage
 	}
 	return dispatch(c, args[1:], e)
@@ -177,7 +178,7 @@ func hasFlag(args []string, names ...string) bool {
 func dispatch(c *command, args []string, e *Env) int {
 	p, err := parse(args, c.flags)
 	if err != nil {
-		fmt.Fprintln(e.Stderr, "error: "+err.Error())
+		fmt.Fprintln(e.Stderr, i18n.S("error: ", "错误：")+err.Error())
 		fmt.Fprintln(e.Stderr, i18n.F("Run `fpack %s --help` for usage.", "运行 `fpack %s --help` 查看用法。", c.name))
 		return build.ExitUsage
 	}

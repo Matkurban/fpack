@@ -219,14 +219,14 @@ func writeKey(b *strings.Builder, k config.Key, lang string, depth int, active, 
 	val, isActive := active[k.Path]
 	shownVal := val
 	if !isActive {
-		shownVal = k.Example
+		shownVal = k.ExampleText(lang)
 		if d, ok := detected[k.Path]; ok {
 			shownVal = d
 			meta = append(meta, S("detected", "检测到"))
 		}
 	}
-	if shownVal != k.Example {
-		meta = append(meta, S("example: ", "示例：")+k.Example)
+	if ex := k.ExampleText(lang); shownVal != ex {
+		meta = append(meta, S("example: ", "示例：")+ex)
 	}
 	if k.Env != "" {
 		meta = append(meta, "env "+k.Env)

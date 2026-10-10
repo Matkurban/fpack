@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/Matkurban/fpack/go/internal/i18n"
 	"reflect"
 	"strconv"
 	"strings"
@@ -92,7 +93,7 @@ func (c *Config) IsSet(path string) bool {
 func (c *Config) SetString(path, s string) error {
 	v, ok := field(c, path)
 	if !ok {
-		return fmt.Errorf("unknown key %s", path)
+		return fmt.Errorf(i18n.S("unknown key %s", "未知键 %s"), path)
 	}
 	switch x := v.Addr().Interface().(type) {
 	case *string:
@@ -108,13 +109,13 @@ func (c *Config) SetString(path, s string) error {
 	case **int:
 		i, err := strconv.Atoi(strings.TrimSpace(s))
 		if err != nil {
-			return fmt.Errorf("expected a number, got %q", s)
+			return fmt.Errorf(i18n.S("expected a number, got %q", "应为数字，实际为 %q"), s)
 		}
 		*x = &i
 	case *int:
 		i, err := strconv.Atoi(strings.TrimSpace(s))
 		if err != nil {
-			return fmt.Errorf("expected a number, got %q", s)
+			return fmt.Errorf(i18n.S("expected a number, got %q", "应为数字，实际为 %q"), s)
 		}
 		*x = i
 	case *List:
@@ -123,7 +124,7 @@ func (c *Config) SetString(path, s string) error {
 		l := splitList(s)
 		for _, e := range l {
 			if !strings.Contains(e, "=") {
-				return fmt.Errorf("entry %q must be KEY=VALUE", e)
+				return fmt.Errorf(i18n.S("entry %q must be KEY=VALUE", "条目 %q 必须是 KEY=VALUE 形式"), e)
 			}
 		}
 		*x = Defines(l)
@@ -138,12 +139,12 @@ func (c *Config) SetString(path, s string) error {
 		for _, f := range splitList(strings.ReplaceAll(s, "x", ",")) {
 			i, err := strconv.Atoi(f)
 			if err != nil {
-				return fmt.Errorf("expected two numbers like 600,400, got %q", s)
+				return fmt.Errorf(i18n.S("expected two numbers like 600,400, got %q", "应为两个数字（如 600,400），实际为 %q"), s)
 			}
 			p = append(p, i)
 		}
 		if len(p) != 2 {
-			return fmt.Errorf("expected two numbers like 600,400, got %q", s)
+			return fmt.Errorf(i18n.S("expected two numbers like 600,400, got %q", "应为两个数字（如 600,400），实际为 %q"), s)
 		}
 		*x = p
 	case *[]int:
@@ -151,13 +152,13 @@ func (c *Config) SetString(path, s string) error {
 		for _, f := range splitList(s) {
 			i, err := strconv.Atoi(f)
 			if err != nil {
-				return fmt.Errorf("expected numbers, got %q", f)
+				return fmt.Errorf(i18n.S("expected numbers, got %q", "应为数字，实际为 %q"), f)
 			}
 			out = append(out, i)
 		}
 		*x = out
 	default:
-		return fmt.Errorf("%s cannot be set from a string", path)
+		return fmt.Errorf(i18n.S("%s cannot be set from a string", "%s 不能用字符串设置"), path)
 	}
 	return nil
 }

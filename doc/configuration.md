@@ -74,7 +74,7 @@ VS Code（Red Hat YAML 插件）、IntelliJ/Android Studio 会据此提供键补
 | --- | --- | --- | --- | --- | --- |
 | `app.name` | string | `pubspec 的 name` | 全部 |  | 产物文件名前缀（output.name 中的 {app}）。 示例：`xue_hua_im` |
 | `app.display_name` | string | `macOS 的 PRODUCT_NAME，否则为 pubspec 的 name` | exe, msix, pkg, deb, rpm, appimage, linux |  | 给人看的应用名：安装程序标题、开始菜单、.desktop 的 Name=。 示例：`雪花IM` |
-| `app.description` | string | `pubspec 的 description` | deb, rpm, appimage, msix |  | 简短描述：deb 的 Description、rpm 的 Summary、.desktop 的 Comment=、msix 描述。 示例：`A fast and secure messenger` |
+| `app.description` | string | `pubspec 的 description` | deb, rpm, appimage, msix |  | 简短描述：deb 的 Description、rpm 的 Summary、.desktop 的 Comment=、msix 描述。 示例：`快速、安全的即时通讯应用` |
 | `app.publisher` | string | `windows/runner/Runner.rc 中的 CompanyName` | exe, msix, deb, rpm |  | 公司 / 作者：Windows 安装程序发布者、msix 发布者显示名、deb Maintainer 的后备值、rpm Vendor。 示例：`XueHua Tech` |
 | `app.identifier` | string | `Linux APPLICATION_ID、Android applicationId 或 iOS bundle id` | exe, msix, pkg, appimage |  | 反向域名格式的应用 ID：Inno Setup AppId 的种子、msix identity name、pkg identifier 的后备值。 示例：`com.xuehua.im` |
 | `app.homepage` | url | — | exe, deb, rpm |  | 官网：Inno Setup 发布者网址、deb 的 Homepage、rpm 的 URL。 示例：`https://xuehua.example.com` |
@@ -319,7 +319,7 @@ MSIX 包（需要 msix 开发依赖）。这些键会覆盖 pubspec 中的 msix_
 | `windows.msix.publisher` | string | `取自证书` | msix |  | 发布者（证书 Subject）；上架 Store 时必填。 示例：`CN=XueHua Tech, O=XueHua Tech, C=CN` |
 | `windows.msix.version` | string | `版本名补齐为 a.b.c.0` | msix |  | MSIX 版本（a.b.c.d）。 示例：`1.2.0.0` |
 | `windows.msix.logo` | path | `msix 默认 / 应用图标` | msix |  | Logo 图片（≥ 400×400 的 PNG）。 示例：`windows/msix/logo.png` |
-| `windows.msix.description` | string | `app.description` | msix |  | 包描述。 示例：`A fast and secure messenger` |
+| `windows.msix.description` | string | `app.description` | msix |  | 包描述。 示例：`快速、安全的即时通讯应用` |
 | `windows.msix.capabilities` | list（或单个字符串） | — | msix |  | 能力声明（capabilities）。 示例：`[internetClient, microphone, webcam]` |
 | `windows.msix.languages` | list（或单个字符串） | — | msix |  | 语言。 示例：`[zh-cn, en-us]` |
 | `windows.msix.file_extensions` | list（或单个字符串） | — | msix |  | 应用可打开的文件扩展名。 示例：`[.xhim]` |
@@ -342,7 +342,7 @@ Linux：linux（tar.gz）、deb、rpm、appimage。
 | `linux.package_name` | string | `应用名转小写并用 - 连接` | deb, rpm, appimage |  | deb/rpm 包名，以及 /usr/bin 中的命令名。 示例：`xuehua-im` |
 | `linux.prefix` | string | `/opt/<package_name>` | deb, rpm |  | 应用文件的安装目录。 示例：`/usr/lib/xuehua-im` |
 | `linux.icon` | path | `flutter_launcher_icons 的图片，否则 web/icons/Icon-512.png` | deb, rpm, appimage |  | 菜单与 AppImage 使用的 PNG 图标。 示例：`assets/icon/icon.png` |
-| `linux.icon_sizes` | list of int | `[16, 32, 48, 64, 128, 256, 512]` | deb, rpm |  | 安装到 hicolor 主题的图标尺寸（由 linux.icon 缩放，不放大）。 示例：`[48, 128, 256]` |
+| `linux.icon_sizes` | 整数列表 | `[16, 32, 48, 64, 128, 256, 512]` | deb, rpm |  | 安装到 hicolor 主题的图标尺寸（由 linux.icon 缩放，不放大）。 示例：`[48, 128, 256]` |
 | `linux.categories` | list（或单个字符串） | `[Utility]` | deb, rpm, appimage |  | freedesktop.org 菜单分类（.desktop 的 Categories=）。 示例：`[Network, InstantMessaging]` |
 | `linux.generic_name` | string | — | deb, rpm, appimage |  | .desktop 的 GenericName=。 示例：`Instant Messenger` |
 | `linux.keywords` | list（或单个字符串） | — | deb, rpm, appimage |  | .desktop 的 Keywords=（搜索关键词）。 示例：`[chat, im, message]` |

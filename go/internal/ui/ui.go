@@ -5,6 +5,7 @@ package ui
 
 import (
 	"fmt"
+	"github.com/Matkurban/fpack/go/internal/i18n"
 	"io"
 	"os"
 	"strings"
@@ -141,7 +142,7 @@ func (u *UI) Hint(s string) {
 
 // Errorf prints a top-level error.
 func (u *UI) Errorf(format string, a ...any) {
-	u.Println(u.Red(u.Bold("error:")) + " " + fmt.Sprintf(format, a...))
+	u.Println(u.Red(u.Bold(i18n.S("error:", "错误："))) + i18n.S(" ", "") + fmt.Sprintf(format, a...))
 }
 
 // Duration formats a duration compactly: 850ms, 12.3s, 3m05s, 1h02m.

@@ -18,6 +18,9 @@ func kindLabel(k Key, lang string) string {
 		}
 		return "list (or one string)"
 	case KIntList:
+		if zh {
+			return "整数列表"
+		}
 		return "list of int"
 	case KMap:
 		return "map"
@@ -85,7 +88,7 @@ func markdownKeys(lang string, numbered bool) string {
 				ef = append(ef, "`"+k.Flag+"`")
 			}
 			desc := k.Doc.Text(lang)
-			ex := "`" + strings.ReplaceAll(k.Example, "`", "'") + "`"
+			ex := "`" + strings.ReplaceAll(k.ExampleText(lang), "`", "'") + "`"
 			if zh {
 				desc += " 示例：" + ex
 			} else {

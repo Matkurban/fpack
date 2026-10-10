@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Matkurban/fpack/go/internal/i18n"
 	"io"
 	"os"
 	"os/exec"
@@ -113,7 +114,7 @@ type ExitError struct {
 }
 
 func (e *ExitError) Error() string {
-	return fmt.Sprintf("%s exited with code %d", filepath.Base(e.Cmd.Name), e.Code)
+	return fmt.Sprintf(i18n.S("%s exited with code %d", "%s 退出码 %d"), filepath.Base(e.Cmd.Name), e.Code)
 }
 
 // Options control a Run.
@@ -163,7 +164,7 @@ func Run(ctx context.Context, c Cmd, o Options) (Result, error) {
 		if logf != nil {
 			fmt.Fprintf(logf, "# failed to start: %v\n", err)
 		}
-		return res, fmt.Errorf("cannot start %s: %w", c.Name, err)
+		return res, fmt.Errorf(i18n.S("cannot start %s: %w", "无法启动 %s：%w"), c.Name, err)
 	}
 
 	var (
