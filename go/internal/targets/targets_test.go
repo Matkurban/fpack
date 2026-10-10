@@ -896,7 +896,7 @@ func TestFlavorDroppedForAppleWithoutSchemes(t *testing.T) {
 	if n := names(plan(t, &DMG{}, c))[0]; strings.Contains(n, "prod") {
 		t.Fatalf("not a flavored build: %s", n)
 	}
-	if !strings.Contains(cmds(plan(t, &DMG{}, c))[0], "Products/Release/") {
+	if !strings.Contains(filepath.ToSlash(cmds(plan(t, &DMG{}, c))[0]), "Products/Release/") {
 		t.Fatal(cmds(plan(t, &DMG{}, c))[0])
 	}
 	if got := strings.Join(steps(t, &APK{}, c)[0].Args, " "); !strings.Contains(got, "--flavor prod") {
