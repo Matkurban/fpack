@@ -1,6 +1,8 @@
 import 'dart:ffi' show Abi;
 import 'dart:io' show Platform;
 
+import 'i18n.dart';
+
 /// The Go GOOS/GOARCH pair for the current host.
 class HostTarget {
   const HostTarget(this.os, this.arch);
@@ -21,9 +23,13 @@ class HostTarget {
     final t = table[abi];
     if (t == null) {
       throw UnsupportedError(
-        'fpack has no native core for $abi. Supported: macOS, Linux and '
-        'Windows on x64/arm64. You can build one with Go and point '
-        'FPACK_CORE at it.',
+        tr(
+          'fpack has no native core for $abi. Supported: macOS, Linux and '
+              'Windows on x64/arm64. You can build one with Go and point '
+              'FPACK_CORE at it.',
+          'fpack 没有适用于 $abi 的原生核心。支持：x64/arm64 上的 macOS、Linux '
+              '和 Windows。可以用 Go 自行构建，并用 FPACK_CORE 指向它。',
+        ),
       );
     }
     return t;

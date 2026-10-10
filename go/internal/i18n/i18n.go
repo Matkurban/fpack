@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -60,46 +61,120 @@ func Parse(v string) (Lang, bool) {
 	return EN, false
 }
 
-// Detect resolves the language: explicit override, then FPACK_LANG, then the
-// POSIX locale variables, then the OS preference (macOS AppleLanguages /
-// AppleLocale, Windows user locale). Defaults to English.
+// Detect resolves the language: explicit override (--lang), then FPACK_LANG,
+// then the operating system's language. Chinese (any zh variant) gives
+// Chinese, everything else English.
+//
+// The OS language is:
+//   - macOS: the first entry of the system UI language list (System Settings >
+//     General > Language & Region, `defaults read -g AppleLanguages`), then
+//     AppleLocale. Terminal sets LANG from the region format (often
+//     en_US.UTF-8 even with a Chinese UI), so LANG/LANGUAGE are only a
+//     fallback; LC_ALL / LC_MESSAGES set explicitly still win.
+//   - Windows: the user's display language (GetUserDefaultUILanguage), then
+//     the user locale. Git Bash/MSYS set LANG themselves, so as on macOS only
+//     LC_ALL / LC_MESSAGES override it.
+//   - Linux and others: LC_ALL, LC_MESSAGES, LANGUAGE (first entry), LANG.
 func Detect(override string, getenv func(string) string) Lang {
+	return detect(override, getenv, runtime.GOOS, osLanguage)
+}
+
+// detect is Detect with the OS and its language lookup injectable for tests.
+func detect(override string, getenv func(string) string, goos string, osLang func(string) string) Lang {
 	if l, ok := Parse(override); ok {
 		return l
 	}
 	if l, ok := Parse(getenv("FPACK_LANG")); ok {
 		return l
 	}
-	for _, k := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
-		v := getenv(k)
-		if v == "" || v == "C" || v == "POSIX" || strings.HasPrefix(v, "C.") {
-			continue
+	explicit := []string{"LC_ALL", "LC_MESSAGES"}
+	fallback := []string{"LANGUAGE", "LANG"}
+	if goos != "darwin" && goos != "windows" {
+		explicit, fallback = append(explicit, fallback...), nil
+	}
+	if l, ok := fromEnv(explicit, getenv); ok {
+		return l
+	}
+	if fallback != nil {
+		if v := osLang(goos); v != "" {
+			return langOf(v)
 		}
-		if l, ok := Parse(v); ok {
+		if l, ok := fromEnv(fallback, getenv); ok {
 			return l
 		}
-		return EN // a real, non-Chinese locale is set
-	}
-	if l, ok := Parse(osLocale()); ok {
-		return l
 	}
 	return EN
 }
 
-func osLocale() string {
-	switch runtime.GOOS {
+// fromEnv returns the language of the first set, meaningful locale variable.
+func fromEnv(keys []string, getenv func(string) string) (Lang, bool) {
+	for _, k := range keys {
+		v := strings.TrimSpace(getenv(k))
+		if k == "LANGUAGE" {
+			v, _, _ = strings.Cut(v, ":")
+		}
+		if v == "" || v == "C" || v == "POSIX" || strings.HasPrefix(v, "C.") {
+			continue
+		}
+		return langOf(v), true
+	}
+	return EN, false
+}
+
+// langOf maps any locale/language tag to ZH for Chinese, else EN.
+func langOf(v string) Lang {
+	if l, ok := Parse(v); ok && l == ZH {
+		return ZH
+	}
+	return EN
+}
+
+// osLanguage returns the OS UI language tag ("zh-Hans-CN", "en-US"...) or "".
+func osLanguage(goos string) string {
+	switch goos {
 	case "darwin":
-		// AppleLanguages reflects the UI language order, AppleLocale the region format.
-		if out := quick("defaults", "read", "-g", "AppleLanguages"); out != "" {
-			for _, f := range strings.FieldsFunc(out, func(r rune) bool { return r == '(' || r == ')' || r == ',' || r == '"' || r == '\n' || r == ' ' }) {
-				if f != "" {
-					return f
+		return macLanguage()
+	case "windows":
+		return windowsLocale()
+	}
+	return ""
+}
+
+// macLanguage reads AppleLanguages/AppleLocale with `defaults` (≈30 ms), cached
+// in the user cache dir and invalidated when the global preferences change.
+func macLanguage() string {
+	home, _ := os.UserHomeDir()
+	cacheDir, _ := os.UserCacheDir()
+	var stamp, cache string
+	if home != "" && cacheDir != "" {
+		if fi, err := os.Stat(filepath.Join(home, "Library", "Preferences", ".GlobalPreferences.plist")); err == nil {
+			stamp = fmt.Sprint(fi.ModTime().UnixMicro())
+			cache = filepath.Join(cacheDir, "fpack", "os-language")
+			if b, err := os.ReadFile(cache); err == nil {
+				if s, v, ok := strings.Cut(strings.TrimSpace(string(b)), " "); ok && s == stamp {
+					return v
 				}
 			}
 		}
-		return quick("defaults", "read", "-g", "AppleLocale")
-	case "windows":
-		return windowsLocale()
+	}
+	v := firstAppleLanguage(quick("defaults", "read", "-g", "AppleLanguages"))
+	if v == "" {
+		v = quick("defaults", "read", "-g", "AppleLocale")
+	}
+	if cache != "" && v != "" {
+		_ = os.MkdirAll(filepath.Dir(cache), 0o755)
+		_ = os.WriteFile(cache, []byte(stamp+" "+v+"\n"), 0o644)
+	}
+	return v
+}
+
+// firstAppleLanguage extracts the first entry of `defaults read -g AppleLanguages`
+// output, e.g. `(\n    "zh-Hans-CN",\n    "en-CN"\n)`.
+func firstAppleLanguage(out string) string {
+	for _, f := range strings.FieldsFunc(out, func(r rune) bool {
+		return r == '(' || r == ')' || r == ',' || r == '"' || r == '\n' || r == ' ' || r == '\t'
+	}) {
+		return f
 	}
 	return ""
 }

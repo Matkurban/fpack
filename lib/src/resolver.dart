@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'i18n.dart';
 import 'platform.dart';
 import 'sha256.dart';
 import 'version.dart';
@@ -100,15 +101,27 @@ class CoreResolver {
     if (explicit != null && explicit.isNotEmpty) {
       if (!File(explicit).existsSync()) {
         throw ResolveException(
-          'FPACK_CORE points to a missing file: $explicit',
-          ['set FPACK_CORE to a built fpack-core binary, or unset it'],
+          tr(
+            'FPACK_CORE points to a missing file: $explicit',
+            'FPACK_CORE 指向的文件不存在：$explicit',
+          ),
+          [
+            tr(
+              'set FPACK_CORE to a built fpack-core binary, or unset it',
+              '将 FPACK_CORE 设为已构建的 fpack-core 二进制文件，或取消该变量',
+            ),
+          ],
         );
       }
       final v = await coreVersion(explicit);
       if (v != version) {
         log(
-          'fpack: warning: FPACK_CORE=$explicit reports version '
-          '${v ?? "unknown"}, wrapper is $version',
+          tr(
+            'fpack: warning: FPACK_CORE=$explicit reports version '
+                '${v ?? "unknown"}, wrapper is $version',
+            'fpack：警告：FPACK_CORE=$explicit 的版本为 '
+                '${v ?? "未知"}，包装器版本为 $version',
+          ),
         );
       }
       return ResolvedCore(explicit, CoreSource.env);
@@ -130,15 +143,24 @@ class CoreResolver {
       if (g != null) return g;
     }
     throw ResolveException(
-      'fpack: could not find, download or build the native core for '
-      '${host.id} (version $version).',
+      tr(
+        'fpack: could not find, download or build the native core for '
+            '${host.id} (version $version).',
+        'fpack：无法找到、下载或构建 ${host.id} 的原生核心（版本 $version）。',
+      ),
       [
         ...attempts,
-        'fix: check the network (or set FPACK_DOWNLOAD_URL to a mirror of '
-            'the GitHub release), or install Go (https://go.dev/dl) for a '
-            'local build, or download fpack-core-${host.id} from '
-            'https://github.com/Matkurban/fpack/releases/tag/v$version '
-            'and set FPACK_CORE',
+        tr(
+              'fix: check the network (or set FPACK_DOWNLOAD_URL to a mirror of '
+                  'the GitHub release), or install Go (https://go.dev/dl) for a '
+                  'local build, or download fpack-core-${host.id} from '
+                  'https://github.com/Matkurban/fpack/releases/tag/v$version '
+                  'and set FPACK_CORE',
+              '修复：检查网络（或把 FPACK_DOWNLOAD_URL 设为 GitHub Release 的镜像），'
+                  '或安装 Go（https://go.dev/dl）在本地构建，或从 '
+                  'https://github.com/Matkurban/fpack/releases/tag/v$version '
+                  '下载 fpack-core-${host.id} 并设置 FPACK_CORE',
+            ),
       ],
     );
   }
@@ -357,9 +379,13 @@ class CoreResolver {
     }
     final gv = await goVersion(go) ?? 'unknown Go version';
     log(
-      'fpack: note: no verified prebuilt core available ($reason);\n'
-      'fpack: falling back to a local build from the bundled sources with '
-      '$gv ($go) – first run only, ~30s…',
+      tr(
+        'fpack: note: no verified prebuilt core available ($reason);\n'
+            'fpack: falling back to a local build from the bundled sources with '
+            '$gv ($go) – first run only, ~30s…',
+        'fpack：提示：没有可用的已校验预编译核心（$reason）；\n'
+            'fpack：改用 $gv（$go）从随包源码本地构建——仅首次运行，约 30 秒…',
+      ),
     );
     final out = File(cachedPath).parent;
     try {
@@ -408,7 +434,12 @@ class CoreResolver {
       );
       return null;
     }
-    log('fpack: built the native core locally with $gv.');
+    log(
+      tr(
+        'fpack: built the native core locally with $gv.',
+        'fpack：已用 $gv 在本地构建原生核心。',
+      ),
+    );
     return ResolvedCore(installed, CoreSource.built);
   }
 
@@ -440,7 +471,12 @@ class CoreResolver {
     final sums = File('$cachedPath.checksums$pid');
     try {
       dir.createSync(recursive: true);
-      log('fpack: downloading the native core from $base …');
+      log(
+        tr(
+          'fpack: downloading the native core from $base …',
+          'fpack：正在从 $base 下载原生核心…',
+        ),
+      );
       await _downloader(base.resolve('checksums.txt'), sums);
       await _downloader(base.resolve(host.assetName), tmp);
       final want = parseChecksums(sums.readAsStringSync())[host.assetName];

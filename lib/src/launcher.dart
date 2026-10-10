@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'i18n.dart';
 import 'platform.dart';
 import 'resolver.dart';
 import 'version.dart';
@@ -9,6 +10,7 @@ import 'version.dart';
 /// Resolves the native core and runs it with [args], inheriting stdio.
 /// Returns the exit code to use.
 Future<int> runFpack(List<String> args) async {
+  initLang(args);
   final HostTarget host;
   try {
     host = HostTarget.current();
@@ -46,8 +48,12 @@ Future<int> runCore(String core, List<String> args) async {
     );
   } on ProcessException catch (e) {
     stderr.writeln(
-      'fpack: cannot start $core: ${e.message}\n'
-      '  fix: delete the cached binary or run with FPACK_REBUILD=1',
+      tr(
+        'fpack: cannot start $core: ${e.message}\n'
+            '  fix: delete the cached binary or run with FPACK_REBUILD=1',
+        'fpack：无法启动 $core：${e.message}\n'
+            '  修复：删除缓存的二进制文件，或设置 FPACK_REBUILD=1 重新构建',
+      ),
     );
     return 3;
   }
