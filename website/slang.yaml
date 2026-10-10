@@ -11,3 +11,4 @@ class_name: Translations
 locale_handling: false
 flutter_integration: false
 lazy: false
+timestamp: false
