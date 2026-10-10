@@ -70,5 +70,5 @@ jobs:
         run: |
           grep -v '^prebuilt/\*$' .gitignore | grep -v '^!prebuilt/README.md$' > .pubignore
           printf '.github/\n' >> .pubignore
-      - run: dart pub get
+      - run: dart pub get --no-example
       - run: dart pub publish --force

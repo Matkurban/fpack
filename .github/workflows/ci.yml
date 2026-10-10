@@ -38,7 +38,7 @@ jobs:
 
       - name: dart analyze + test
         run: |
-          dart pub get
+          dart pub get --no-example
           dart format --output=none --set-exit-if-changed lib bin test
           dart analyze --fatal-infos
           dart test
