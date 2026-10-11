@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.7
 
 ### Fixed
 - `msix` failed on every build: fpack passed `--description`, which `msix:create` does not accept. The msix package reads the description from `pubspec.yaml` only; fpack now prints the `msix_config` entry to add when `windows.msix.description` / `app.description` differ.
