@@ -35,6 +35,11 @@ type Cmd struct {
 	// Capture keeps the full output in Result.Output (for small outputs that
 	// need parsing, e.g. notarytool JSON).
 	Capture bool
+	// WindowsCmdLine, when set, is the exact command line passed to
+	// CreateProcess on Windows instead of one built from Args. cmd.exe does not
+	// follow the usual argument quoting rules, so a hook command containing
+	// quotes must reach it verbatim. Ignored elsewhere.
+	WindowsCmdLine string
 }
 
 // String renders the command as a copy-pasteable shell line with secrets
@@ -156,6 +161,7 @@ func Run(ctx context.Context, c Cmd, o Options) (Result, error) {
 	cmd.Stdout = pw
 	cmd.Stderr = pw
 	setProcessGroup(cmd)
+	setCmdLine(cmd, c.WindowsCmdLine)
 
 	if err := cmd.Start(); err != nil {
 		pw.Close()

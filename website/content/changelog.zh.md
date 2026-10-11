@@ -6,6 +6,16 @@ description: "每个 fpack 版本的变更。"
 更新日志仅提供英文版本。
 
 <!-- BEGIN GENERATED CHANGELOG -->
+## Unreleased
+
+### Fixed
+- `msix` failed on every build: fpack passed `--description`, which `msix:create` does not accept. The msix package reads the description from `pubspec.yaml` only; fpack now prints the `msix_config` entry to add when `windows.msix.description` / `app.description` differ.
+- Windows hooks with quotes (e.g. `echo %FPACK_OUTPUT_DIR% > "out file.txt"`) failed with "The directory name is invalid": hooks now reach `cmd /S /C` verbatim.
+
+### Added
+- `fpack doctor` / build checks warn on Windows when the project path contains non-ASCII characters, where `flutter build windows` fails.
+- Docs: Windows notes (project path, MSIX description, `%VAR%` in hooks).
+
 ## 1.1.6
 
 ### Added

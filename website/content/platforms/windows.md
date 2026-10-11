@@ -17,6 +17,12 @@ Inno Setup installers support publisher/URL, copyright, install directory, Start
 
 All three share one `flutter build windows`.
 
+## Notes
+
+- **Project path**: keep the project in a path with only ASCII characters. `flutter build windows` fails in paths with e.g. Chinese characters (`Unable to read file … app.dill`); `fpack doctor` warns about it. Alternatively enable "Beta: Use Unicode UTF-8 for worldwide language support" in the Windows region settings.
+- **MSIX description**: the `msix` package reads the description only from `pubspec.yaml` (`msix_config.description`, else `description`); when `windows.msix.description` / `app.description` differ, fpack prints the entry to add.
+- **Hooks** run through `cmd /S /C`, so use `%VAR%` for hook variables (`%FPACK_OUTPUT_DIR%`); quoted paths work as typed.
+
 ## Installer example
 
 ```yaml

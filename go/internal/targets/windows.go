@@ -131,6 +131,24 @@ func vsPreflight(c *Context) []Issue {
 	if c.Host.OS != "windows" {
 		return nil
 	}
+	return append(winPathPreflight(c), vsToolsPreflight(c)...)
+}
+
+// winPathPreflight warns about a project path with non-ASCII characters (e.g.
+// Chinese): flutter build windows then fails reading app.dill because the
+// build tools pass the path through the ANSI code page.
+func winPathPreflight(c *Context) []Issue {
+	for _, r := range c.Project.Root {
+		if r > 0x7f {
+			return []Issue{warn(
+				i18n.F("the project path %s contains non-ASCII characters: flutter build windows fails there (\"Unable to read file … app.dill\")", "项目路径 %s 含有非 ASCII 字符：flutter build windows 在这种路径下会失败（“Unable to read file … app.dill”）", c.Project.Root),
+				i18n.S("move the project to an ASCII-only path, or enable Windows \"Beta: Use Unicode UTF-8 for worldwide language support\" (intl.cpl → Administrative)", "把项目移到纯英文路径，或在 Windows 中启用“Beta 版：使用 Unicode UTF-8 提供全球语言支持”（intl.cpl → 管理）"))}
+		}
+	}
+	return nil
+}
+
+func vsToolsPreflight(c *Context) []Issue {
 	vswhere := filepath.Join(os.Getenv("ProgramFiles(x86)"), "Microsoft Visual Studio", "Installer", "vswhere.exe")
 	if !exists(vswhere) {
 		return []Issue{warn(i18n.S("Visual Studio installer (vswhere) not found – Visual Studio 2022 with \"Desktop development with C++\" is required", "未找到 Visual Studio（vswhere）—— 需要安装带“使用 C++ 的桌面开发”的 Visual Studio 2022"),
@@ -481,7 +499,8 @@ func msixArgs(c *Context) (args, secrets []string, signedWith string) {
 	if m.Logo != "" {
 		add("--logo-path", c.Project.Abs(m.Logo))
 	}
-	add("--description", pick(m.Description, "description", c.Config.App.Description))
+	// msix:create has no --description flag: it reads msix_config.description
+	// (else the pubspec description), see msixDescriptionNote.
 	add("--capabilities", strings.Join(m.Capabilities, ","))
 	add("--languages", strings.Join(m.Languages, ","))
 	add("--file-extension", strings.Join(m.FileExtensions, ","))
@@ -546,6 +565,9 @@ func (*Msix) Package(c *Context, in Inputs) (*Plan, error) {
 		!strings.Contains(extra, "--certificate-path") && !strings.Contains(extra, "--signtool-options") && !strings.Contains(extra, "--store") {
 		notes = append(notes, i18n.S("signed with the msix package's self-signed test certificate: fine for testing; set windows.sign.certificate (or windows.msix.store: true) for distribution", "使用 msix 包自带的自签名测试证书签名：仅适合测试；正式分发请设置 windows.sign.certificate（或 windows.msix.store: true）"))
 	}
+	if n := msixDescriptionNote(c); n != "" {
+		notes = append(notes, n)
+	}
 	kind := "MSIX"
 	if signedWith != "" {
 		kind = "MSIX (signed)"
@@ -555,6 +577,22 @@ func (*Msix) Package(c *Context, in Inputs) (*Plan, error) {
 		{Desc: i18n.S("create MSIX (msix package)", "创建 MSIX（msix 包）"), Cmd: &runner.Cmd{Name: c.SDK.Dart, Args: args, Dir: c.Project.Root, Secret: secrets}},
 		moveOp(c, filepath.Join(stage, base+".msix"), dst),
 	}, Artifacts: []Artifact{{Path: dst, Kind: kind, Arch: winArch(c)}}}, nil
+}
+
+// msixDescriptionNote explains that a windows.msix.description (or
+// app.description) that differs from what msix:create will use is not applied:
+// the msix package only reads pubspec.yaml.
+func msixDescriptionNote(c *Context) string {
+	if _, ok := c.Project.Section("msix_config")["description"]; ok {
+		return ""
+	}
+	want := orDefault(c.Config.Windows.Msix.Description, c.Config.App.Description)
+	if want == "" || want == c.Project.Description {
+		return ""
+	}
+	return i18n.S(
+		"the msix package takes the description only from pubspec.yaml: add msix_config: { description: \""+want+"\" } there to use it",
+		"msix 包只从 pubspec.yaml 读取描述：如需使用，请在其中添加 msix_config: { description: \""+want+"\" }")
 }
 
 func orName(p, name string) string {

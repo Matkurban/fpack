@@ -17,6 +17,12 @@ Inno Setup 安装包可配置发布者/网址、版权、安装目录、开始�
 
 三者共用一次 `flutter build windows`。
 
+## 注意事项
+
+- **项目路径**：项目请放在只含 ASCII 字符的路径下。路径含中文等字符时 `flutter build windows` 会失败（`Unable to read file … app.dill`），`fpack doctor` 会给出警告；也可以在 Windows 区域设置中启用“Beta 版：使用 Unicode UTF-8 提供全球语言支持”。
+- **MSIX 描述**：`msix` 包只从 `pubspec.yaml` 读取描述（`msix_config.description`，否则为 `description`）；当 `windows.msix.description` / `app.description` 与之不同时，fpack 会提示需要添加的条目。
+- **钩子**通过 `cmd /S /C` 运行，钩子变量请写 `%VAR%`（如 `%FPACK_OUTPUT_DIR%`）；带引号的路径会按原样生效。
+
 ## 安装包示例
 
 ```yaml

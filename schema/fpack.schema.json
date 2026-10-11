@@ -2888,11 +2888,11 @@
               "type": "string"
             },
             "description": {
-              "description": "Package description. Default: app.description. Targets: msix.",
+              "description": "Package description. The msix package reads it only from pubspec.yaml, so fpack prints the msix_config entry to add when this value differs. Default: msix_config.description, else the pubspec description. Targets: msix.",
               "examples": [
                 "A fast and secure messenger"
               ],
-              "markdownDescription": "**Package description.**  \n包描述。\n\nDefault / 默认: `app.description`\n\nTargets / 目标: msix",
+              "markdownDescription": "**Package description. The msix package reads it only from pubspec.yaml, so fpack prints the msix_config entry to add when this value differs.**  \n包描述。msix 包只从 pubspec.yaml 读取它，所以当这里的值不同时 fpack 会提示需要添加的 msix_config 条目。\n\nDefault / 默认: `msix_config.description，否则为 pubspec 的 description`\n\nTargets / 目标: msix",
               "type": "string"
             },
             "display_name": {

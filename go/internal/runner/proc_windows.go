@@ -13,6 +13,12 @@ func setProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x00000200}
 }
 
+func setCmdLine(cmd *exec.Cmd, line string) {
+	if line != "" {
+		cmd.SysProcAttr.CmdLine = line
+	}
+}
+
 func interruptTree(cmd *exec.Cmd) {
 	if cmd.Process != nil {
 		_ = exec.Command("taskkill", "/T", "/PID", strconv.Itoa(cmd.Process.Pid)).Run()

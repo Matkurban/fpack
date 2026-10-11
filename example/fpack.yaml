@@ -15,7 +15,7 @@
 # .desktop files, DMG/pkg titles).
 app:
   display_name: Aurora Notes
-  description: A small notes app packaged with fpack
+  description: Aurora Notes - a small Flutter app packaged with fpack.
   publisher: fpack
   homepage: https://github.com/Matkurban/fpack
   support_url: https://github.com/Matkurban/fpack/issues
@@ -54,7 +54,7 @@ output:
 
 # ---------------------------------------------------------------- hooks
 # Hooks run in the project root with sh -c (Windows: cmd /C).
-# Write $VAR (not ${VAR}) for variables that only exist while a hook runs.
+# Write $VAR (Windows: %VAR%), not ${VAR}, for variables that only exist while a hook runs.
 hooks:
   # pre_build: [dart run build_runner build --delete-conflicting-outputs]
   post_package:

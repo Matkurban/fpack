@@ -69,7 +69,7 @@ web:
   source_maps: true
 ```
 
-**钩子**（`hooks`）：`pre_build`（第一次 flutter build 前执行一次，失败则停止）、`pre_package.<目标>` / `post_package.<目标>`（打包前后，提供 `FPACK_TARGET`、`FPACK_ARTIFACT`、`FPACK_ARTIFACTS`）、`post_build`（最后执行一次，提供 `FPACK_ARTIFACTS`、`FPACK_SUCCESS` = `1`/`0`；构建失败后也会执行，但如果所有目标都未通过构建前检查（例如缺少工具、flavor 不存在）则跳过）。所有钩子都在项目根目录用 `sh -c`（Windows：`cmd /C`）执行，并提供 `FPACK_PROJECT_ROOT`、`FPACK_OUTPUT_DIR`、`FPACK_VERSION`、`FPACK_BUILD_NUMBER`、`FPACK_MODE`、`FPACK_FLAVOR`；钩子运行时才有的变量请写 `$VAR`（`${VAR}` 会在加载配置时被替换）。钩子失败时退出码为 1。
+**钩子**（`hooks`）：`pre_build`（第一次 flutter build 前执行一次，失败则停止）、`pre_package.<目标>` / `post_package.<目标>`（打包前后，提供 `FPACK_TARGET`、`FPACK_ARTIFACT`、`FPACK_ARTIFACTS`）、`post_build`（最后执行一次，提供 `FPACK_ARTIFACTS`、`FPACK_SUCCESS` = `1`/`0`；构建失败后也会执行，但如果所有目标都未通过构建前检查（例如缺少工具、flavor 不存在）则跳过）。所有钩子都在项目根目录用 `sh -c`（Windows：`cmd /C`）执行，并提供 `FPACK_PROJECT_ROOT`、`FPACK_OUTPUT_DIR`、`FPACK_VERSION`、`FPACK_BUILD_NUMBER`、`FPACK_MODE`、`FPACK_FLAVOR`；钩子运行时才有的变量请写 `$VAR`（Windows `cmd` 中写 `%VAR%`；`${VAR}` 会在加载配置时被替换）。钩子失败时退出码为 1。
 
 ## 文件名模板
 
@@ -345,7 +345,7 @@ MSIX 包（需要 msix 开发依赖）。这些键会覆盖 pubspec 中的 msix_
 | `windows.msix.publisher` | string | `取自证书` | msix |  | 发布者（证书 Subject）；上架 Store 时必填。 示例：`CN=XueHua Tech, O=XueHua Tech, C=CN` |
 | `windows.msix.version` | string | `版本名补齐为 a.b.c.0` | msix |  | MSIX 版本（a.b.c.d）。 示例：`1.2.0.0` |
 | `windows.msix.logo` | path | `msix 默认 / 应用图标` | msix |  | Logo 图片（≥ 400×400 的 PNG）。 示例：`windows/msix/logo.png` |
-| `windows.msix.description` | string | `app.description` | msix |  | 包描述。 示例：`快速、安全的即时通讯应用` |
+| `windows.msix.description` | string | `msix_config.description，否则为 pubspec 的 description` | msix |  | 包描述。msix 包只从 pubspec.yaml 读取它，所以当这里的值不同时 fpack 会提示需要添加的 msix_config 条目。 示例：`快速、安全的即时通讯应用` |
 | `windows.msix.capabilities` | list（或单个字符串） | — | msix |  | 能力声明（capabilities）。 示例：`[internetClient, microphone, webcam]` |
 | `windows.msix.languages` | list（或单个字符串） | — | msix |  | 语言。 示例：`[zh-cn, en-us]` |
 | `windows.msix.file_extensions` | list（或单个字符串） | — | msix |  | 应用可打开的文件扩展名。 示例：`[.xhim]` |

@@ -69,7 +69,7 @@ web:
   source_maps: true
 ```
 
-**Hooks** (`hooks`): `pre_build` (once before the first flutter build; a failure stops the run), `pre_package.<target>` / `post_package.<target>` (around packaging, with `FPACK_TARGET`, `FPACK_ARTIFACT`, `FPACK_ARTIFACTS`), `post_build` (once at the end, with `FPACK_ARTIFACTS`, `FPACK_SUCCESS` = `1`/`0`; it also runs after build failures, but is skipped when every target already failed its checks, e.g. a missing tool or unknown flavor). All hooks run in the project root through `sh -c` (Windows: `cmd /C`) with `FPACK_PROJECT_ROOT`, `FPACK_OUTPUT_DIR`, `FPACK_VERSION`, `FPACK_BUILD_NUMBER`, `FPACK_MODE`, `FPACK_FLAVOR`; write `$VAR` for variables that only exist while the hook runs (`${VAR}` is expanded when the configuration is loaded). A failing hook means exit code 1.
+**Hooks** (`hooks`): `pre_build` (once before the first flutter build; a failure stops the run), `pre_package.<target>` / `post_package.<target>` (around packaging, with `FPACK_TARGET`, `FPACK_ARTIFACT`, `FPACK_ARTIFACTS`), `post_build` (once at the end, with `FPACK_ARTIFACTS`, `FPACK_SUCCESS` = `1`/`0`; it also runs after build failures, but is skipped when every target already failed its checks, e.g. a missing tool or unknown flavor). All hooks run in the project root through `sh -c` (Windows: `cmd /C`) with `FPACK_PROJECT_ROOT`, `FPACK_OUTPUT_DIR`, `FPACK_VERSION`, `FPACK_BUILD_NUMBER`, `FPACK_MODE`, `FPACK_FLAVOR`; write `$VAR` (Windows `cmd`: `%VAR%`) for variables that only exist while the hook runs (`${VAR}` is expanded when the configuration is loaded). A failing hook means exit code 1.
 
 ## File name templates
 
@@ -345,7 +345,7 @@ MSIX package (needs the msix dev_dependency). These keys override pubspec msix_c
 | `windows.msix.publisher` | string | `from the certificate` | msix |  | Publisher (certificate subject); required for the Store. Example: `CN=XueHua Tech, O=XueHua Tech, C=CN` |
 | `windows.msix.version` | string | `build name as a.b.c.0` | msix |  | MSIX version (a.b.c.d). Example: `1.2.0.0` |
 | `windows.msix.logo` | path | `msix default / app icon` | msix |  | Logo image (≥ 400×400 PNG). Example: `windows/msix/logo.png` |
-| `windows.msix.description` | string | `app.description` | msix |  | Package description. Example: `A fast and secure messenger` |
+| `windows.msix.description` | string | `msix_config.description, else the pubspec description` | msix |  | Package description. The msix package reads it only from pubspec.yaml, so fpack prints the msix_config entry to add when this value differs. Example: `A fast and secure messenger` |
 | `windows.msix.capabilities` | list (or one string) | — | msix |  | Capabilities. Example: `[internetClient, microphone, webcam]` |
 | `windows.msix.languages` | list (or one string) | — | msix |  | Languages. Example: `[zh-cn, en-us]` |
 | `windows.msix.file_extensions` | list (or one string) | — | msix |  | File extensions the app opens. Example: `[.xhim]` |

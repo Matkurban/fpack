@@ -747,6 +747,37 @@ func TestMsixNeverPromptsForCertificate(t *testing.T) {
 	}
 }
 
+// msix:create has no --description option (it reads pubspec.yaml); passing
+// one made every msix build fail.
+func TestMsixDescription(t *testing.T) {
+	c := newCtx(t, "windows", "", "")
+	c.Config.Windows.Msix.Description = "Custom text"
+	p := plan(t, &Msix{}, c)
+	if cs := strings.Join(cmds(p), "\n"); strings.Contains(cs, "--description") {
+		t.Fatal(cs)
+	}
+	if !strings.Contains(strings.Join(p.Notes, "\n"), `msix_config: { description: "Custom text" }`) {
+		t.Fatal(p.Notes)
+	}
+	c = newCtx(t, "windows", "", "msix_config:\n  description: From pubspec\n")
+	c.Config.Windows.Msix.Description = "Custom text"
+	if n := msixDescriptionNote(c); n != "" {
+		t.Fatal(n)
+	}
+}
+
+func TestWinNonASCIIPathWarning(t *testing.T) {
+	c := newCtx(t, "windows", "", "")
+	if is := winPathPreflight(c); len(is) != 0 {
+		t.Fatal(is)
+	}
+	c.Project.Root = `C:\\Users\\me\\测试 项目`
+	is := winPathPreflight(c)
+	if len(is) != 1 || is[0].Fatal || !strings.Contains(is[0].Msg, "non-ASCII") {
+		t.Fatal(is)
+	}
+}
+
 func TestDebCopyright(t *testing.T) {
 	for in, want := range map[string]string{"© 2026 Matkurban": "2026 Matkurban", "Copyright (c) 2026 A": "2026 A", "2026 B": "2026 B", "Copyright © 2026 C": "2026 C"} {
 		if got := debCopyright(in); got != want {
@@ -901,5 +932,14 @@ func TestFlavorDroppedForAppleWithoutSchemes(t *testing.T) {
 	}
 	if got := strings.Join(steps(t, &APK{}, c)[0].Args, " "); !strings.Contains(got, "--flavor prod") {
 		t.Fatal(got)
+	}
+}
+
+// cmd.exe parses its command line itself: the hook must reach it verbatim
+// (a quoted output path used to fail with "The directory name is invalid").
+func TestWindowsShellLine(t *testing.T) {
+	got := WindowsShellLine(`echo %FPACK_OUTPUT_DIR% > "hook 输出.txt"`)
+	if want := `cmd /S /C "echo %FPACK_OUTPUT_DIR% > "hook 输出.txt""`; got != want {
+		t.Fatalf("got %s, want %s", got, want)
 	}
 }

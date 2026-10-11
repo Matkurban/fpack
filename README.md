@@ -283,7 +283,7 @@ web:
   source_maps: true
 ```
 
-**Hooks** (`hooks`): `pre_build` (once before the first flutter build; a failure stops the run), `pre_package.<target>` / `post_package.<target>` (around packaging, with `FPACK_TARGET`, `FPACK_ARTIFACT`, `FPACK_ARTIFACTS`), `post_build` (once at the end, with `FPACK_ARTIFACTS`, `FPACK_SUCCESS` = `1`/`0`; it also runs after build failures, but is skipped when every target already failed its checks, e.g. a missing tool or unknown flavor). All hooks run in the project root through `sh -c` (Windows: `cmd /C`) with `FPACK_PROJECT_ROOT`, `FPACK_OUTPUT_DIR`, `FPACK_VERSION`, `FPACK_BUILD_NUMBER`, `FPACK_MODE`, `FPACK_FLAVOR`; write `$VAR` for variables that only exist while the hook runs (`${VAR}` is expanded when the configuration is loaded). A failing hook means exit code 1.
+**Hooks** (`hooks`): `pre_build` (once before the first flutter build; a failure stops the run), `pre_package.<target>` / `post_package.<target>` (around packaging, with `FPACK_TARGET`, `FPACK_ARTIFACT`, `FPACK_ARTIFACTS`), `post_build` (once at the end, with `FPACK_ARTIFACTS`, `FPACK_SUCCESS` = `1`/`0`; it also runs after build failures, but is skipped when every target already failed its checks, e.g. a missing tool or unknown flavor). All hooks run in the project root through `sh -c` (Windows: `cmd /C`) with `FPACK_PROJECT_ROOT`, `FPACK_OUTPUT_DIR`, `FPACK_VERSION`, `FPACK_BUILD_NUMBER`, `FPACK_MODE`, `FPACK_FLAVOR`; write `$VAR` (Windows `cmd`: `%VAR%`) for variables that only exist while the hook runs (`${VAR}` is expanded when the configuration is loaded). A failing hook means exit code 1.
 
 ---
 

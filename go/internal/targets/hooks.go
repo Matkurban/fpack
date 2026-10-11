@@ -12,9 +12,17 @@ import (
 // ShellCmd runs a hook command through the platform shell in the project root.
 func ShellCmd(c *Context, command string, env []string) *runner.Cmd {
 	if runtime.GOOS == "windows" {
-		return &runner.Cmd{Name: "cmd", Args: []string{"/C", command}, Dir: c.Project.Root, Env: env}
+		return &runner.Cmd{Name: "cmd", Args: []string{"/S", "/C", command}, Dir: c.Project.Root, Env: env,
+			WindowsCmdLine: WindowsShellLine(command)}
 	}
 	return &runner.Cmd{Name: "sh", Args: []string{"-c", command}, Dir: c.Project.Root, Env: env}
+}
+
+// WindowsShellLine is the cmd.exe command line running command verbatim: with
+// /S, cmd removes the outer quotes and runs the rest as typed, so quoted paths
+// inside the command (`copy "a b.txt" out`) keep working.
+func WindowsShellLine(command string) string {
+	return `cmd /S /C "` + command + `"`
 }
 
 // HookEnv is the environment given to every hook.
