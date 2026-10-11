@@ -199,15 +199,6 @@ func signPreflight(c *Context) []Issue {
 	if s.Dlib != "" && s.DlibMetadata == "" {
 		out = append(out, fatal(i18n.S("windows.sign.dlib needs windows.sign.dlib_metadata (the signing service's metadata.json)", "windows.sign.dlib 需要同时设置 windows.sign.dlib_metadata（签名服务的 metadata.json）"), ""))
 	}
-	n := 0
-	for _, v := range []string{s.Certificate, s.Thumbprint, s.Subject, s.Dlib} {
-		if v != "" {
-			n++
-		}
-	}
-	if n > 1 {
-		out = append(out, warn(i18n.S("several windows.sign certificate sources are set; fpack uses dlib, then certificate, then thumbprint, then subject", "设置了多个 windows.sign 证书来源；优先级为 dlib、certificate、thumbprint、subject"), ""))
-	}
 	return out
 }
 

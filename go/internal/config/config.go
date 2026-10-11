@@ -1100,8 +1100,14 @@ func (c *Config) Validate() []string {
 		p = append(p, i18n.S("macos.sign: API key notarization needs notary_api_key and notary_api_key_id (plus notary_api_issuer for team keys)", "macos.sign：API 密钥公证需要 notary_api_key 和 notary_api_key_id（团队密钥还需 notary_api_issuer）"))
 	}
 	ws := c.Windows.Sign
-	if ws.Certificate != "" && ws.Thumbprint != "" {
-		p = append(p, i18n.S("windows.sign: set either certificate (.pfx) or thumbprint (certificate store), not both", "windows.sign：certificate（.pfx）与 thumbprint（证书存储）只能设置其一"))
+	var sources []string
+	for _, kv := range [][2]string{{"certificate", ws.Certificate}, {"thumbprint", ws.Thumbprint}, {"subject", ws.Subject}, {"dlib", ws.Dlib}} {
+		if kv[1] != "" {
+			sources = append(sources, kv[0])
+		}
+	}
+	if len(sources) > 1 {
+		p = append(p, i18n.F("windows.sign: set only one certificate source (certificate, thumbprint, subject or dlib), not %s", "windows.sign：只能设置一种证书来源（certificate、thumbprint、subject 或 dlib），而不是 %s", strings.Join(sources, " + ")))
 	}
 	return p
 }
