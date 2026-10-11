@@ -160,6 +160,7 @@ jobs:
           $zip = Get-ChildItem $d -Filter *-portable.zip | Select-Object -First 1
           Expand-Archive $zip.FullName "$env:RUNNER_TEMP\zipx"
           Assert-Signed (Get-ChildItem "$env:RUNNER_TEMP\zipx" -Recurse -Filter aurora_notes.exe | Select-Object -First 1).FullName
+          Assert-Signed (Get-ChildItem "$env:RUNNER_TEMP\zipx" -Recurse -Filter flutter_windows.dll | Select-Object -First 1).FullName
           $msix = Get-ChildItem $d -Filter *.msix | Select-Object -First 1
           Assert-Signed $msix.FullName
           Copy-Item $msix.FullName "$env:RUNNER_TEMP\app.zip"
@@ -193,6 +194,25 @@ jobs:
           $p = Start-Process $unins -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
           Start-Sleep -Seconds 5
           Assert (-not (Test-Path $key)) "uninstalled (registry key removed)"
+      - name: sign from the certificate store (thumbprint), portable zip
+        shell: pwsh
+        working-directory: ${{ runner.temp }}/sample
+        env:
+          FPACK_WINDOWS_CERT_THUMBPRINT: ${{ env.E2E_THUMBPRINT }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          fpack doctor
+          $out = fpack build windows --force --dry-run 2>&1 | Out-String
+          if ($out -notmatch '/sha1') { $out; throw "dry run does not sign with /sha1" }
+          fpack build windows --force
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $zip = Get-ChildItem dist -Recurse -Filter *-portable.zip | Select-Object -First 1
+          Expand-Archive $zip.FullName "$env:RUNNER_TEMP\storezip"
+          foreach ($f in Get-ChildItem "$env:RUNNER_TEMP\storezip" -Recurse -Include *.exe, *.dll) {
+            $sig = Get-AuthenticodeSignature $f.FullName
+            "$($f.Name) -> $($sig.Status)"
+            if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Thumbprint -ne $env:E2E_THUMBPRINT) { throw "not signed: $($f.FullName)" }
+          }
       - uses: actions/upload-artifact@v7
         if: always()
         with:

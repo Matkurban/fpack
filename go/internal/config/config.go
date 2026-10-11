@@ -246,9 +246,19 @@ type WinSign struct {
 	Certificate  string `yaml:"certificate"` // .pfx
 	Password     string `yaml:"password"`
 	Thumbprint   string `yaml:"thumbprint"` // certificate in the Windows store (instead of a .pfx)
+	Subject      string `yaml:"subject"`    // certificate in the store, by subject name (/n)
+	Store        string `yaml:"store"`      // certificate store name (/s), default My
+	MachineStore *bool  `yaml:"machine_store"`
+	// Dlib/DlibMetadata sign through a signtool plugin, e.g. Azure Trusted
+	// Signing (Azure.CodeSigning.Dlib.dll + metadata.json).
+	Dlib         string `yaml:"dlib"`
+	DlibMetadata string `yaml:"dlib_metadata"`
 	TimestampURL string `yaml:"timestamp_url"`
 	Signtool     string `yaml:"signtool"`
 	Description  string `yaml:"description"`
+	URL          string `yaml:"url"`
+	Files        List   `yaml:"files"`
+	Verify       *bool  `yaml:"verify"`
 }
 
 // Msix options (uses the `msix` pub package).

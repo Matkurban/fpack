@@ -845,7 +845,7 @@ func runOps(ctx context.Context, c *targets.Context, u *ui.UI, ops []targets.Op,
 					return &opFailure{interrupted: true, err: i18n.S("interrupted", "已中断")}
 				}
 				if op.Optional {
-					*warns = append(*warns, op.Desc+": "+err.Error())
+					*warns = append(*warns, op.Desc+": "+err.Error()+toolError(last.Tail))
 					continue
 				}
 				f := &opFailure{err: op.Desc + ": " + err.Error(), excerpt: hints.Excerpt(last.Tail, 20), cmd: true, hint: op.Hint}
@@ -895,7 +895,7 @@ func runOps(ctx context.Context, c *targets.Context, u *ui.UI, ops []targets.Op,
 				return &opFailure{interrupted: true, err: i18n.S("interrupted", "已中断")}
 			}
 			if op.Optional {
-				*warns = append(*warns, op.Desc+": "+err.Error())
+				*warns = append(*warns, op.Desc+": "+err.Error()+toolError(res.Tail))
 				continue
 			}
 			f := &opFailure{err: op.Desc + ": " + err.Error(), excerpt: hints.Excerpt(res.Tail, 20), cmd: true}
@@ -977,4 +977,19 @@ func failStep(c *targets.Context, u *ui.UI, st *stepState, f *opFailure) {
 	}
 	u.Fail(f.err)
 	printFailure(c, u, f.excerpt, f.hint, f.hint != "", f.log)
+}
+
+// toolError is the tool's own error message from a failed command's output
+// (e.g. signtool's "SignTool Error: … not trusted"), appended to warnings so
+// they say why an optional check failed.
+func toolError(tail []string) string {
+	for _, marker := range []string{"error:", "error"} {
+		for i := len(tail) - 1; i >= 0; i-- {
+			l := strings.TrimSpace(tail[i])
+			if strings.Contains(strings.ToLower(l), marker) {
+				return " (" + l + ")"
+			}
+		}
+	}
+	return ""
 }

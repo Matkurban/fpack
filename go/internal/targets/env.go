@@ -204,12 +204,31 @@ func knownLocations(name string) []string {
 			if base == "" {
 				continue
 			}
-			m, _ := filepath.Glob(filepath.Join(base, "Windows Kits", "10", "bin", "10.*", "x64", "signtool.exe"))
-			sort.Sort(sort.Reverse(sort.StringSlice(m)))
-			out = append(out, m...)
+			out = append(out, sdkTools(base, "signtool.exe")...)
 			out = append(out, filepath.Join(base, "Windows Kits", "10", "App Certification Kit", "signtool.exe"))
 		}
 		return out
 	}
 	return nil
 }
+
+// sdkTools lists a Windows SDK tool of every installed SDK version, newest
+// first, for the host architecture (x64 tools also run on arm64).
+func sdkTools(programFiles, tool string) []string {
+	arches := []string{"x64"}
+	if runtime.GOARCH == "arm64" {
+		arches = []string{"arm64", "x64"}
+	}
+	var out []string
+	for _, arch := range arches {
+		m, _ := filepath.Glob(filepath.Join(programFiles, "Windows Kits", "10", "bin", "10.*", arch, tool))
+		sort.Slice(m, func(i, j int) bool {
+			return versionLess(sdkVersion(m[j]), sdkVersion(m[i]))
+		})
+		out = append(out, m...)
+	}
+	return out
+}
+
+// sdkVersion is the version folder of a Windows SDK tool path.
+func sdkVersion(p string) string { return filepath.Base(filepath.Dir(filepath.Dir(p))) }

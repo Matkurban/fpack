@@ -322,16 +322,24 @@ Inno Setup installer (.exe).
 
 #### `windows.sign`
 
-Authenticode signing with signtool: the app .exe and the installer.
+Optional Authenticode signing with signtool: the app's .exe/.dll files (before zipping and packaging), the installer and the MSIX. Pick one certificate source: a .pfx file, the certificate store (thumbprint or subject) or a signtool plugin (dlib, e.g. Azure Trusted Signing).
 
 | Key | Type | Default | Targets | Env / flag | Description |
 | --- | --- | --- | --- | --- | --- |
 | `windows.sign.certificate` | path | — | windows, exe, msix | `FPACK_WINDOWS_CERTIFICATE` | Code signing certificate (.pfx). Setting it (or thumbprint) signs the app .exe, the installer and the MSIX. Example: `C:/certs/codesign.pfx` |
 | `windows.sign.password` | string | — | windows, exe, msix | `FPACK_WINDOWS_CERTIFICATE_PASSWORD` | Certificate password. Example: `${WINDOWS_CERT_PASSWORD}` |
-| `windows.sign.thumbprint` | string | — | windows, exe | `FPACK_WINDOWS_CERT_THUMBPRINT` | SHA-1 thumbprint of a certificate in the Windows certificate store (instead of a .pfx). Example: `1A2B3C…` |
-| `windows.sign.timestamp_url` | url | `http://timestamp.digicert.com` | windows, exe |  | RFC 3161 timestamp server. Example: `http://timestamp.sectigo.com` |
-| `windows.sign.signtool` | path | `signtool on PATH or in the Windows SDK` | windows, exe |  | Path to signtool.exe. Example: `C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe` |
-| `windows.sign.description` | string | `display name` | windows, exe |  | Description shown in the UAC prompt (/d). Example: `XueHua IM` |
+| `windows.sign.thumbprint` | string | — | windows, exe, msix | `FPACK_WINDOWS_CERT_THUMBPRINT` | SHA-1 thumbprint of a certificate in the Windows certificate store (/sha1), instead of a .pfx. Example: `1A2B3C…` |
+| `windows.sign.subject` | string | — | windows, exe, msix | `FPACK_WINDOWS_CERT_SUBJECT` | Subject name of a certificate in the store (/n), instead of a thumbprint. Example: `XueHua Tech` |
+| `windows.sign.store` | string | `My` | windows, exe, msix |  | Certificate store name (/s) for thumbprint/subject. Example: `My` |
+| `windows.sign.machine_store` | bool | `false (current user)` | windows, exe, msix |  | Use the local machine store (/sm) instead of the current user's. Example: `true` |
+| `windows.sign.dlib` | path | — | windows, exe, msix | `FPACK_WINDOWS_SIGN_DLIB` | signtool plugin (/dlib) for cloud signing, e.g. Azure Trusted Signing; needs dlib_metadata. Example: `C:/tools/Azure.CodeSigning.Dlib.dll` |
+| `windows.sign.dlib_metadata` | path | — | windows, exe, msix | `FPACK_WINDOWS_SIGN_DLIB_METADATA` | Metadata file for the dlib (/dmdf), e.g. the Trusted Signing account and profile. Example: `signing/metadata.json` |
+| `windows.sign.timestamp_url` | url | `http://timestamp.digicert.com` | windows, exe, msix |  | RFC 3161 timestamp server (/tr, SHA-256). Example: `http://timestamp.sectigo.com` |
+| `windows.sign.signtool` | path | `signtool on PATH or in the newest Windows SDK` | windows, exe, msix |  | Path to signtool.exe. Example: `C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe` |
+| `windows.sign.description` | string | `app.display_name` | windows, exe, msix |  | Description shown in the UAC prompt (/d). Example: `XueHua IM` |
+| `windows.sign.url` | url | — | windows, exe, msix |  | More-information URL stored in the signature (/du). Example: `https://xuehua.example.com` |
+| `windows.sign.files` | list (or one string) | `["*.exe", "*.dll"]` | windows, exe, msix |  | Files of the Flutter Release folder to sign before packaging (patterns without / match in every folder). Example: `["*.exe", "plugins/*.dll"]` |
+| `windows.sign.verify` | bool | `true` | windows, exe, msix |  | Check signatures with signtool verify /pa; a failure (e.g. an untrusted test certificate) is a warning. Example: `false` |
 
 #### `windows.msix`
 

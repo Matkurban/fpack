@@ -3097,8 +3097,8 @@
         },
         "sign": {
           "additionalProperties": false,
-          "description": "Authenticode signing with signtool: the app .exe and the installer.",
-          "markdownDescription": "Authenticode signing with signtool: the app .exe and the installer.  \n使用 signtool 进行 Authenticode 签名：应用 .exe 与安装程序。",
+          "description": "Optional Authenticode signing with signtool: the app's .exe/.dll files (before zipping and packaging), the installer and the MSIX. Pick one certificate source: a .pfx file, the certificate store (thumbprint or subject) or a signtool plugin (dlib, e.g. Azure Trusted Signing).",
+          "markdownDescription": "Optional Authenticode signing with signtool: the app's .exe/.dll files (before zipping and packaging), the installer and the MSIX. Pick one certificate source: a .pfx file, the certificate store (thumbprint or subject) or a signtool plugin (dlib, e.g. Azure Trusted Signing).  \n可选的 Authenticode 签名（signtool）：应用的 .exe/.dll（在压缩和打包之前）、安装程序和 MSIX。选择一种证书来源：.pfx 文件、证书存储（指纹或主题名称）或 signtool 插件（dlib，如 Azure Trusted Signing）。",
           "properties": {
             "certificate": {
               "description": "Code signing certificate (.pfx). Setting it (or thumbprint) signs the app .exe, the installer and the MSIX. Env: FPACK_WINDOWS_CERTIFICATE. Targets: windows, exe, msix.",
@@ -3109,12 +3109,65 @@
               "type": "string"
             },
             "description": {
-              "description": "Description shown in the UAC prompt (/d). Default: display name. Targets: windows, exe.",
+              "description": "Description shown in the UAC prompt (/d). Default: app.display_name. Targets: windows, exe, msix.",
               "examples": [
                 "XueHua IM"
               ],
-              "markdownDescription": "**Description shown in the UAC prompt (/d).**  \nUAC 弹窗中显示的描述（/d）。\n\nDefault / 默认: `显示名`\n\nTargets / 目标: windows, exe",
+              "markdownDescription": "**Description shown in the UAC prompt (/d).**  \nUAC 弹窗中显示的描述（/d）。\n\nDefault / 默认: `app.display_name`\n\nTargets / 目标: windows, exe, msix",
               "type": "string"
+            },
+            "dlib": {
+              "description": "signtool plugin (/dlib) for cloud signing, e.g. Azure Trusted Signing; needs dlib_metadata. Env: FPACK_WINDOWS_SIGN_DLIB. Targets: windows, exe, msix.",
+              "examples": [
+                "C:/tools/Azure.CodeSigning.Dlib.dll"
+              ],
+              "markdownDescription": "**signtool plugin (/dlib) for cloud signing, e.g. Azure Trusted Signing; needs dlib_metadata.**  \n用于云签名的 signtool 插件（/dlib），如 Azure Trusted Signing；需同时设置 dlib_metadata。\n\nTargets / 目标: windows, exe, msix · Env: `FPACK_WINDOWS_SIGN_DLIB`",
+              "type": "string"
+            },
+            "dlib_metadata": {
+              "description": "Metadata file for the dlib (/dmdf), e.g. the Trusted Signing account and profile. Env: FPACK_WINDOWS_SIGN_DLIB_METADATA. Targets: windows, exe, msix.",
+              "examples": [
+                "signing/metadata.json"
+              ],
+              "markdownDescription": "**Metadata file for the dlib (/dmdf), e.g. the Trusted Signing account and profile.**  \ndlib 的元数据文件（/dmdf），如 Trusted Signing 的账户和证书配置。\n\nTargets / 目标: windows, exe, msix · Env: `FPACK_WINDOWS_SIGN_DLIB_METADATA`",
+              "type": "string"
+            },
+            "files": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Files of the Flutter Release folder to sign before packaging (patterns without / match in every folder). Default: [\"*.exe\", \"*.dll\"]. Targets: windows, exe, msix.",
+              "examples": [
+                [
+                  "*.exe",
+                  "plugins/*.dll"
+                ]
+              ],
+              "markdownDescription": "**Files of the Flutter Release folder to sign before packaging (patterns without / match in every folder).**  \n打包前要签名的 Flutter Release 文件夹中的文件（不含 / 的模式匹配所有子文件夹）。\n\nDefault / 默认: `[\"*.exe\", \"*.dll\"]`\n\nTargets / 目标: windows, exe, msix"
+            },
+            "machine_store": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
+              "description": "Use the local machine store (/sm) instead of the current user's. Default: false (current user). Targets: windows, exe, msix.",
+              "examples": [
+                true
+              ],
+              "markdownDescription": "**Use the local machine store (/sm) instead of the current user's.**  \n使用本地计算机存储（/sm），而不是当前用户的存储。\n\nDefault / 默认: `false（当前用户）`\n\nTargets / 目标: windows, exe, msix"
             },
             "password": {
               "description": "Certificate password. Env: FPACK_WINDOWS_CERTIFICATE_PASSWORD. Targets: windows, exe, msix.",
@@ -3125,29 +3178,70 @@
               "type": "string"
             },
             "signtool": {
-              "description": "Path to signtool.exe. Default: signtool on PATH or in the Windows SDK. Targets: windows, exe.",
+              "description": "Path to signtool.exe. Default: signtool on PATH or in the newest Windows SDK. Targets: windows, exe, msix.",
               "examples": [
-                "C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe"
+                "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe"
               ],
-              "markdownDescription": "**Path to signtool.exe.**  \nsigntool.exe 路径。\n\nDefault / 默认: `PATH 或 Windows SDK 中的 signtool`\n\nTargets / 目标: windows, exe",
+              "markdownDescription": "**Path to signtool.exe.**  \nsigntool.exe 路径。\n\nDefault / 默认: `PATH 或最新 Windows SDK 中的 signtool`\n\nTargets / 目标: windows, exe, msix",
+              "type": "string"
+            },
+            "store": {
+              "description": "Certificate store name (/s) for thumbprint/subject. Default: My. Targets: windows, exe, msix.",
+              "examples": [
+                "My"
+              ],
+              "markdownDescription": "**Certificate store name (/s) for thumbprint/subject.**  \nthumbprint/subject 使用的证书存储名称（/s）。\n\nDefault / 默认: `My`\n\nTargets / 目标: windows, exe, msix",
+              "type": "string"
+            },
+            "subject": {
+              "description": "Subject name of a certificate in the store (/n), instead of a thumbprint. Env: FPACK_WINDOWS_CERT_SUBJECT. Targets: windows, exe, msix.",
+              "examples": [
+                "XueHua Tech"
+              ],
+              "markdownDescription": "**Subject name of a certificate in the store (/n), instead of a thumbprint.**  \n证书存储中证书的主题名称（/n），替代指纹。\n\nTargets / 目标: windows, exe, msix · Env: `FPACK_WINDOWS_CERT_SUBJECT`",
               "type": "string"
             },
             "thumbprint": {
-              "description": "SHA-1 thumbprint of a certificate in the Windows certificate store (instead of a .pfx). Env: FPACK_WINDOWS_CERT_THUMBPRINT. Targets: windows, exe.",
+              "description": "SHA-1 thumbprint of a certificate in the Windows certificate store (/sha1), instead of a .pfx. Env: FPACK_WINDOWS_CERT_THUMBPRINT. Targets: windows, exe, msix.",
               "examples": [
                 "1A2B3C…"
               ],
-              "markdownDescription": "**SHA-1 thumbprint of a certificate in the Windows certificate store (instead of a .pfx).**  \nWindows 证书存储中证书的 SHA-1 指纹（替代 .pfx）。\n\nTargets / 目标: windows, exe · Env: `FPACK_WINDOWS_CERT_THUMBPRINT`",
+              "markdownDescription": "**SHA-1 thumbprint of a certificate in the Windows certificate store (/sha1), instead of a .pfx.**  \nWindows 证书存储中证书的 SHA-1 指纹（/sha1），替代 .pfx。\n\nTargets / 目标: windows, exe, msix · Env: `FPACK_WINDOWS_CERT_THUMBPRINT`",
               "type": "string"
             },
             "timestamp_url": {
-              "description": "RFC 3161 timestamp server. Default: http://timestamp.digicert.com. Targets: windows, exe.",
+              "description": "RFC 3161 timestamp server (/tr, SHA-256). Default: http://timestamp.digicert.com. Targets: windows, exe, msix.",
               "examples": [
                 "http://timestamp.sectigo.com"
               ],
-              "markdownDescription": "**RFC 3161 timestamp server.**  \nRFC 3161 时间戳服务器。\n\nDefault / 默认: `http://timestamp.digicert.com`\n\nTargets / 目标: windows, exe",
+              "markdownDescription": "**RFC 3161 timestamp server (/tr, SHA-256).**  \nRFC 3161 时间戳服务器（/tr，SHA-256）。\n\nDefault / 默认: `http://timestamp.digicert.com`\n\nTargets / 目标: windows, exe, msix",
               "pattern": "^(https?://|\\$\\{)",
               "type": "string"
+            },
+            "url": {
+              "description": "More-information URL stored in the signature (/du). Targets: windows, exe, msix.",
+              "examples": [
+                "https://xuehua.example.com"
+              ],
+              "markdownDescription": "**More-information URL stored in the signature (/du).**  \n签名中记录的详细信息网址（/du）。\n\nTargets / 目标: windows, exe, msix",
+              "pattern": "^(https?://|\\$\\{)",
+              "type": "string"
+            },
+            "verify": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
+              "description": "Check signatures with signtool verify /pa; a failure (e.g. an untrusted test certificate) is a warning. Default: true. Targets: windows, exe, msix.",
+              "examples": [
+                false
+              ],
+              "markdownDescription": "**Check signatures with signtool verify /pa; a failure (e.g. an untrusted test certificate) is a warning.**  \n用 signtool verify /pa 校验签名；失败（例如不受信任的测试证书）只作为警告。\n\nDefault / 默认: `true`\n\nTargets / 目标: windows, exe, msix"
             }
           },
           "type": [

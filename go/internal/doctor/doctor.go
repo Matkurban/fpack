@@ -374,6 +374,14 @@ func platformInfo(pl host.Platform, in Input) []Line {
 		if p := t.Find("iscc"); p != "" {
 			out = append(out, Line{OK, "Inno Setup · " + p, ""})
 		}
+		if in.Ctx != nil {
+			if on, p := targets.WindowsSigning(in.Ctx); on && p != "" {
+				out = append(out, Line{OK, i18n.S("code signing (windows.sign) · signtool ", "代码签名（windows.sign）· signtool ") + p, ""})
+			} else if on {
+				out = append(out, Line{Warn, i18n.S("windows.sign is set but signtool.exe was not found", "设置了 windows.sign，但找不到 signtool.exe"),
+					i18n.S("winget install Microsoft.WindowsSDK.10.0.26100 (or Visual Studio Installer → Individual components → Windows SDK)", "winget install Microsoft.WindowsSDK.10.0.26100（或 Visual Studio Installer → 单个组件 → Windows SDK）")})
+			}
+		}
 	case host.Linux:
 		for _, tool := range []string{"clang++", "cmake", "ninja", "pkg-config", "dpkg-deb", "rpmbuild", "appimagetool"} {
 			if p := t.Find(tool); p != "" {

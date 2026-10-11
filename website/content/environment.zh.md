@@ -76,5 +76,8 @@ fpack（Go 核心和 Dart 启动器）在操作系统语言为中文（任何 `z
 | `FPACK_DMG_TOOL` | `macos.dmg.tool` | `auto` \\| `hdiutil` \\| `create-dmg` | auto：装了 create-dmg（或设置了布局键）时用 create-dmg，否则用 hdiutil。 |
 | `FPACK_WINDOWS_CERTIFICATE` | `windows.sign.certificate` | path | 代码签名证书（.pfx）。设置它（或 thumbprint）后会签名应用 .exe、安装程序和 MSIX。 |
 | `FPACK_WINDOWS_CERTIFICATE_PASSWORD` | `windows.sign.password` | string | 证书密码。 |
-| `FPACK_WINDOWS_CERT_THUMBPRINT` | `windows.sign.thumbprint` | string | Windows 证书存储中证书的 SHA-1 指纹（替代 .pfx）。 |
+| `FPACK_WINDOWS_CERT_THUMBPRINT` | `windows.sign.thumbprint` | string | Windows 证书存储中证书的 SHA-1 指纹（/sha1），替代 .pfx。 |
+| `FPACK_WINDOWS_CERT_SUBJECT` | `windows.sign.subject` | string | 证书存储中证书的主题名称（/n），替代指纹。 |
+| `FPACK_WINDOWS_SIGN_DLIB` | `windows.sign.dlib` | path | 用于云签名的 signtool 插件（/dlib），如 Azure Trusted Signing；需同时设置 dlib_metadata。 |
+| `FPACK_WINDOWS_SIGN_DLIB_METADATA` | `windows.sign.dlib_metadata` | path | dlib 的元数据文件（/dmdf），如 Trusted Signing 的账户和证书配置。 |
 <!-- END GENERATED ENV -->

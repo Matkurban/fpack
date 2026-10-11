@@ -22,8 +22,7 @@ func winStep(c *Context) []FlutterStep {
 	st := FlutterStep{Key: "windows", Platform: host.Windows, Args: args, Warnings: w}
 	if winSigning(c) {
 		in, _ := locateWinRelease(c, true)
-		exe := filepath.Join(in["dir"], winExeName(c)+".exe")
-		st.After = []Op{signtoolOp(c, exe, i18n.F("sign %s (signtool)", "签名 %s（signtool）", winExeName(c)+".exe"))}
+		st.After = signFilesOps(c, in["dir"])
 	}
 	return []FlutterStep{st}
 }
@@ -34,54 +33,6 @@ func winExeName(c *Context) string {
 		return c.Project.WindowsBinary
 	}
 	return c.Project.Name
-}
-
-// winSigning reports whether windows.sign is configured.
-func winSigning(c *Context) bool {
-	s := c.Config.Windows.Sign
-	return s.Certificate != "" || s.Thumbprint != ""
-}
-
-func signtool(c *Context) string {
-	if p := c.Config.Windows.Sign.Signtool; p != "" {
-		return c.Project.Abs(p)
-	}
-	return c.Tools.Find("signtool")
-}
-
-// signtoolArgs are the arguments after "signtool sign" (file excluded).
-// quote wraps paths/descriptions (Inno's $q for its SignTool command line).
-func signtoolArgs(c *Context, quote func(string) string) (args, secrets []string) {
-	s := c.Config.Windows.Sign
-	args = []string{"/fd", "sha256", "/tr", orDefault(s.TimestampURL, "http://timestamp.digicert.com"), "/td", "sha256"}
-	if s.Thumbprint != "" {
-		args = append(args, "/sha1", strings.ReplaceAll(s.Thumbprint, " ", ""))
-	} else {
-		args = append(args, "/f", quote(c.Project.Abs(s.Certificate)))
-		if s.Password != "" {
-			args = append(args, "/p", s.Password)
-			secrets = append(secrets, s.Password)
-		}
-	}
-	args = append(args, "/d", quote(orDefault(s.Description, c.DisplayName())))
-	return args, secrets
-}
-
-func signtoolOp(c *Context, file, desc string) Op {
-	args, secrets := signtoolArgs(c, func(s string) string { return s })
-	return Op{Desc: desc, Cmd: &runner.Cmd{Name: orName(signtool(c), "signtool.exe"), Args: append(append([]string{"sign"}, args...), file), Secret: secrets},
-		Hint: i18n.S("check windows.sign (certificate path/password or thumbprint) and the timestamp server", "请检查 windows.sign（证书路径/密码或指纹）以及时间戳服务器")}
-}
-
-func signPreflight(c *Context) []Issue {
-	if !winSigning(c) || c.Host.OS != "windows" {
-		return nil
-	}
-	if signtool(c) == "" {
-		return []Issue{fatal(i18n.S("windows.sign is set but signtool.exe was not found", "设置了 windows.sign，但找不到 signtool.exe"),
-			i18n.S("install the Windows SDK (Signing Tools), or set windows.sign.signtool", "安装 Windows SDK（Signing Tools），或设置 windows.sign.signtool"))}
-	}
-	return nil
 }
 
 func locateWinRelease(c *Context, predicted bool) (Inputs, error) {
@@ -330,6 +281,9 @@ func (*WinExe) Package(c *Context, in Inputs) (*Plan, error) {
 	}
 	ops = append(ops, Op{Desc: i18n.S("compile installer (ISCC)", "编译安装程序（ISCC）"), Cmd: &runner.Cmd{Name: orName(iscc(c), "ISCC.exe"), Args: args, Secret: secrets}},
 		moveOp(c, filepath.Join(stage, base+".exe"), dst))
+	if v := verifyOp(c, []string{dst}, filepath.Base(dst)); sign && v.Cmd != nil {
+		ops = append(ops, v)
+	}
 	pl := &Plan{Ops: ops, Artifacts: []Artifact{{Path: dst, Kind: kind, Arch: winArch(c), Variant: "setup"}}}
 	if sign && is.Script != "" {
 		pl.Notes = append(pl.Notes, i18n.S("custom script: add SignTool=fpack (and SignedUninstaller=yes) to [Setup] to use windows.sign", "自定义脚本：在 [Setup] 中加入 SignTool=fpack（以及 SignedUninstaller=yes）即可使用 windows.sign 签名"))
@@ -449,6 +403,9 @@ func (*Msix) Preflight(c *Context) []Issue {
 		out = append(out, fatal(i18n.S("the `msix` package is not in dev_dependencies (fpack does not edit pubspec.yaml)", "dev_dependencies 中没有 `msix` 包（fpack 不会修改 pubspec.yaml）"), "flutter pub add --dev msix"))
 	}
 	m := c.Config.Windows.Msix
+	if c.Config.Windows.Sign.Dlib != "" && m.Certificate == "" && m.Publisher == "" && !has(c, "publisher") {
+		out = append(out, warn(i18n.S("windows.sign.dlib signs the MSIX after msix:create: set windows.msix.publisher to the certificate subject (CN=…)", "windows.sign.dlib 会在 msix:create 之后签名 MSIX：请把 windows.msix.publisher 设为证书主题（CN=…）"), ""))
+	}
 	if m.Sign != nil && !*m.Sign && m.Publisher == "" && !boolOr(m.Store, false) {
 		out = append(out, warn(i18n.S("windows.msix.sign is false: set windows.msix.publisher (CN=…) so the package identity is valid", "windows.msix.sign 为 false：请设置 windows.msix.publisher（CN=…），包标识才有效"), ""))
 	}
@@ -518,7 +475,7 @@ func msixArgs(c *Context) (args, secrets []string, signedWith string) {
 	}
 	cert, pw := m.Certificate, m.CertificatePassword
 	ws := c.Config.Windows.Sign
-	if cert == "" && ws.Certificate != "" {
+	if cert == "" && ws.Dlib == "" && ws.Certificate != "" {
 		cert, pw = ws.Certificate, orDefault(pw, ws.Password)
 	}
 	switch {
@@ -529,9 +486,18 @@ func msixArgs(c *Context) (args, secrets []string, signedWith string) {
 			secrets = append(secrets, pw)
 		}
 		signedWith = cert
-	case ws.Thumbprint != "":
-		add("--signtool-options", "/fd SHA256 /sha1 "+ws.Thumbprint+" /tr "+orDefault(ws.TimestampURL, "http://timestamp.digicert.com")+" /td SHA256")
-		signedWith = "thumbprint " + ws.Thumbprint
+	case ws.Dlib != "":
+		// msix:create cannot sign through a signtool plugin: build the
+		// package unsigned, then fpack signs it (see Msix.Package).
+		add("--sign-msix", "false")
+		signedWith = "dlib " + ws.Dlib
+	case winSigning(c):
+		// The certificate store: msix:create runs signtool with these
+		// options and reads the publisher from the certificate.
+		st, sec := signtoolArgs(c, quoteArg)
+		add("--signtool-options", strings.Join(st, " "))
+		secrets = append(secrets, sec...)
+		signedWith = orDefault(ws.Thumbprint, ws.Subject)
 	}
 	return args, secrets, signedWith
 }
@@ -568,15 +534,24 @@ func (*Msix) Package(c *Context, in Inputs) (*Plan, error) {
 	if n := msixDescriptionNote(c); n != "" {
 		notes = append(notes, n)
 	}
+	ops := []Op{
+		resetDirOp(c, stage),
+		{Desc: i18n.S("create MSIX (msix package)", "创建 MSIX（msix 包）"), Cmd: &runner.Cmd{Name: c.SDK.Dart, Args: args, Dir: c.Project.Root, Secret: secrets}},
+		moveOp(c, filepath.Join(stage, base+".msix"), dst),
+	}
+	if signedWith != "" {
+		if c.Config.Windows.Sign.Dlib != "" && m.Certificate == "" {
+			ops = append(ops, signOp(c, dst))
+		}
+		if v := verifyOp(c, []string{dst}, filepath.Base(dst)); v.Cmd != nil {
+			ops = append(ops, v)
+		}
+	}
 	kind := "MSIX"
 	if signedWith != "" {
 		kind = "MSIX (signed)"
 	}
-	return &Plan{Notes: notes, Ops: []Op{
-		resetDirOp(c, stage),
-		{Desc: i18n.S("create MSIX (msix package)", "创建 MSIX（msix 包）"), Cmd: &runner.Cmd{Name: c.SDK.Dart, Args: args, Dir: c.Project.Root, Secret: secrets}},
-		moveOp(c, filepath.Join(stage, base+".msix"), dst),
-	}, Artifacts: []Artifact{{Path: dst, Kind: kind, Arch: winArch(c)}}}, nil
+	return &Plan{Notes: notes, Ops: ops, Artifacts: []Artifact{{Path: dst, Kind: kind, Arch: winArch(c)}}}, nil
 }
 
 // msixDescriptionNote explains that a windows.msix.description (or
@@ -593,6 +568,12 @@ func msixDescriptionNote(c *Context) string {
 	return i18n.S(
 		"the msix package takes the description only from pubspec.yaml: add msix_config: { description: \""+want+"\" } there to use it",
 		"msix 包只从 pubspec.yaml 读取描述：如需使用，请在其中添加 msix_config: { description: \""+want+"\" }")
+}
+
+// has reports whether the project's msix_config sets key.
+func has(c *Context, key string) bool {
+	_, ok := c.Project.Section("msix_config")[key]
+	return ok
 }
 
 func orName(p, name string) string {

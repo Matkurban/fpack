@@ -3,7 +3,21 @@ title: "Windows"
 description: "Portable zip, Inno Setup installer, MSIX and code signing."
 ---
 
-With `windows.sign.certificate` (.pfx) + `password`, or `thumbprint` (certificate store): right after `flutter build windows` the app .exe is signed with signtool (so the zip, installer and MSIX all contain a signed exe), the Inno Setup installer and uninstaller are signed through `SignTool=`, and the MSIX uses the same certificate; the timestamp server defaults to `http://timestamp.digicert.com` and signtool is located in the Windows SDK automatically.
+Code signing is optional. Choose one certificate source in `windows.sign`:
+
+- a `.pfx` file: `certificate` + `password` (`FPACK_WINDOWS_CERTIFICATE` / `FPACK_WINDOWS_CERTIFICATE_PASSWORD`; the password is never printed),
+- the certificate store: `thumbprint` (`/sha1`) or `subject` (`/n`), with `store` (`/s`, default `My`) and `machine_store: true` (`/sm`),
+- a signtool plugin for cloud signing, e.g. Azure Trusted Signing: `dlib` + `dlib_metadata` (`/dlib` / `/dmdf`).
+
+Right after `flutter build windows`, fpack signs `files` of the Release folder (default `*.exe` and `*.dll`), so the portable zip, the installer and the MSIX all contain signed binaries. The Inno Setup installer and uninstaller are signed through `SignTool=`; the MSIX is signed by `msix:create` with the same certificate (with `dlib`, fpack signs the finished MSIX). Every signature uses SHA-256 and an RFC 3161 timestamp (`timestamp_url`, default `http://timestamp.digicert.com`), with `description` (`/d`) and `url` (`/du`); afterwards `signtool verify /pa` checks it (`verify: false` turns that off; a failure, e.g. a self-signed test certificate, is only a warning). signtool is found on PATH or in the newest Windows SDK (or set `signtool`); `fpack doctor` reports it and how to install the SDK (`winget install Microsoft.WindowsSDK.10.0.26100`, needs admin; without admin rights, extract signtool from the `Microsoft.Windows.SDK.BuildTools` NuGet package and set `signtool`).
+
+```yaml
+windows:
+  sign:
+    certificate: ${WINDOWS_PFX}            # or thumbprint: / subject: / dlib:
+    password: ${WINDOWS_PFX_PASSWORD}
+    url: https://example.com
+```
 
 Inno Setup installers support publisher/URL, copyright, install directory, Start menu group, desktop shortcut, license/info pages, icon and wizard images, minimum Windows version, `privileges` (`user` without admin / `admin` / `ask`) and multiple languages (`languages: [zh-CN, en]`, the first is the default; fpack ships the Chinese language file older Inno Setup versions lack). MSIX display name, publisher, capabilities, file associations, protocols, version etc. can be set directly in `windows.msix` and take precedence over pubspec's `msix_config`.
 

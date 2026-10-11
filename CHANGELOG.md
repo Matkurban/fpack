@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.8
+
+### Added
+- Complete, optional Windows code signing (`windows.sign`):
+  - certificate sources: `.pfx` (`certificate` + `password`), the certificate store by `thumbprint` (`/sha1`) or `subject` (`/n`) with `store` (`/s`) and `machine_store` (`/sm`), or a signtool plugin such as Azure Trusted Signing (`dlib` + `dlib_metadata`); new env vars `FPACK_WINDOWS_CERT_SUBJECT`, `FPACK_WINDOWS_SIGN_DLIB`, `FPACK_WINDOWS_SIGN_DLIB_METADATA`;
+  - signs `files` of the Release folder (default `*.exe` and `*.dll`, previously only the app exe) before zipping/packaging, the Inno Setup installer and uninstaller, and the MSIX (store certificates through `msix:create --signtool-options`; with `dlib` fpack signs the finished MSIX);
+  - SHA-256 + RFC 3161 timestamp, `description` (`/d`) and `url` (`/du`); `signtool verify /pa` after signing (`verify`, a failure is a warning);
+  - signtool is found in the newest Windows SDK (by version, host architecture) or PATH; `fpack doctor` reports it and the `winget install Microsoft.WindowsSDK.10.0.26100` fix; checks for a missing .pfx or dlib metadata.
+
 ## 1.1.7
 
 ### Fixed

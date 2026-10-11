@@ -74,5 +74,8 @@ Generated from the key registry. They override `fpack.yaml` and are overridden b
 | `FPACK_DMG_TOOL` | `macos.dmg.tool` | `auto` \\| `hdiutil` \\| `create-dmg` | auto = create-dmg when installed (or when layout keys are set), else hdiutil. |
 | `FPACK_WINDOWS_CERTIFICATE` | `windows.sign.certificate` | path | Code signing certificate (.pfx). Setting it (or thumbprint) signs the app .exe, the installer and the MSIX. |
 | `FPACK_WINDOWS_CERTIFICATE_PASSWORD` | `windows.sign.password` | string | Certificate password. |
-| `FPACK_WINDOWS_CERT_THUMBPRINT` | `windows.sign.thumbprint` | string | SHA-1 thumbprint of a certificate in the Windows certificate store (instead of a .pfx). |
+| `FPACK_WINDOWS_CERT_THUMBPRINT` | `windows.sign.thumbprint` | string | SHA-1 thumbprint of a certificate in the Windows certificate store (/sha1), instead of a .pfx. |
+| `FPACK_WINDOWS_CERT_SUBJECT` | `windows.sign.subject` | string | Subject name of a certificate in the store (/n), instead of a thumbprint. |
+| `FPACK_WINDOWS_SIGN_DLIB` | `windows.sign.dlib` | path | signtool plugin (/dlib) for cloud signing, e.g. Azure Trusted Signing; needs dlib_metadata. |
+| `FPACK_WINDOWS_SIGN_DLIB_METADATA` | `windows.sign.dlib_metadata` | path | Metadata file for the dlib (/dmdf), e.g. the Trusted Signing account and profile. |
 <!-- END GENERATED ENV -->

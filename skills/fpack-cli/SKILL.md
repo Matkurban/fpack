@@ -111,8 +111,12 @@ Certificates and credentials: https://matkurban.github.io/fpack/platforms/macos/
 
 ### Windows signing
 
-Set `FPACK_WINDOWS_CERTIFICATE` (.pfx) + `FPACK_WINDOWS_CERTIFICATE_PASSWORD`,
-or `FPACK_WINDOWS_CERT_THUMBPRINT`; fpack signs the exe/MSIX with signtool.
+Optional. Set `FPACK_WINDOWS_CERTIFICATE` (.pfx) + `FPACK_WINDOWS_CERTIFICATE_PASSWORD`,
+or `FPACK_WINDOWS_CERT_THUMBPRINT` / `FPACK_WINDOWS_CERT_SUBJECT` (certificate store),
+or `windows.sign.dlib` + `dlib_metadata` (Azure Trusted Signing). fpack signs the
+Release `*.exe`/`*.dll`, the installer and the MSIX with signtool (SHA-256 +
+timestamp) and verifies them; `fpack doctor` reports signtool (install with
+`winget install Microsoft.WindowsSDK.10.0.26100`).
 
 ### GitHub Actions
 

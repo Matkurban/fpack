@@ -322,16 +322,24 @@ Inno Setup 安装程序（.exe）。
 
 #### `windows.sign`
 
-使用 signtool 进行 Authenticode 签名：应用 .exe 与安装程序。
+可选的 Authenticode 签名（signtool）：应用的 .exe/.dll（在压缩和打包之前）、安装程序和 MSIX。选择一种证书来源：.pfx 文件、证书存储（指纹或主题名称）或 signtool 插件（dlib，如 Azure Trusted Signing）。
 
 | 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
 | --- | --- | --- | --- | --- | --- |
 | `windows.sign.certificate` | path | — | windows, exe, msix | `FPACK_WINDOWS_CERTIFICATE` | 代码签名证书（.pfx）。设置它（或 thumbprint）后会签名应用 .exe、安装程序和 MSIX。 示例：`C:/certs/codesign.pfx` |
 | `windows.sign.password` | string | — | windows, exe, msix | `FPACK_WINDOWS_CERTIFICATE_PASSWORD` | 证书密码。 示例：`${WINDOWS_CERT_PASSWORD}` |
-| `windows.sign.thumbprint` | string | — | windows, exe | `FPACK_WINDOWS_CERT_THUMBPRINT` | Windows 证书存储中证书的 SHA-1 指纹（替代 .pfx）。 示例：`1A2B3C…` |
-| `windows.sign.timestamp_url` | url | `http://timestamp.digicert.com` | windows, exe |  | RFC 3161 时间戳服务器。 示例：`http://timestamp.sectigo.com` |
-| `windows.sign.signtool` | path | `PATH 或 Windows SDK 中的 signtool` | windows, exe |  | signtool.exe 路径。 示例：`C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe` |
-| `windows.sign.description` | string | `显示名` | windows, exe |  | UAC 弹窗中显示的描述（/d）。 示例：`XueHua IM` |
+| `windows.sign.thumbprint` | string | — | windows, exe, msix | `FPACK_WINDOWS_CERT_THUMBPRINT` | Windows 证书存储中证书的 SHA-1 指纹（/sha1），替代 .pfx。 示例：`1A2B3C…` |
+| `windows.sign.subject` | string | — | windows, exe, msix | `FPACK_WINDOWS_CERT_SUBJECT` | 证书存储中证书的主题名称（/n），替代指纹。 示例：`XueHua Tech` |
+| `windows.sign.store` | string | `My` | windows, exe, msix |  | thumbprint/subject 使用的证书存储名称（/s）。 示例：`My` |
+| `windows.sign.machine_store` | bool | `false（当前用户）` | windows, exe, msix |  | 使用本地计算机存储（/sm），而不是当前用户的存储。 示例：`true` |
+| `windows.sign.dlib` | path | — | windows, exe, msix | `FPACK_WINDOWS_SIGN_DLIB` | 用于云签名的 signtool 插件（/dlib），如 Azure Trusted Signing；需同时设置 dlib_metadata。 示例：`C:/tools/Azure.CodeSigning.Dlib.dll` |
+| `windows.sign.dlib_metadata` | path | — | windows, exe, msix | `FPACK_WINDOWS_SIGN_DLIB_METADATA` | dlib 的元数据文件（/dmdf），如 Trusted Signing 的账户和证书配置。 示例：`signing/metadata.json` |
+| `windows.sign.timestamp_url` | url | `http://timestamp.digicert.com` | windows, exe, msix |  | RFC 3161 时间戳服务器（/tr，SHA-256）。 示例：`http://timestamp.sectigo.com` |
+| `windows.sign.signtool` | path | `PATH 或最新 Windows SDK 中的 signtool` | windows, exe, msix |  | signtool.exe 路径。 示例：`C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe` |
+| `windows.sign.description` | string | `app.display_name` | windows, exe, msix |  | UAC 弹窗中显示的描述（/d）。 示例：`XueHua IM` |
+| `windows.sign.url` | url | — | windows, exe, msix |  | 签名中记录的详细信息网址（/du）。 示例：`https://xuehua.example.com` |
+| `windows.sign.files` | list（或单个字符串） | `["*.exe", "*.dll"]` | windows, exe, msix |  | 打包前要签名的 Flutter Release 文件夹中的文件（不含 / 的模式匹配所有子文件夹）。 示例：`["*.exe", "plugins/*.dll"]` |
+| `windows.sign.verify` | bool | `true` | windows, exe, msix |  | 用 signtool verify /pa 校验签名；失败（例如不受信任的测试证书）只作为警告。 示例：`false` |
 
 #### `windows.msix`
 
