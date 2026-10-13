@@ -3,6 +3,7 @@
 package doctor
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -95,7 +96,7 @@ func Run(in Input) *Report {
 			i18n.S("install Flutter (https://docs.flutter.dev/get-started/install) and add it to PATH, or pass --flutter <sdk> / set FPACK_FLUTTER", "安装 Flutter（https://docs.flutter.dev/get-started/install）并加入 PATH，或使用 --flutter <SDK路径> / 设置 FPACK_FLUTTER")})
 	}
 	if in.SDKErr != nil && (in.SDK == nil || in.SDK.Root == "") {
-		if _, ok := in.SDKErr.(*flutter.NotSDKError); ok {
+		if nse := (*flutter.NotSDKError)(nil); errors.As(in.SDKErr, &nse) {
 			r.General[len(r.General)-1].Text = in.SDKErr.Error()
 		}
 	}
@@ -403,7 +404,7 @@ func lastLine(s string) string {
 }
 
 // Print renders the report.
-func Print(u *ui.UI, r *Report, projErr error) {
+func Print(u *ui.UI, r *Report) {
 	u.Println(u.Bold("fpack doctor") + u.Dim("  ·  fpack "+r.FpackVersion+"  ·  "+r.Host))
 	u.Blank()
 	u.Title(i18n.S("General", "通用"))
@@ -418,11 +419,12 @@ func Print(u *ui.UI, r *Report, projErr error) {
 		u.Println(u.Green("✓ ") + i18n.S("ready to build here: ", "当前可构建：") + u.Bold(strings.Join(r.Ready, " ")))
 	}
 	msg := i18n.F("%d problem(s), %d warning(s)", "%d 个问题，%d 个警告", r.Problems, r.Warnings)
-	if r.Problems > 0 {
+	switch {
+	case r.Problems > 0:
 		u.Println(u.Red("✗ " + msg))
-	} else if r.Warnings > 0 {
+	case r.Warnings > 0:
 		u.Println(u.Yellow("! " + msg))
-	} else {
+	default:
 		u.Println(u.Green("✓ " + i18n.S("everything looks good", "一切正常")))
 	}
 }

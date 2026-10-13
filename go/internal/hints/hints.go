@@ -157,9 +157,9 @@ var errorLine = regexp.MustCompile(`(?i)(\berror\b|\bfailed\b|failure|exception|
 // Excerpt picks the most relevant lines from the tail of a failed command:
 // the Gradle "What went wrong" block when present, otherwise a window that
 // starts around the first error-looking line among the last lines.
-func Excerpt(lines []string, max int) []string {
-	if max <= 0 {
-		max = 20
+func Excerpt(lines []string, limit int) []string {
+	if limit <= 0 {
+		limit = 20
 	}
 	// Drop trailing noise.
 	trimmed := make([]string, 0, len(lines))
@@ -180,8 +180,8 @@ func Excerpt(lines []string, max int) []string {
 					break
 				}
 			}
-			if end-i > max {
-				end = i + max
+			if end-i > limit {
+				end = i + limit
 			}
 			return lines[i:end]
 		}
@@ -198,8 +198,8 @@ func Excerpt(lines []string, max int) []string {
 		}
 	}
 	if first < 0 {
-		if len(window) > max {
-			return window[len(window)-max:]
+		if len(window) > limit {
+			return window[len(window)-limit:]
 		}
 		return window
 	}
@@ -207,11 +207,11 @@ func Excerpt(lines []string, max int) []string {
 	if start < 0 {
 		start = 0
 	}
-	end := start + max
+	end := start + limit
 	if end > len(window) {
 		end = len(window)
-		if end-max > 0 && end-max < start {
-			start = end - max
+		if end-limit > 0 && end-limit < start {
+			start = end - limit
 		}
 	}
 	return window[start:end]

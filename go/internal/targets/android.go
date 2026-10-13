@@ -96,7 +96,7 @@ func (s *AndroidSigning) Materialize() error {
 // Cleanup removes a materialized keystore.
 func (s *AndroidSigning) Cleanup() {
 	if s.written {
-		os.Remove(s.StoreFile)
+		_ = os.Remove(s.StoreFile) // best-effort removal of a temp keystore
 		s.written = false
 	}
 }
@@ -201,13 +201,24 @@ func firstLine(s string) string {
 // APK builds Android APKs: universal, per-ABI, or both.
 type APK struct{}
 
-func (*APK) Name() string            { return "apk" }
+// Name implements [Target].
+func (*APK) Name() string { return "apk" }
+
+// Platform implements [Target].
 func (*APK) Platform() host.Platform { return host.Android }
-func (*APK) Formats() []string       { return []string{".apk"} }
-func (*APK) Optional() bool          { return false }
+
+// Formats implements [Target].
+func (*APK) Formats() []string { return []string{".apk"} }
+
+// Optional implements [Target].
+func (*APK) Optional() bool { return false }
+
+// Description implements [Target].
 func (*APK) Description() string {
 	return i18n.S("Android APK (universal and/or per-ABI)", "Android APK（通用包和/或按 ABI 拆分）")
 }
+
+// Preflight implements [Target].
 func (*APK) Preflight(c *Context) []Issue {
 	out := androidPreflight(c)
 	if apkSchemesSet(c) {
@@ -273,6 +284,7 @@ func androidArgs(c *Context, sub string) ([]string, []string) {
 	return args, warns
 }
 
+// Steps implements [Target].
 func (*APK) Steps(c *Context) ([]FlutterStep, error) {
 	env, secrets := c.Signing.GradleEnv()
 	mode := c.Config.SplitPerABI()
@@ -305,6 +317,7 @@ func APKFileName(abi, flavor, mode string) string {
 	return strings.Join(parts, "-") + ".apk"
 }
 
+// Locate implements [Target].
 func (*APK) Locate(c *Context, predicted bool, since time.Time) (Inputs, error) {
 	dir := filepath.Join(c.Project.Root, "build", "app", "outputs", "flutter-apk")
 	in := Inputs{}
@@ -355,6 +368,7 @@ func (*APK) Locate(c *Context, predicted bool, since time.Time) (Inputs, error) 
 	return in, nil
 }
 
+// Package implements [Target].
 func (t *APK) Package(c *Context, in Inputs) (*Plan, error) {
 	pl := &Plan{}
 	order := append([]string{"universal"}, c.Config.ABIs()...)
@@ -449,15 +463,27 @@ func signerCheck(c *Context, pattern string) func(runner.Result) (string, error)
 // AAB builds an Android App Bundle for Google Play.
 type AAB struct{}
 
-func (*AAB) Name() string            { return "aab" }
+// Name implements [Target].
+func (*AAB) Name() string { return "aab" }
+
+// Platform implements [Target].
 func (*AAB) Platform() host.Platform { return host.Android }
-func (*AAB) Formats() []string       { return []string{".aab"} }
-func (*AAB) Optional() bool          { return false }
+
+// Formats implements [Target].
+func (*AAB) Formats() []string { return []string{".aab"} }
+
+// Optional implements [Target].
+func (*AAB) Optional() bool { return false }
+
+// Description implements [Target].
 func (*AAB) Description() string {
 	return i18n.S("Android App Bundle for Google Play", "Android App Bundle（用于 Google Play）")
 }
+
+// Preflight implements [Target].
 func (*AAB) Preflight(c *Context) []Issue { return androidPreflight(c) }
 
+// Steps implements [Target].
 func (*AAB) Steps(c *Context) ([]FlutterStep, error) {
 	env, secrets := c.Signing.GradleEnv()
 	args, w := androidArgs(c, "appbundle")
@@ -477,6 +503,7 @@ func AABPath(flavor, mode string) string {
 	return filepath.Join("build", "app", "outputs", "bundle", dir, file)
 }
 
+// Locate implements [Target].
 func (*AAB) Locate(c *Context, predicted bool, since time.Time) (Inputs, error) {
 	want := filepath.Join(c.Project.Root, AABPath(c.Flavor(), c.Mode()))
 	if predicted {
@@ -498,6 +525,7 @@ func (*AAB) Locate(c *Context, predicted bool, since time.Time) (Inputs, error) 
 	return Inputs{"aab": p}, nil
 }
 
+// Package implements [Target].
 func (*AAB) Package(c *Context, in Inputs) (*Plan, error) {
 	dst, err := c.ArtifactPath(host.Android, "", "", ".aab")
 	if err != nil {

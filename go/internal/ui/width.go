@@ -42,15 +42,15 @@ func DisplayWidth(s string) int {
 }
 
 // Truncate shortens s to at most max columns, adding an ellipsis.
-func Truncate(s string, max int) string {
-	if max <= 1 || DisplayWidth(s) <= max {
+func Truncate(s string, limit int) string {
+	if limit <= 1 || DisplayWidth(s) <= limit {
 		return s
 	}
 	var b strings.Builder
 	w := 0
 	for _, r := range s {
 		rw := RuneWidth(r)
-		if w+rw > max-1 {
+		if w+rw > limit-1 {
 			break
 		}
 		b.WriteRune(r)

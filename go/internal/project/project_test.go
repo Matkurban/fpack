@@ -80,7 +80,7 @@ func TestSplitVersion(t *testing.T) {
 
 func write(t *testing.T, path, content string) {
 	t.Helper()
-	os.MkdirAll(filepath.Dir(path), 0o755)
+	must(t, os.MkdirAll(filepath.Dir(path), 0o755))
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ msix_config:
 	write(t, filepath.Join(app, "lib", "main.dart"), "")
 	write(t, filepath.Join(app, "flutter_launcher_icons.yaml"), "flutter_launcher_icons:\n  image_path: assets/icon.png\n")
 	write(t, filepath.Join(app, "assets", "icon.png"), "png")
-	os.MkdirAll(filepath.Join(app, "web"), 0o755)
+	must(t, os.MkdirAll(filepath.Join(app, "web"), 0o755))
 
 	p, err := Find(filepath.Join(app, "lib"))
 	if err != nil {
@@ -157,8 +157,8 @@ func TestSchemesSharedUserAndWorkspace(t *testing.T) {
 		"Runner.xcworkspace/xcshareddata/xcschemes/prod.xcscheme",
 	} {
 		p := filepath.Join(root, f)
-		os.MkdirAll(filepath.Dir(p), 0o755)
-		os.WriteFile(p, nil, 0o644)
+		must(t, os.MkdirAll(filepath.Dir(p), 0o755))
+		must(t, os.WriteFile(p, nil, 0o644))
 	}
 	if got := schemes(filepath.Join(root, "Runner.xcodeproj")); !reflect.DeepEqual(got, []string{"dev", "prod", "staging"}) {
 		t.Fatal(got)

@@ -61,7 +61,7 @@ func doctorCommand() *command {
 			in.WrapperOK = i18n.F("Dart wrapper %s ≠ core %s", "Dart 包装器 %s ≠ 核心 %s", w, version.Version)
 		}
 		r := doctor.Run(in)
-		doctor.Print(u, r, in.ProjErr)
+		doctor.Print(u, r)
 		if p.b("json") {
 			printJSON(e, r)
 		}
@@ -270,7 +270,7 @@ func (pr *prompter) ask(q, def string) string {
 	if def != "" {
 		d = " " + pr.u.Dim("["+def+"]")
 	}
-	fmt.Fprint(pr.u.Writer(), pr.u.Cyan("? ")+q+d+" ")
+	_, _ = fmt.Fprint(pr.u.Writer(), pr.u.Cyan("? ")+q+d+" ")
 	line, err := pr.r.ReadString('\n')
 	line = strings.TrimSpace(line)
 	if err != nil && err != io.EOF {
@@ -478,7 +478,7 @@ func contains(l []string, v string) bool {
 
 // lineDiff returns a compact line diff (LCS based): "-" removed, "+" added,
 // "…" for skipped unchanged runs. At most max lines are returned.
-func lineDiff(a, b string, max int) []string {
+func lineDiff(a, b string, limit int) []string {
 	x, y := strings.Split(strings.TrimRight(a, "\n"), "\n"), strings.Split(strings.TrimRight(b, "\n"), "\n")
 	if len(x)*len(y) > 4_000_000 {
 		return []string{fmt.Sprintf("(%d → %d lines)", len(x), len(y))}
@@ -490,11 +490,12 @@ func lineDiff(a, b string, max int) []string {
 	}
 	for i := n - 1; i >= 0; i-- {
 		for j := m - 1; j >= 0; j-- {
-			if x[i] == y[j] {
+			switch {
+			case x[i] == y[j]:
 				lcs[i][j] = lcs[i+1][j+1] + 1
-			} else if lcs[i+1][j] >= lcs[i][j+1] {
+			case lcs[i+1][j] >= lcs[i][j+1]:
 				lcs[i][j] = lcs[i+1][j]
-			} else {
+			default:
 				lcs[i][j] = lcs[i][j+1]
 			}
 		}
@@ -523,7 +524,7 @@ func lineDiff(a, b string, max int) []string {
 			out = append(out, "- "+x[i])
 			i++
 		}
-		if len(out) >= max {
+		if len(out) >= limit {
 			return append(out, i18n.S("… (diff truncated)", "…（差异过长已截断）"))
 		}
 	}
@@ -544,19 +545,19 @@ func schemaCommand() *command {
 	c.run = func(e *Env, p *parsed) int {
 		b, err := config.Schema()
 		if err != nil {
-			fmt.Fprintln(e.Stderr, err)
+			_, _ = fmt.Fprintln(e.Stderr, err)
 			return build.ExitFailed
 		}
 		b = append(b, '\n')
 		if out := p.s("output"); out != "" {
 			if err := os.WriteFile(out, b, 0o644); err != nil {
-				fmt.Fprintln(e.Stderr, err)
+				_, _ = fmt.Fprintln(e.Stderr, err)
 				return build.ExitFailed
 			}
-			fmt.Fprintln(e.Stderr, i18n.F("wrote %s", "已生成 %s", out))
+			_, _ = fmt.Fprintln(e.Stderr, i18n.F("wrote %s", "已生成 %s", out))
 			return 0
 		}
-		e.Stdout.Write(b)
+		_, _ = e.Stdout.Write(b)
 		return 0
 	}
 	return c

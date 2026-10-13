@@ -150,8 +150,8 @@ func TestConflictWithoutForce(t *testing.T) {
 	}
 	proj, sdk := fixture(t, "")
 	existing := filepath.Join(proj, "dist", "2.3.4+5", "my_app-2.3.4+5-web.zip")
-	os.MkdirAll(filepath.Dir(existing), 0o755)
-	os.WriteFile(existing, []byte("old"), 0o644)
+	must(t, os.MkdirAll(filepath.Dir(existing), 0o755))
+	must(t, os.WriteFile(existing, []byte("old"), 0o644))
 	r := run(t, nil, "build", "web", "-C", proj, "--flutter", sdk)
 	if r.code != build.ExitPrereq || !strings.Contains(r.all(), "already exist") || !strings.Contains(r.all(), "--force") {
 		t.Fatalf("exit %d\n%s", r.code, r.all())
@@ -298,7 +298,7 @@ func TestInitYesWritesConfigOnce(t *testing.T) {
 		t.Fatalf("generated fpack.yaml rejected: %s", r.stderr)
 	}
 	// Second init never overwrites: it writes fpack.yaml.new and a diff.
-	os.WriteFile(filepath.Join(proj, "fpack.yaml"), append(b, []byte("# my edit\n")...), 0o644)
+	must(t, os.WriteFile(filepath.Join(proj, "fpack.yaml"), append(b, []byte("# my edit\n")...), 0o644))
 	r = run(t, nil, "init", "--yes", "-C", proj, "--flutter", sdk)
 	after, _ := os.ReadFile(filepath.Join(proj, "fpack.yaml"))
 	if r.code != 0 || !strings.HasSuffix(string(after), "# my edit\n") {
@@ -328,7 +328,7 @@ case "$2" in
   apk) echo "FAILURE: Build failed with an exception."; echo "* What went wrong:"; echo "Execution failed for task ':app:minifyReleaseWithR8'."; echo "> Missing classes detected while running R8."; echo "* Try:"; exit 1 ;;
 esac
 `
-	os.WriteFile(filepath.Join(sdk, "bin", "flutter"), []byte(script), 0o755)
+	must(t, os.WriteFile(filepath.Join(sdk, "bin", "flutter"), []byte(script), 0o755))
 
 	r := run(t, nil, "build", "web", "--json", "-C", proj, "--flutter", sdk)
 	s := summary(t, r)
@@ -432,7 +432,7 @@ func TestPostBuildRunsAfterBuildFailure(t *testing.T) {
 		t.Skip("fake flutter is a shell script")
 	}
 	proj, sdk := fixture(t, "hooks:\n  post_build: ['echo \"done $FPACK_SUCCESS\" >> hooks.log']\n")
-	os.WriteFile(filepath.Join(sdk, "bin", "flutter"), []byte("#!/bin/sh\necho boom >&2\nexit 1\n"), 0o755)
+	must(t, os.WriteFile(filepath.Join(sdk, "bin", "flutter"), []byte("#!/bin/sh\necho boom >&2\nexit 1\n"), 0o755))
 	r := run(t, nil, "build", "web", "-C", proj, "--flutter", sdk)
 	if r.code != build.ExitFailed {
 		t.Fatalf("exit %d\n%s", r.code, r.all())

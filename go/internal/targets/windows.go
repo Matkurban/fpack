@@ -54,16 +54,33 @@ func winArch(c *Context) string { return c.Host.FlutterArch() }
 // WinZip is the portable Windows folder, zipped.
 type WinZip struct{}
 
-func (*WinZip) Name() string            { return "windows" }
+// Name implements [Target].
+func (*WinZip) Name() string { return "windows" }
+
+// Platform implements [Target].
 func (*WinZip) Platform() host.Platform { return host.Windows }
-func (*WinZip) Formats() []string       { return []string{".zip"} }
-func (*WinZip) Optional() bool          { return false }
+
+// Formats implements [Target].
+func (*WinZip) Formats() []string { return []string{".zip"} }
+
+// Optional implements [Target].
+func (*WinZip) Optional() bool { return false }
+
+// Description implements [Target].
 func (*WinZip) Description() string {
 	return i18n.S("Windows portable app folder (zip)", "Windows 绿色版文件夹（zip）")
 }
-func (*WinZip) Preflight(c *Context) []Issue                           { return append(vsPreflight(c), signPreflight(c)...) }
-func (*WinZip) Steps(c *Context) ([]FlutterStep, error)                { return winStep(c), nil }
+
+// Preflight implements [Target].
+func (*WinZip) Preflight(c *Context) []Issue { return append(vsPreflight(c), signPreflight(c)...) }
+
+// Steps implements [Target].
+func (*WinZip) Steps(c *Context) ([]FlutterStep, error) { return winStep(c), nil }
+
+// Locate implements [Target].
 func (*WinZip) Locate(c *Context, p bool, _ time.Time) (Inputs, error) { return locateWinRelease(c, p) }
+
+// Package implements [Target].
 func (*WinZip) Package(c *Context, in Inputs) (*Plan, error) {
 	dst, err := c.ArtifactPath(host.Windows, winArch(c), "portable", ".zip")
 	if err != nil {
@@ -116,10 +133,19 @@ func vsToolsPreflight(c *Context) []Issue {
 // WinExe builds an Inno Setup installer.
 type WinExe struct{}
 
-func (*WinExe) Name() string            { return "exe" }
+// Name implements [Target].
+func (*WinExe) Name() string { return "exe" }
+
+// Platform implements [Target].
 func (*WinExe) Platform() host.Platform { return host.Windows }
-func (*WinExe) Formats() []string       { return []string{".exe"} }
-func (*WinExe) Optional() bool          { return true }
+
+// Formats implements [Target].
+func (*WinExe) Formats() []string { return []string{".exe"} }
+
+// Optional implements [Target].
+func (*WinExe) Optional() bool { return true }
+
+// Description implements [Target].
 func (*WinExe) Description() string {
 	return i18n.S("Windows installer .exe (Inno Setup)", "Windows 安装程序 .exe（Inno Setup）")
 }
@@ -129,6 +155,8 @@ func iscc(c *Context) string {
 	}
 	return c.Tools.Find("iscc")
 }
+
+// Preflight implements [Target].
 func (*WinExe) Preflight(c *Context) []Issue {
 	out := append(vsPreflight(c), signPreflight(c)...)
 	if iscc(c) == "" {
@@ -145,7 +173,11 @@ func (*WinExe) Preflight(c *Context) []Issue {
 	}
 	return out
 }
-func (*WinExe) Steps(c *Context) ([]FlutterStep, error)                { return winStep(c), nil }
+
+// Steps implements [Target].
+func (*WinExe) Steps(c *Context) ([]FlutterStep, error) { return winStep(c), nil }
+
+// Locate implements [Target].
 func (*WinExe) Locate(c *Context, p bool, _ time.Time) (Inputs, error) { return locateWinRelease(c, p) }
 
 // StableGUID derives a deterministic GUID from a string so upgrades of the
@@ -211,6 +243,7 @@ type InnoOptions struct {
 	Languages                                       []InnoLanguage
 }
 
+// Package implements [Target].
 func (*WinExe) Package(c *Context, in Inputs) (*Plan, error) {
 	dst, err := c.ArtifactPath(host.Windows, winArch(c), "setup", ".exe")
 	if err != nil {
@@ -390,13 +423,24 @@ func InnoScript(o InnoOptions) string {
 // Msix builds an MSIX package via the `msix` pub package.
 type Msix struct{}
 
-func (*Msix) Name() string            { return "msix" }
+// Name implements [Target].
+func (*Msix) Name() string { return "msix" }
+
+// Platform implements [Target].
 func (*Msix) Platform() host.Platform { return host.Windows }
-func (*Msix) Formats() []string       { return []string{".msix"} }
-func (*Msix) Optional() bool          { return true }
+
+// Formats implements [Target].
+func (*Msix) Formats() []string { return []string{".msix"} }
+
+// Optional implements [Target].
+func (*Msix) Optional() bool { return true }
+
+// Description implements [Target].
 func (*Msix) Description() string {
 	return i18n.S("Windows MSIX package (needs the msix dev_dependency)", "Windows MSIX 包（需要 msix 开发依赖）")
 }
+
+// Preflight implements [Target].
 func (*Msix) Preflight(c *Context) []Issue {
 	out := append(vsPreflight(c), signPreflight(c)...)
 	if !c.Project.HasDep("msix") {
@@ -411,7 +455,11 @@ func (*Msix) Preflight(c *Context) []Issue {
 	}
 	return out
 }
-func (*Msix) Steps(c *Context) ([]FlutterStep, error)                { return winStep(c), nil }
+
+// Steps implements [Target].
+func (*Msix) Steps(c *Context) ([]FlutterStep, error) { return winStep(c), nil }
+
+// Locate implements [Target].
 func (*Msix) Locate(c *Context, p bool, _ time.Time) (Inputs, error) { return locateWinRelease(c, p) }
 
 // MsixVersion converts 1.2.3 to the 4-part 1.2.3.0 MSIX requires.
@@ -502,7 +550,8 @@ func msixArgs(c *Context) (args, secrets []string, signedWith string) {
 	return args, secrets, signedWith
 }
 
-func (*Msix) Package(c *Context, in Inputs) (*Plan, error) {
+// Package implements [Target].
+func (*Msix) Package(c *Context, _ Inputs) (*Plan, error) {
 	dst, err := c.ArtifactPath(host.Windows, winArch(c), "", ".msix")
 	if err != nil {
 		return nil, err

@@ -67,11 +67,11 @@ func TestSignFilesRunsFakeSigntool(t *testing.T) {
 	dir := t.TempDir()
 	log := filepath.Join(dir, "calls.txt")
 	fake := filepath.Join(dir, "signtool")
-	os.WriteFile(fake, []byte("#!/bin/sh\necho \"$@\" >> '"+log+"'\n"), 0o755)
+	must(t, os.WriteFile(fake, []byte("#!/bin/sh\necho \"$@\" >> '"+log+"'\n"), 0o755))
 	rel := filepath.Join(dir, "Release")
 	for _, f := range []string{"app.exe", "flutter_windows.dll", "data/app.so", "plugins/x/p.DLL", "readme.txt"} {
-		os.MkdirAll(filepath.Join(rel, filepath.Dir(f)), 0o755)
-		os.WriteFile(filepath.Join(rel, f), []byte("x"), 0o644)
+		must(t, os.MkdirAll(filepath.Join(rel, filepath.Dir(f)), 0o755))
+		must(t, os.WriteFile(filepath.Join(rel, f), []byte("x"), 0o644))
 	}
 	c := signCtx(t, "windows:\n  sign:\n    certificate: a.pfx\n    password: pw\n    signtool: "+fake+"\n")
 	env := OpEnv{Run: func(cmd runner.Cmd) (runner.Result, error) {
@@ -106,8 +106,8 @@ func TestSignFilesRunsFakeSigntool(t *testing.T) {
 func TestMatchFiles(t *testing.T) {
 	dir := t.TempDir()
 	for _, f := range []string{"a.exe", "b.dll", "plugins/c.dll", "data/d.dat"} {
-		os.MkdirAll(filepath.Join(dir, filepath.Dir(f)), 0o755)
-		os.WriteFile(filepath.Join(dir, f), nil, 0o644)
+		must(t, os.MkdirAll(filepath.Join(dir, filepath.Dir(f)), 0o755))
+		must(t, os.WriteFile(filepath.Join(dir, f), nil, 0o644))
 	}
 	got, _ := matchFiles(dir, []string{"plugins/*.dll", "*.EXE"})
 	if len(got) != 2 || filepath.Base(got[0]) != "a.exe" || filepath.Base(got[1]) != "c.dll" {
@@ -158,8 +158,8 @@ func TestSdkToolsNewestFirst(t *testing.T) {
 	pf := t.TempDir()
 	for _, v := range []string{"10.0.9200.0", "10.0.26100.0", "10.0.22621.0"} {
 		p := filepath.Join(pf, "Windows Kits", "10", "bin", v, "x64")
-		os.MkdirAll(p, 0o755)
-		os.WriteFile(filepath.Join(p, "signtool.exe"), nil, 0o644)
+		must(t, os.MkdirAll(p, 0o755))
+		must(t, os.WriteFile(filepath.Join(p, "signtool.exe"), nil, 0o644))
 	}
 	got := sdkTools(pf, "signtool.exe")
 	if len(got) != 3 || sdkVersion(got[0]) != "10.0.26100.0" || sdkVersion(got[2]) != "10.0.9200.0" {

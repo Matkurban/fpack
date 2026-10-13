@@ -18,7 +18,7 @@ func PNGSize(path string) (int, int, error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	cfg, err := png.DecodeConfig(f)
 	if err != nil {
 		return 0, 0, fmt.Errorf(i18n.S("%s: not a PNG: %w", "%s：不是 PNG 文件：%w"), filepath.Base(path), err)
@@ -34,7 +34,7 @@ func ResizePNG(src, dst string, size int) error {
 		return err
 	}
 	img, err := png.Decode(f)
-	f.Close()
+	_ = f.Close() // read-only; decode error matters
 	if err != nil {
 		return fmt.Errorf("%s: %w", filepath.Base(src), err)
 	}
@@ -71,7 +71,7 @@ func ResizePNG(src, dst string, size int) error {
 			out.SetNRGBA(x, y, color.NRGBA{R: u8(r / a), G: u8(g / a), B: u8(bl / a), A: u8(a / wsum * 255)})
 		}
 	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+	if err = os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
 	}
 	w, err := os.Create(dst)
@@ -79,7 +79,7 @@ func ResizePNG(src, dst string, size int) error {
 		return err
 	}
 	if err := png.Encode(w, out); err != nil {
-		w.Close()
+		_ = w.Close() // the encode error takes precedence
 		return err
 	}
 	return w.Close()

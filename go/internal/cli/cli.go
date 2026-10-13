@@ -77,34 +77,34 @@ func Main(args []string, e *Env) int {
 	if langFlag != "" {
 		if _, ok := i18n.Parse(langFlag); !ok {
 			i18n.Set(i18n.Detect("", e.Getenv))
-			fmt.Fprintf(e.Stderr, i18n.S("error: --lang must be zh or en (got %q)\n", "错误：--lang 只能是 zh 或 en（实际为 %q）\n"), langFlag)
+			_, _ = fmt.Fprintf(e.Stderr, i18n.S("error: --lang must be zh or en (got %q)\n", "错误：--lang 只能是 zh 或 en（实际为 %q）\n"), langFlag)
 			return build.ExitUsage
 		}
 	}
 	i18n.Set(i18n.Detect(langFlag, e.Getenv))
 
 	if w := e.Getenv("FPACK_WRAPPER_VERSION"); w != "" && w != version.Version {
-		fmt.Fprintln(e.Stderr, i18n.F("fpack: warning: Dart wrapper %s is running core %s. Reinstall with: dart pub global activate fpack", "fpack：警告：Dart 包装器版本 %s 与核心版本 %s 不一致。请重新安装：dart pub global activate fpack", w, version.Version))
+		_, _ = fmt.Fprintln(e.Stderr, i18n.F("fpack: warning: Dart wrapper %s is running core %s. Reinstall with: dart pub global activate fpack", "fpack：警告：Dart 包装器版本 %s 与核心版本 %s 不一致。请重新安装：dart pub global activate fpack", w, version.Version))
 	}
 
 	if len(args) == 0 {
-		fmt.Fprint(e.Stdout, mainHelp())
+		_, _ = fmt.Fprint(e.Stdout, mainHelp())
 		return 0
 	}
 	switch args[0] {
 	case "--core-version":
-		fmt.Fprintln(e.Stdout, version.Version)
+		_, _ = fmt.Fprintln(e.Stdout, version.Version)
 		return 0
 	case "--version", "-V":
 		return versionCommand().run(e, &parsed{})
 	case "--help", "-h", "help":
 		if len(args) > 1 {
 			if c := findCommand(args[1]); c != nil {
-				fmt.Fprint(e.Stdout, c.help())
+				_, _ = fmt.Fprint(e.Stdout, c.help())
 				return 0
 			}
 		}
-		fmt.Fprint(e.Stdout, mainHelp())
+		_, _ = fmt.Fprint(e.Stdout, mainHelp())
 		return 0
 	}
 	name := args[0]
@@ -124,10 +124,10 @@ func Main(args []string, e *Env) int {
 			}
 		}
 		if hasFlag(args, "--help", "-h") {
-			fmt.Fprint(e.Stdout, mainHelp())
+			_, _ = fmt.Fprint(e.Stdout, mainHelp())
 			return 0
 		}
-		fmt.Fprintln(e.Stderr, i18n.F("error: missing command. Run `fpack --help`.", "错误：缺少命令。运行 `fpack --help` 查看用法。"))
+		_, _ = fmt.Fprintln(e.Stderr, i18n.F("error: missing command. Run `fpack --help`.", "错误：缺少命令。运行 `fpack --help` 查看用法。"))
 		return build.ExitUsage
 	}
 	c := findCommand(name)
@@ -144,7 +144,7 @@ func Main(args []string, e *Env) int {
 				msg += i18n.F(" (did you mean %q?)", "（你是不是想用 %q？）", s)
 			}
 		}
-		fmt.Fprintln(e.Stderr, i18n.S("error: ", "错误：")+msg+"\n"+i18n.S("Run `fpack --help` for usage.", "运行 `fpack --help` 查看用法。"))
+		_, _ = fmt.Fprintln(e.Stderr, i18n.S("error: ", "错误：")+msg+"\n"+i18n.S("Run `fpack --help` for usage.", "运行 `fpack --help` 查看用法。"))
 		return build.ExitUsage
 	}
 	return dispatch(c, args[1:], e)
@@ -175,12 +175,12 @@ func hasFlag(args []string, names ...string) bool {
 func dispatch(c *command, args []string, e *Env) int {
 	p, err := parse(args, c.flags)
 	if err != nil {
-		fmt.Fprintln(e.Stderr, i18n.S("error: ", "错误：")+err.Error())
-		fmt.Fprintln(e.Stderr, i18n.F("Run `fpack %s --help` for usage.", "运行 `fpack %s --help` 查看用法。", c.name))
+		_, _ = fmt.Fprintln(e.Stderr, i18n.S("error: ", "错误：")+err.Error())
+		_, _ = fmt.Fprintln(e.Stderr, i18n.F("Run `fpack %s --help` for usage.", "运行 `fpack %s --help` 查看用法。", c.name))
 		return build.ExitUsage
 	}
 	if p.b("help") {
-		fmt.Fprint(e.Stdout, c.help())
+		_, _ = fmt.Fprint(e.Stdout, c.help())
 		return 0
 	}
 	return c.run(e, p)
@@ -300,7 +300,7 @@ func versionCommand() *command {
 			printJSON(e, map[string]string{"version": version.Version, "os": runtime.GOOS, "arch": runtime.GOARCH, "go": runtime.Version(), "wrapper": e.Getenv("FPACK_WRAPPER_VERSION")})
 			return 0
 		}
-		fmt.Fprintln(e.Stdout, s)
+		_, _ = fmt.Fprintln(e.Stdout, s)
 		return 0
 	}
 	c.help = func() string { return cmdHelp(c, "fpack version", "  fpack --version\n") }

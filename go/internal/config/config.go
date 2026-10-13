@@ -831,7 +831,7 @@ func interpolate(v reflect.Value, getenv func(string) string) []string {
 			for i := 0; i < v.Len(); i++ {
 				walk(v.Index(i))
 			}
-		case reflect.Ptr:
+		case reflect.Pointer:
 			if !v.IsNil() {
 				walk(v.Elem())
 			}

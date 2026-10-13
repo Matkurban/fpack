@@ -58,8 +58,8 @@ func TestPkgSignedNotarizedWithResources(t *testing.T) {
 	posixPaths(t)
 	c := pkgCtx(t, "macos:\n  sign:\n    identity: \""+devID+"\"\n    installer_identity: \"Developer ID Installer: XueHua\"\n    notary_profile: XueHua\n  pkg:\n    identifier: com.xuehua.im.pkg\n    install_location: /Applications/XueHua\n    title: 雪花 IM & Co\n    license: LICENSE.rtf\n    background: assets/bg.png\n")
 	for _, f := range []string{"LICENSE.rtf", "assets/bg.png"} {
-		os.MkdirAll(filepath.Dir(filepath.Join(c.Project.Root, f)), 0o755)
-		os.WriteFile(filepath.Join(c.Project.Root, f), []byte("x"), 0o644)
+		must(t, os.MkdirAll(filepath.Dir(filepath.Join(c.Project.Root, f)), 0o755))
+		must(t, os.WriteFile(filepath.Join(c.Project.Root, f), []byte("x"), 0o644))
 	}
 	if is := (&Pkg{}).Preflight(c); len(is) != 0 {
 		t.Fatalf("%+v", is)
@@ -86,7 +86,7 @@ func TestPkgSignedNotarizedWithResources(t *testing.T) {
 		t.Fatalf("%+v %v", p.Artifacts, p.Notes)
 	}
 	// run the internal file op: distribution.xml and resources
-	os.MkdirAll(stage, 0o755)
+	must(t, os.MkdirAll(stage, 0o755))
 	for _, op := range p.Ops {
 		if op.Fn != nil && strings.Contains(op.Desc, "distribution.xml") {
 			if err := op.Fn(); err != nil {
@@ -143,8 +143,8 @@ func TestPkgInstallerIdentityChecks(t *testing.T) {
 	// missing tools / resource files
 	c = pkgCtx(t, "macos:\n  pkg:\n    welcome: docs/welcome.md\n    readme: nope.html\n")
 	delete(c.Tools.(*fakeTools).bins, "productbuild")
-	os.MkdirAll(filepath.Join(c.Project.Root, "docs"), 0o755)
-	os.WriteFile(filepath.Join(c.Project.Root, "docs", "welcome.md"), []byte("x"), 0o644)
+	must(t, os.MkdirAll(filepath.Join(c.Project.Root, "docs"), 0o755))
+	must(t, os.WriteFile(filepath.Join(c.Project.Root, "docs", "welcome.md"), []byte("x"), 0o644))
 	is = append(ConfigIssues(c, "pkg"), (&Pkg{}).Preflight(c)...)
 	msgs := ""
 	for _, i := range is {
@@ -175,8 +175,8 @@ func TestPkgSharesFlutterBuildWithMacosAndDMG(t *testing.T) {
 
 func TestPkgOptions(t *testing.T) {
 	c := pkgCtx(t, "macos:\n  pkg:\n    version: 9.9.9\n    min_os: \"11.0\"\n    relocatable: true\n    require_restart: true\n    postinstall: scripts/post.sh\n")
-	os.MkdirAll(filepath.Join(c.Project.Root, "scripts"), 0o755)
-	os.WriteFile(filepath.Join(c.Project.Root, "scripts", "post.sh"), []byte("echo hi\r\n"), 0o644)
+	must(t, os.MkdirAll(filepath.Join(c.Project.Root, "scripts"), 0o755))
+	must(t, os.WriteFile(filepath.Join(c.Project.Root, "scripts", "post.sh"), []byte("echo hi\r\n"), 0o644))
 	p := plan(t, &Pkg{}, c)
 	all := strings.Join(cmds(p), "\n")
 	if !strings.Contains(all, "--version 9.9.9") || !strings.Contains(all, "--scripts") {

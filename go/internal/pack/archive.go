@@ -54,17 +54,7 @@ func Zip(src, dest, prefix string) error {
 		}
 		h.Method = zip.Deflate
 		if info.Mode()&os.ModeSymlink != 0 {
-			target, err := os.Readlink(path)
-			if err != nil {
-				return err
-			}
-			h.Method = zip.Store
-			w, err := zw.CreateHeader(h)
-			if err != nil {
-				return err
-			}
-			_, err = w.Write([]byte(target))
-			return err
+			return zipSymlink(zw, h, path)
 		}
 		w, err := zw.CreateHeader(h)
 		if err != nil {
@@ -74,7 +64,7 @@ func Zip(src, dest, prefix string) error {
 		if err != nil {
 			return err
 		}
-		defer in.Close()
+		defer func() { _ = in.Close() }()
 		_, err = io.Copy(w, in)
 		return err
 	})
@@ -85,7 +75,7 @@ func Zip(src, dest, prefix string) error {
 		err = cerr
 	}
 	if err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp) // best-effort cleanup; the original error is returned
 		return err
 	}
 	return os.Rename(tmp, dest)
@@ -142,7 +132,7 @@ func TarGz(src, dest, prefix string) error {
 			if err != nil {
 				return err
 			}
-			defer in.Close()
+			defer func() { _ = in.Close() }()
 			if _, err := io.Copy(tw, in); err != nil {
 				return err
 			}
@@ -155,7 +145,7 @@ func TarGz(src, dest, prefix string) error {
 		}
 	}
 	if err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp) // best-effort cleanup; the original error is returned
 		return err
 	}
 	return os.Rename(tmp, dest)
@@ -167,7 +157,7 @@ func SHA256File(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err
@@ -187,7 +177,7 @@ func HashFile(path, alg string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	var h = sha256.New()
 	if alg == "sha512" {
 		h = sha512.New()
@@ -243,18 +233,33 @@ func isReport(n string) bool {
 	return n == "NOTARIZATION.md" || n == "notarization.json" || (strings.HasPrefix(n, "notary-log-") && strings.HasSuffix(n, ".json"))
 }
 
+// zipSymlink stores the symlink at path as an entry whose body is its target.
+func zipSymlink(zw *zip.Writer, h *zip.FileHeader, path string) error {
+	target, err := os.Readlink(path)
+	if err != nil {
+		return err
+	}
+	h.Method = zip.Store
+	w, err := zw.CreateHeader(h)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte(target))
+	return err
+}
+
 // CopyFile copies a regular file preserving its mode.
 func CopyFile(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 	st, err := in.Stat()
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+	if err = os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
 	}
 	tmp := dst + ".partial"
@@ -263,8 +268,8 @@ func CopyFile(src, dst string) error {
 		return err
 	}
 	if _, err := io.Copy(out, in); err != nil {
-		out.Close()
-		os.Remove(tmp)
+		_ = out.Close()    // the copy error takes precedence
+		_ = os.Remove(tmp) // best-effort cleanup; the original error is returned
 		return err
 	}
 	if err := out.Close(); err != nil {

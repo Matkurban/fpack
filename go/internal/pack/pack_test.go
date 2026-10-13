@@ -43,7 +43,7 @@ func TestRenderCustomAndErrors(t *testing.T) {
 	if got != "My_App_1.0_linux_x64" {
 		t.Fatal(got)
 	}
-	if _, err := Render("{app}-{verison}", Fields{}); err == nil || !strings.Contains(err.Error(), "{verison}") {
+	if _, err := Render("{app}-{vrsn}", Fields{}); err == nil || !strings.Contains(err.Error(), "{vrsn}") {
 		t.Fatal("expected unknown placeholder error")
 	}
 	if SanitizeName("a/b:c") != "a-b-c" {
@@ -57,10 +57,10 @@ func TestRenderCustomAndErrors(t *testing.T) {
 
 func TestArchivesAndChecksums(t *testing.T) {
 	src := t.TempDir()
-	os.MkdirAll(filepath.Join(src, "lib"), 0o755)
-	os.WriteFile(filepath.Join(src, "app"), []byte("bin"), 0o755)
-	os.WriteFile(filepath.Join(src, "lib", "libapp.so"), []byte("so"), 0o644)
-	os.Symlink("app", filepath.Join(src, "link"))
+	must(t, os.MkdirAll(filepath.Join(src, "lib"), 0o755))
+	must(t, os.WriteFile(filepath.Join(src, "app"), []byte("bin"), 0o755))
+	must(t, os.WriteFile(filepath.Join(src, "lib", "libapp.so"), []byte("so"), 0o644))
+	must(t, os.Symlink("app", filepath.Join(src, "link")))
 	out := t.TempDir()
 
 	z := filepath.Join(out, "a.zip")
@@ -75,14 +75,14 @@ func TestArchivesAndChecksums(t *testing.T) {
 	for _, f := range zr.File {
 		names[f.Name] = f.Mode()
 	}
-	zr.Close()
+	must(t, zr.Close())
 	// Windows has no executable bit to carry over.
 	if (runtime.GOOS != "windows" && names["bundle/app"]&0o100 == 0) || names["bundle/link"]&os.ModeSymlink == 0 {
 		t.Fatalf("zip entries: %v", names)
 	}
 
 	tg := filepath.Join(out, "a.tar.gz")
-	if err := TarGz(src, tg, "demo"); err != nil {
+	if err = TarGz(src, tg, "demo"); err != nil {
 		t.Fatal(err)
 	}
 	f, _ := os.Open(tg)
@@ -90,13 +90,13 @@ func TestArchivesAndChecksums(t *testing.T) {
 	tr := tar.NewReader(gz)
 	found := map[string]bool{}
 	for {
-		h, err := tr.Next()
-		if err != nil {
+		h, nextErr := tr.Next()
+		if nextErr != nil {
 			break
 		}
 		found[h.Name] = true
 	}
-	f.Close()
+	must(t, f.Close())
 	if !found["demo/app"] || !found["demo/lib/libapp.so"] || !found["demo/link"] {
 		t.Fatalf("tar entries: %v", found)
 	}
@@ -121,8 +121,8 @@ func TestResizePNG(t *testing.T) {
 		}
 	}
 	f, _ := os.Create(src)
-	png.Encode(f, img)
-	f.Close()
+	must(t, png.Encode(f, img))
+	must(t, f.Close())
 	dst := filepath.Join(dir, "16.png")
 	if err := ResizePNG(src, dst, 16); err != nil {
 		t.Fatal(err)
@@ -133,7 +133,7 @@ func TestResizePNG(t *testing.T) {
 	}
 	f, _ = os.Open(dst)
 	out, _ := png.Decode(f)
-	f.Close()
+	must(t, f.Close())
 	if c := color.NRGBAModel.Convert(out.At(8, 8)).(color.NRGBA); c.R != 255 || c.A != 255 {
 		t.Errorf("center pixel %v", c)
 	}

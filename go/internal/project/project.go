@@ -157,7 +157,7 @@ func Load(root string) (*Project, error) {
 	}
 	var m map[string]any
 	if err := yaml.Unmarshal(data, &m); err != nil {
-		return nil, fmt.Errorf("pubspec.yaml: %v", err)
+		return nil, fmt.Errorf("pubspec.yaml: %w", err)
 	}
 	p := &Project{Root: root, Pubspec: m, Platforms: map[host.Platform]bool{}, Deps: map[string]Dep{}}
 	p.Name, _ = m["name"].(string)

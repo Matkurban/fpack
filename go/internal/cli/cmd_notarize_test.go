@@ -26,7 +26,7 @@ func fakeXcrun(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	os.WriteFile(filepath.Join(bin, "xcrun"), data, 0o755)
+	must(t, os.WriteFile(filepath.Join(bin, "xcrun"), data, 0o755))
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	logf := filepath.Join(bin, "calls.log")
 	t.Setenv("FAKE_NOTARY_LOG", logf)
@@ -38,8 +38,8 @@ func pendingDMG(t *testing.T, proj string) (dir, dmg string) {
 	t.Helper()
 	dir = filepath.Join(proj, "dist", "2.3.4+5")
 	dmg = filepath.Join(dir, "my_app-2.3.4+5-macos-universal.dmg")
-	os.MkdirAll(dir, 0o755)
-	os.WriteFile(dmg, []byte("dmg"), 0o644)
+	must(t, os.MkdirAll(dir, 0o755))
+	must(t, os.WriteFile(dmg, []byte("dmg"), 0o644))
 	r := &targets.NotaryRecord{App: "my_app", Version: "2.3.4+5", Submissions: []targets.NotarySubmission{{
 		Target: "dmg", Artifact: dmg, Uploaded: dmg, ID: "2efe2717-52ef-43a5-96dc-0797e4ca1041", SubmittedAt: time.Now().Add(-3 * time.Minute),
 		Auth: "keychain profile XueHua", AuthArgs: []string{"--keychain-profile", "XueHua"}, Status: targets.NotarySubmitted, SHA256: "x",

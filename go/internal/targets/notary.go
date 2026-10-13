@@ -26,6 +26,7 @@ import (
 // and updated when the result is known. `fpack notarize status|finish`
 // read them later (after Ctrl-C or with macos.notarize.wait: false).
 
+// NotaryJSONFile and NotaryMDFile are the state files described above.
 const (
 	NotaryJSONFile = "notarization.json"
 	NotaryMDFile   = "NOTARIZATION.md"
@@ -102,7 +103,7 @@ func LoadNotary(dir string) (*NotaryRecord, error) {
 		return nil, err
 	}
 	if err := json.Unmarshal(data, r); err != nil {
-		return nil, fmt.Errorf("%s: %v", filepath.Join(dir, NotaryJSONFile), err)
+		return nil, fmt.Errorf("%s: %w", filepath.Join(dir, NotaryJSONFile), err)
 	}
 	return r, nil
 }
@@ -507,7 +508,8 @@ func NotaryFetchLog(env OpEnv, s *NotarySubmission, auth, secrets []string, dir 
 	if data, err := os.ReadFile(path); err == nil {
 		s.Log = path
 		issues, fixes := NotaryLogSummary(data)
-		s.Issues = append(issues, fixes...)
+		issues = append(issues, fixes...)
+		s.Issues = issues
 	}
 }
 
@@ -532,7 +534,7 @@ func NotaryStaple(env OpEnv, s *NotarySubmission, workDir string) error {
 	if s.Target == "macos" {
 		tmp := filepath.Join(workDir, "notarize-"+s.ID)
 		_ = os.RemoveAll(tmp)
-		defer os.RemoveAll(tmp)
+		defer func() { _ = os.RemoveAll(tmp) }()
 		if _, err := env.Run(runner.Cmd{Name: "ditto", Args: []string{"-x", "-k", file, tmp}}); err != nil {
 			return err
 		}

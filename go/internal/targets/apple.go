@@ -350,14 +350,24 @@ func ParseNotary(out string) (NotaryResult, bool) {
 // IPA builds an iOS .ipa via `flutter build ipa` (or an unsigned IPA).
 type IPA struct{}
 
-func (*IPA) Name() string            { return "ipa" }
+// Name implements [Target].
+func (*IPA) Name() string { return "ipa" }
+
+// Platform implements [Target].
 func (*IPA) Platform() host.Platform { return host.IOS }
-func (*IPA) Formats() []string       { return []string{".ipa"} }
-func (*IPA) Optional() bool          { return false }
+
+// Formats implements [Target].
+func (*IPA) Formats() []string { return []string{".ipa"} }
+
+// Optional implements [Target].
+func (*IPA) Optional() bool { return false }
+
+// Description implements [Target].
 func (*IPA) Description() string {
 	return i18n.S("iOS IPA (App Store / Ad Hoc / Enterprise / unsigned)", "iOS IPA（App Store / Ad Hoc / 企业 / 未签名）")
 }
 
+// Preflight implements [Target].
 func (*IPA) Preflight(c *Context) []Issue {
 	out := xcodePreflight(c, "ios")
 	ios := c.Config.IOS
@@ -412,6 +422,7 @@ func exportMethodLabel(m string) string {
 	return m
 }
 
+// Steps implements [Target].
 func (*IPA) Steps(c *Context) ([]FlutterStep, error) {
 	args, w := CommonArgs(c, host.IOS, "ipa")
 	ios := c.Config.IOS
@@ -486,6 +497,7 @@ func iosUploads(c *Context) bool {
 	return c.Config.IOSCodesign() && c.Config.IOS.ExportOptionsPlist == "" && c.Config.IOS.Destination == "upload"
 }
 
+// Locate implements [Target].
 func (*IPA) Locate(c *Context, predicted bool, since time.Time) (Inputs, error) {
 	root := c.Project.Root
 	if !c.Config.IOSCodesign() {
@@ -511,6 +523,7 @@ func (*IPA) Locate(c *Context, predicted bool, since time.Time) (Inputs, error) 
 	return nil, notFound("*.ipa", c.Rel(dir)+i18n.S(" (the archive may have been built without export – check signing)", "（可能只完成了归档而未导出 —— 请检查签名）"))
 }
 
+// Package implements [Target].
 func (*IPA) Package(c *Context, in Inputs) (*Plan, error) {
 	pl := &Plan{}
 	if !c.Config.IOSCodesign() {
@@ -556,13 +569,24 @@ func (*IPA) Package(c *Context, in Inputs) (*Plan, error) {
 // MacApp produces a zipped, optionally Developer-ID-signed .app.
 type MacApp struct{}
 
-func (*MacApp) Name() string            { return "macos" }
+// Name implements [Target].
+func (*MacApp) Name() string { return "macos" }
+
+// Platform implements [Target].
 func (*MacApp) Platform() host.Platform { return host.MacOS }
-func (*MacApp) Formats() []string       { return []string{".zip"} }
-func (*MacApp) Optional() bool          { return false }
+
+// Formats implements [Target].
+func (*MacApp) Formats() []string { return []string{".zip"} }
+
+// Optional implements [Target].
+func (*MacApp) Optional() bool { return false }
+
+// Description implements [Target].
 func (*MacApp) Description() string {
 	return i18n.S("macOS .app, zipped with ditto (optionally Developer ID signed)", "macOS .app，用 ditto 压缩（可选 Developer ID 签名）")
 }
+
+// Preflight implements [Target].
 func (*MacApp) Preflight(c *Context) []Issue {
 	return append(xcodePreflight(c, "macos"), macSigningPreflight(c)...)
 }
@@ -573,6 +597,7 @@ func macStep(c *Context) []FlutterStep {
 	return []FlutterStep{{Key: "macos", Platform: host.MacOS, Args: args, Warnings: w}}
 }
 
+// Steps implements [Target].
 func (*MacApp) Steps(c *Context) ([]FlutterStep, error) { return macStep(c), nil }
 
 // MacProductsDir is build/macos/Build/Products/<Mode>[-<flavor>].
@@ -603,10 +628,12 @@ func locateMacApp(c *Context, predicted bool) (Inputs, error) {
 	return nil, notFound(name+".app", c.Rel(dir))
 }
 
+// Locate implements [Target].
 func (*MacApp) Locate(c *Context, predicted bool, _ time.Time) (Inputs, error) {
 	return locateMacApp(c, predicted)
 }
 
+// Package implements [Target].
 func (*MacApp) Package(c *Context, in Inputs) (*Plan, error) {
 	dst, err := c.ArtifactPath(host.MacOS, "universal", "", ".zip")
 	if err != nil {
@@ -618,20 +645,20 @@ func (*MacApp) Package(c *Context, in Inputs) (*Plan, error) {
 	pl := &Plan{Ops: []Op{resetDirOp(c, stage)}}
 	src := app
 	kind := "macOS app (zip)"
-	if c.Mac.Enabled {
+	switch {
+	case c.Mac.Enabled:
 		src = filepath.Join(stage, filepath.Base(app))
 		pl.Ops = append(pl.Ops, Op{Desc: i18n.S("copy app for signing", "复制 App 以便签名"), Cmd: cmd("ditto", app, src)})
 		pl.Ops = append(pl.Ops, signAppOps(c, src)...)
 		kind = "macOS app (zip, Developer ID signed)"
-	} else if c.Mac.TurnedOff {
+	case c.Mac.TurnedOff:
 		pl.Notes = append(pl.Notes, i18n.S("not re-signed (--no-sign): keeps Xcode's own signature, which Gatekeeper rejects on other Macs", "未重新签名（--no-sign）：保留 Xcode 的签名，在其他 Mac 上会被 Gatekeeper 拒绝"))
-	} else {
+	default:
 		pl.Notes = append(pl.Notes, i18n.S("not Developer ID signed (keeps Xcode's own signature, which Gatekeeper rejects on other Macs); ", "未使用 Developer ID 签名（保留 Xcode 的签名，在其他 Mac 上会被 Gatekeeper 拒绝）；")+unsignedHowTo())
 	}
 	zip := Op{Desc: i18n.S("zip app (ditto keeps symlinks & metadata)", "压缩 App（ditto 保留符号链接与元数据）"), Cmd: cmd("ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", src, tmp)}
 	pl.Ops = append(pl.Ops, zip)
-	switch {
-	case c.Mac.Enabled && c.Mac.Notarize:
+	if c.Mac.Enabled && c.Mac.Notarize {
 		// Apple notarizes the zip, but the ticket is stapled to the .app,
 		// so the app is zipped again afterwards.
 		pl.Ops = append(pl.Ops, notarizeOp(c, "macos", tmp, dst, filepath.Base(src)))
@@ -659,14 +686,24 @@ func (*MacApp) Package(c *Context, in Inputs) (*Plan, error) {
 // notarized and stapled.
 type DMG struct{}
 
-func (*DMG) Name() string            { return "dmg" }
+// Name implements [Target].
+func (*DMG) Name() string { return "dmg" }
+
+// Platform implements [Target].
 func (*DMG) Platform() host.Platform { return host.MacOS }
-func (*DMG) Formats() []string       { return []string{".dmg"} }
-func (*DMG) Optional() bool          { return false }
+
+// Formats implements [Target].
+func (*DMG) Formats() []string { return []string{".dmg"} }
+
+// Optional implements [Target].
+func (*DMG) Optional() bool { return false }
+
+// Description implements [Target].
 func (*DMG) Description() string {
 	return i18n.S("macOS disk image (hdiutil or create-dmg, sign + notarize)", "macOS 磁盘镜像（hdiutil 或 create-dmg，可签名 + 公证）")
 }
 
+// Preflight implements [Target].
 func (*DMG) Preflight(c *Context) []Issue {
 	out := append(xcodePreflight(c, "macos"), macSigningPreflight(c)...)
 	d := c.Config.MacOS.DMG
@@ -685,8 +722,10 @@ func (*DMG) Preflight(c *Context) []Issue {
 	return out
 }
 
+// Steps implements [Target].
 func (*DMG) Steps(c *Context) ([]FlutterStep, error) { return macStep(c), nil }
 
+// Locate implements [Target].
 func (*DMG) Locate(c *Context, predicted bool, _ time.Time) (Inputs, error) {
 	return locateMacApp(c, predicted)
 }
@@ -731,6 +770,7 @@ func dmgTool(c *Context) string {
 	return "hdiutil"
 }
 
+// Package implements [Target].
 func (*DMG) Package(c *Context, in Inputs) (*Plan, error) {
 	dst, err := c.ArtifactPath(host.MacOS, "universal", "", ".dmg")
 	if err != nil {

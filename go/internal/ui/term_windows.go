@@ -27,7 +27,7 @@ func isTerminal(f *os.File) bool {
 func enableVT(f *os.File) {
 	var mode uint32
 	if r, _, _ := procGetConsoleMode.Call(f.Fd(), uintptr(unsafe.Pointer(&mode))); r != 0 {
-		procSetConsoleMode.Call(f.Fd(), uintptr(mode|0x0004))
+		_, _, _ = procSetConsoleMode.Call(f.Fd(), uintptr(mode|0x0004)) // best-effort: consoles without VT support keep plain output
 	}
 }
 

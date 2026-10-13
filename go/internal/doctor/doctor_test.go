@@ -27,8 +27,8 @@ func androidCtx(t *testing.T, env *targets.AndroidEnv) *targets.Context {
 		"android/app/build.gradle.kts": "android { }\n",
 	} {
 		p := filepath.Join(root, rel)
-		os.MkdirAll(filepath.Dir(p), 0o755)
-		os.WriteFile(p, []byte(content), 0o644)
+		must(t, os.MkdirAll(filepath.Dir(p), 0o755))
+		must(t, os.WriteFile(p, []byte(content), 0o644))
 	}
 	p, err := project.Load(root)
 	if err != nil {

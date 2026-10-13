@@ -70,12 +70,12 @@ func NewContext(o Options) (*targets.Context, error) {
 		return nil, &ConfigError{err}
 	}
 	cfgSDK := cfg.Flutter.SDK
-	if err := config.ApplyEnv(cfg, o.Getenv); err != nil {
+	if err = config.ApplyEnv(cfg, o.Getenv); err != nil {
 		return nil, &ConfigError{err}
 	}
 	envSDK := o.Getenv("FPACK_FLUTTER")
 	if o.Override != nil {
-		if err := o.Override(cfg); err != nil {
+		if err = o.Override(cfg); err != nil {
 			return nil, &ConfigError{err}
 		}
 	}

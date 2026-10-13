@@ -32,7 +32,7 @@ func readOSRelease(path string) (string, []string) {
 	if err != nil {
 		return "", nil
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	var id string
 	var like []string
 	s := bufio.NewScanner(f)

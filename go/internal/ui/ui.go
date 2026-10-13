@@ -82,21 +82,33 @@ func (u *UI) paint(code, s string) string {
 	return code + s + cReset
 }
 
-// Bold, Dim, Red, Green, Yellow, Cyan style a string.
-func (u *UI) Bold(s string) string   { return u.paint(cBold, s) }
-func (u *UI) Dim(s string) string    { return u.paint(cDim, s) }
-func (u *UI) Red(s string) string    { return u.paint(cRed, s) }
-func (u *UI) Green(s string) string  { return u.paint(cGreen, s) }
+// Bold styles s as bold text when colors are enabled.
+func (u *UI) Bold(s string) string { return u.paint(cBold, s) }
+
+// Dim styles s as dim text when colors are enabled.
+func (u *UI) Dim(s string) string { return u.paint(cDim, s) }
+
+// Red styles s as red text when colors are enabled.
+func (u *UI) Red(s string) string { return u.paint(cRed, s) }
+
+// Green styles s as green text when colors are enabled.
+func (u *UI) Green(s string) string { return u.paint(cGreen, s) }
+
+// Yellow styles s as yellow text when colors are enabled.
 func (u *UI) Yellow(s string) string { return u.paint(cYellow, s) }
-func (u *UI) Cyan(s string) string   { return u.paint(cCyan, s) }
-func (u *UI) Blue(s string) string   { return u.paint(cBlue, s) }
+
+// Cyan styles s as cyan text when colors are enabled.
+func (u *UI) Cyan(s string) string { return u.paint(cCyan, s) }
+
+// Blue styles s as blue text when colors are enabled.
+func (u *UI) Blue(s string) string { return u.paint(cBlue, s) }
 
 // Println prints a raw line (pausing any spinner).
 func (u *UI) Println(s string) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	u.clearSpinLocked()
-	fmt.Fprintln(u.w, s)
+	_, _ = fmt.Fprintln(u.w, s)
 	u.redrawSpinLocked()
 }
 

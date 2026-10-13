@@ -76,7 +76,7 @@ func (s *Spinner) Stop() {
 
 func (u *UI) clearSpinLocked() {
 	if u.spin != nil {
-		fmt.Fprint(u.w, "\r\x1b[2K")
+		_, _ = fmt.Fprint(u.w, "\r\x1b[2K")
 	}
 }
 
@@ -93,5 +93,5 @@ func (u *UI) redrawSpinLocked() {
 	if d := strings.TrimSpace(s.detail); d != "" && width-used > 10 {
 		line += "  " + u.Dim(Truncate(d, width-used))
 	}
-	fmt.Fprint(u.w, "\r\x1b[2K"+line)
+	_, _ = fmt.Fprint(u.w, "\r\x1b[2K"+line)
 }

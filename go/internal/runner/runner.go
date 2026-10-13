@@ -150,8 +150,8 @@ func Run(ctx context.Context, c Cmd, o Options) (Result, error) {
 		}
 	}
 	if logf != nil {
-		defer logf.Close()
-		fmt.Fprintf(logf, "$ %s\n# cwd: %s\n# started: %s\n", c.String(), c.Dir, start.Format(time.RFC3339))
+		defer func() { _ = logf.Close() }()
+		_, _ = fmt.Fprintf(logf, "$ %s\n# cwd: %s\n# started: %s\n", c.String(), c.Dir, start.Format(time.RFC3339))
 	}
 
 	cmd := exec.Command(c.Name, c.Args...)
@@ -165,11 +165,11 @@ func Run(ctx context.Context, c Cmd, o Options) (Result, error) {
 	setCmdLine(cmd, c.WindowsCmdLine)
 
 	if err := cmd.Start(); err != nil {
-		pw.Close()
+		_ = pw.Close() // PipeWriter.Close always returns nil
 		res.ExitCode = 127
 		res.Duration = time.Since(start)
 		if logf != nil {
-			fmt.Fprintf(logf, "# failed to start: %v\n", err)
+			_, _ = fmt.Fprintf(logf, "# failed to start: %v\n", err)
 		}
 		return res, fmt.Errorf(i18n.S("cannot start %s: %w", "无法启动 %s：%w"), c.Name, err)
 	}
@@ -187,10 +187,10 @@ func Run(ctx context.Context, c Cmd, o Options) (Result, error) {
 		for sc.Scan() {
 			line := Redact(strings.TrimRight(sc.Text(), "\r"), c.Secret)
 			if logf != nil {
-				fmt.Fprintln(logf, line)
+				_, _ = fmt.Fprintln(logf, line)
 			}
 			if o.Stream != nil {
-				fmt.Fprintln(o.Stream, line)
+				_, _ = fmt.Fprintln(o.Stream, line)
 			}
 			if o.OnLine != nil && strings.TrimSpace(line) != "" {
 				o.OnLine(line)
@@ -206,7 +206,7 @@ func Run(ctx context.Context, c Cmd, o Options) (Result, error) {
 			}
 			mu.Unlock()
 		}
-		io.Copy(io.Discard, pr)
+		_, _ = io.Copy(io.Discard, pr) // drain so the writer never blocks
 	})
 
 	track(cmd)
@@ -229,7 +229,7 @@ func Run(ctx context.Context, c Cmd, o Options) (Result, error) {
 			waitErr = <-waitCh
 		}
 	}
-	pw.Close()
+	_ = pw.Close() // PipeWriter.Close always returns nil
 	wg.Wait()
 
 	res.Duration = time.Since(start)
@@ -237,7 +237,7 @@ func Run(ctx context.Context, c Cmd, o Options) (Result, error) {
 	res.Output = full.String()
 	res.ExitCode = exitCode(cmd, waitErr)
 	if logf != nil {
-		fmt.Fprintf(logf, "# exit code: %d (%s)\n\n", res.ExitCode, res.Duration.Round(time.Millisecond))
+		_, _ = fmt.Fprintf(logf, "# exit code: %d (%s)\n\n", res.ExitCode, res.Duration.Round(time.Millisecond))
 	}
 	if interrupted {
 		return res, ErrInterrupted

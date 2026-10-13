@@ -56,8 +56,8 @@ func Locate(projectRoot string, explicit []Candidate) (*SDK, error) {
 		}
 	}
 	if p := runner.Which("flutter"); p != "" {
-		if real, err := filepath.EvalSymlinks(p); err == nil {
-			p = real
+		if resolved, err := filepath.EvalSymlinks(p); err == nil {
+			p = resolved
 		}
 		if root := normalizeRoot(filepath.Dir(filepath.Dir(p))); root != "" {
 			return load(root, "PATH")
@@ -72,7 +72,7 @@ func Locate(projectRoot string, explicit []Candidate) (*SDK, error) {
 }
 
 // ErrNotFound means no SDK could be located.
-var ErrNotFound = errors.New("Flutter SDK not found")
+var ErrNotFound = errors.New("no Flutter SDK found")
 
 // NotSDKError is an explicit path that is not a Flutter SDK.
 type NotSDKError struct{ Path, Source string }
@@ -95,8 +95,8 @@ func normalizeRoot(p string) string {
 	if p == "" {
 		return ""
 	}
-	if real, err := filepath.EvalSymlinks(p); err == nil {
-		p = real
+	if resolved, err := filepath.EvalSymlinks(p); err == nil {
+		p = resolved
 	}
 	for _, cand := range []string{p, filepath.Dir(p), filepath.Dir(filepath.Dir(p))} {
 		if isSDK(cand) {

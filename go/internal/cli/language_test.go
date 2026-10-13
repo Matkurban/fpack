@@ -92,7 +92,7 @@ func TestNoMixedLanguageOutput(t *testing.T) {
 			t.Errorf("%s output has %d mixed-language lines:\n%s", lang, len(bad), strings.Join(bad, "\n"))
 		}
 
-		os.Remove(filepath.Join(proj, "fpack.yaml"))
+		must(t, os.Remove(filepath.Join(proj, "fpack.yaml")))
 		r := run(t, env, "-C", proj, "init", "--yes")
 		if bad := leftovers(lang, r.all(), false); len(bad) > 0 {
 			t.Errorf("%s init output:\n%s", lang, strings.Join(bad, "\n"))

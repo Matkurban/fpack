@@ -80,8 +80,8 @@ func DetectAndroidEnv(t Tools) *AndroidEnv {
 	if e.Java == "" {
 		if j := t.Find("java"); j != "" {
 			e.Java, e.JavaSource = j, "PATH"
-			if real, err := filepath.EvalSymlinks(j); err == nil {
-				e.JavaHome = filepath.Dir(filepath.Dir(real))
+			if resolved, err := filepath.EvalSymlinks(j); err == nil {
+				e.JavaHome = filepath.Dir(filepath.Dir(resolved))
 			}
 		}
 	}

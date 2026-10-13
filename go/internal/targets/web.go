@@ -13,14 +13,27 @@ import (
 // WebZip zips build/web.
 type WebZip struct{}
 
-func (*WebZip) Name() string            { return "web" }
+// Name implements [Target].
+func (*WebZip) Name() string { return "web" }
+
+// Platform implements [Target].
 func (*WebZip) Platform() host.Platform { return host.Web }
-func (*WebZip) Formats() []string       { return []string{".zip"} }
-func (*WebZip) Optional() bool          { return false }
+
+// Formats implements [Target].
+func (*WebZip) Formats() []string { return []string{".zip"} }
+
+// Optional implements [Target].
+func (*WebZip) Optional() bool { return false }
+
+// Description implements [Target].
 func (*WebZip) Description() string {
 	return i18n.S("Web build (zip of build/web, ready to deploy)", "Web 构建（build/web 的 zip，可直接部署）")
 }
-func (*WebZip) Preflight(c *Context) []Issue { return nil }
+
+// Preflight implements [Target].
+func (*WebZip) Preflight(*Context) []Issue { return nil }
+
+// Steps implements [Target].
 func (*WebZip) Steps(c *Context) ([]FlutterStep, error) {
 	args, w := CommonArgs(c, host.Web, "web")
 	if b := c.Config.Web.BaseHref; b != "" {
@@ -51,6 +64,8 @@ func (*WebZip) Steps(c *Context) ([]FlutterStep, error) {
 	args = append(args, tailArgs(c, c.Config.Web.ExtraArgs)...)
 	return []FlutterStep{{Key: "web", Platform: host.Web, Args: args, Warnings: w}}, nil
 }
+
+// Locate implements [Target].
 func (*WebZip) Locate(c *Context, predicted bool, _ time.Time) (Inputs, error) {
 	dir := filepath.Join(c.Project.Root, "build", "web")
 	if predicted || exists(filepath.Join(dir, "index.html")) {
@@ -58,6 +73,8 @@ func (*WebZip) Locate(c *Context, predicted bool, _ time.Time) (Inputs, error) {
 	}
 	return nil, notFound("index.html", c.Rel(dir))
 }
+
+// Package implements [Target].
 func (*WebZip) Package(c *Context, in Inputs) (*Plan, error) {
 	dst, err := c.ArtifactPath(host.Web, "", "", ".zip")
 	if err != nil {

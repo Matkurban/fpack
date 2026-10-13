@@ -47,7 +47,7 @@ macos:
 func TestParseSample(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "fpack.yaml")
-	os.WriteFile(p, []byte(sample), 0o644)
+	must(t, os.WriteFile(p, []byte(sample), 0o644))
 	c, err := Load(p, envOf(map[string]string{"KEYSTORE_PATH": "/k/upload.jks", "KS_PASS": "pw"}))
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +78,7 @@ func TestParseSample(t *testing.T) {
 func TestUnsetEnvReported(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "fpack.yaml")
-	os.WriteFile(p, []byte("android:\n  signing:\n    store_password: ${NOPE}\n"), 0o644)
+	must(t, os.WriteFile(p, []byte("android:\n  signing:\n    store_password: ${NOPE}\n"), 0o644))
 	c, err := Load(p, envOf(nil))
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +119,7 @@ func TestDefaults(t *testing.T) {
 
 func TestEnvOverridesConfig(t *testing.T) {
 	c := &Config{}
-	Parse([]byte("build:\n  mode: profile\n  flavor: dev\nmacos:\n  sign:\n    enabled: true\n"), c)
+	must(t, Parse([]byte("build:\n  mode: profile\n  flavor: dev\nmacos:\n  sign:\n    enabled: true\n"), c))
 	err := ApplyEnv(c, envOf(map[string]string{"FPACK_MODE": "debug", "FPACK_MACOS_SIGN": "no", "FPACK_SPLIT_PER_ABI": "true", "FPACK_BUILD_NUMBER": "7"}))
 	if err != nil {
 		t.Fatal(err)
@@ -134,7 +134,7 @@ func TestEnvOverridesConfig(t *testing.T) {
 
 func TestValidate(t *testing.T) {
 	c := &Config{}
-	Parse([]byte("build:\n  mode: fast\nandroid:\n  abis: [x86]\n  signing:\n    store_file: a.jks\nios:\n  export_method: store\noutput:\n  name: \"{app}-{vers}\"\n  names: {exe: \"{app}{-nope}\"}\n"), c)
+	must(t, Parse([]byte("build:\n  mode: fast\nandroid:\n  abis: [x86]\n  signing:\n    store_file: a.jks\nios:\n  export_method: store\noutput:\n  name: \"{app}-{vers}\"\n  names: {exe: \"{app}{-nope}\"}\n"), c))
 	probs := strings.Join(c.Validate(), "\n")
 	for _, want := range []string{"build.mode", "unknown ABI \"x86\"", "ios.export_method", "store_password", "key_alias", "output.name: unknown placeholder {vers}", "output.names.exe: unknown placeholder {-nope}"} {
 		if !strings.Contains(probs, want) {
@@ -156,7 +156,7 @@ func TestBadTypes(t *testing.T) {
 func TestNestedEnvDefaultsAndDollarValues(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "fpack.yaml")
-	os.WriteFile(p, []byte("android:\n  signing:\n    store_password: ${KS:-x}\n    key_password: ${KEY_PW:-${KS}}\n    key_alias: ${A:-${B:-upload}}\n"), 0o644)
+	must(t, os.WriteFile(p, []byte("android:\n  signing:\n    store_password: ${KS:-x}\n    key_password: ${KEY_PW:-${KS}}\n    key_alias: ${A:-${B:-upload}}\n"), 0o644))
 	// the password contains "${" and must be taken literally
 	c, err := Load(p, envOf(map[string]string{"KS": "pa$s${B}w"}))
 	if err != nil {
@@ -177,7 +177,7 @@ func TestNamePlaceholdersMatchPack(t *testing.T) {
 func TestEnvRefsInTypedKeys(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "fpack.yaml")
-	os.WriteFile(p, []byte("build:\n  obfuscate: \"${OBF:-false}\"\n  tree_shake_icons: ${TREE}\nandroid:\n  split_per_abi: ${SPLIT}\n  signing:\n    store_password: ${PW}\nweb:\n  optimization_level: ${OPT:-2}\n"), 0o644)
+	must(t, os.WriteFile(p, []byte("build:\n  obfuscate: \"${OBF:-false}\"\n  tree_shake_icons: ${TREE}\nandroid:\n  split_per_abi: ${SPLIT}\n  signing:\n    store_password: ${PW}\nweb:\n  optimization_level: ${OPT:-2}\n"), 0o644))
 	env := map[string]string{"SPLIT": "both", "TREE": "true", "PW": "a: b #c ${X}"}
 	c, err := Load(p, func(k string) string { return env[k] })
 	if err != nil {
@@ -193,7 +193,7 @@ func TestEnvRefsInTypedKeys(t *testing.T) {
 		t.Fatalf("web: %v", c.Web.OptimizationLevel)
 	}
 	// A real type error still reports the original line.
-	os.WriteFile(p, []byte("build:\n  obfuscate: ${OBF}\n  mode: [x]\n"), 0o644)
+	must(t, os.WriteFile(p, []byte("build:\n  obfuscate: ${OBF}\n  mode: [x]\n"), 0o644))
 	if _, err := Load(p, func(string) string { return "" }); err == nil || !strings.Contains(err.Error(), "line") {
 		t.Fatal(err)
 	}

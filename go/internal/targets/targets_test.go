@@ -45,8 +45,8 @@ func newCtx(t *testing.T, goos, cfgYAML, pubspecExtra string) *Context {
 	root := t.TempDir()
 	write := func(rel, content string) {
 		p := filepath.Join(root, rel)
-		os.MkdirAll(filepath.Dir(p), 0o755)
-		os.WriteFile(p, []byte(content), 0o644)
+		must(t, os.MkdirAll(filepath.Dir(p), 0o755))
+		must(t, os.WriteFile(p, []byte(content), 0o644))
 	}
 	write("pubspec.yaml", "name: xue_hua_im\nversion: 1.0.0+1\ndependencies:\n  flutter:\n    sdk: flutter\n"+pubspecExtra)
 	write("android/app/build.gradle.kts", `android { buildTypes { release { signingConfig = signingConfigs.getByName("debug") } } }`)
@@ -57,13 +57,13 @@ func newCtx(t *testing.T, goos, cfgYAML, pubspecExtra string) *Context {
 	write("macos/Runner/Release.entitlements", "<plist/>")
 	write("linux/CMakeLists.txt", `set(BINARY_NAME "xue_hua_im")`)
 	write("web/icons/Icon-512.png", "png")
-	os.MkdirAll(filepath.Join(root, "windows"), 0o755)
+	must(t, os.MkdirAll(filepath.Join(root, "windows"), 0o755))
 	p, err := project.Load(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	cfg := &config.Config{}
-	if err := config.Parse([]byte(cfgYAML), cfg); err != nil {
+	if err = config.Parse([]byte(cfgYAML), cfg); err != nil {
 		t.Fatal(err)
 	}
 	tools := &fakeTools{
@@ -205,7 +205,7 @@ func TestAPKFileName(t *testing.T) {
 			t.Errorf("%v: %s", in, got)
 		}
 	}
-	if AABPath("paidPro", "release") != filepath.Join("build/app/outputs/bundle/paidProRelease/app-paidPro-release.aab") || AABPath("", "release") != filepath.Join("build/app/outputs/bundle/release/app-release.aab") {
+	if AABPath("paidPro", "release") != filepath.FromSlash("build/app/outputs/bundle/paidProRelease/app-paidPro-release.aab") || AABPath("", "release") != filepath.FromSlash("build/app/outputs/bundle/release/app-release.aab") {
 		t.Fatal("aab path")
 	}
 }
@@ -241,7 +241,7 @@ func TestAndroidSigningInjectionAndRedaction(t *testing.T) {
 
 func TestAndroidSigningIncomplete(t *testing.T) {
 	cfg := &config.Config{}
-	config.Parse([]byte("android:\n  signing:\n    store_file: a.jks\n"), cfg)
+	must(t, config.Parse([]byte("android:\n  signing:\n    store_file: a.jks\n"), cfg))
 	if _, err := ResolveAndroidSigning(cfg, "/p", "/p/build/fpack", func(string) string { return "" }); err == nil || !strings.Contains(err.Error(), "FPACK_ANDROID_KEYSTORE_PASSWORD") {
 		t.Fatalf("%v", err)
 	}
@@ -489,7 +489,7 @@ func TestMacSigningOverrides(t *testing.T) {
 	// conflicting explicit config is an error
 	p, _ := project.Load(c.Project.Root)
 	cfg := &config.Config{}
-	config.Parse([]byte("macos:\n  sign:\n    enabled: false\n    notarize: true\n"), cfg)
+	must(t, config.Parse([]byte("macos:\n  sign:\n    enabled: false\n    notarize: true\n"), cfg))
 	if _, err := ResolveMacSigning(p, cfg); err == nil {
 		t.Fatal("expected conflict error")
 	}
@@ -795,7 +795,7 @@ func TestDMGResetsStage(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(stale), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	os.WriteFile(stale, []byte("old"), 0o644)
+	must(t, os.WriteFile(stale, []byte("old"), 0o644))
 	p := plan(t, &DMG{}, c)
 	if p.Ops[0].Fn == nil {
 		t.Fatalf("first op %q is not the stage reset", p.Ops[0].Desc)

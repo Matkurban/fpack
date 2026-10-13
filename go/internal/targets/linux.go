@@ -131,18 +131,15 @@ func (c *Context) iconSizes(src string) []int {
 	if err != nil {
 		return nil
 	}
-	max := w
-	if h > max {
-		max = h
-	}
+	largest := max(w, h)
 	var out []int
 	for _, s := range sizes {
-		if s <= max {
+		if s <= largest {
 			out = append(out, s)
 		}
 	}
 	if len(out) == 0 {
-		out = []int{max}
+		out = []int{largest}
 	}
 	return out
 }
@@ -150,18 +147,35 @@ func (c *Context) iconSizes(src string) []int {
 // LinuxTar is the bundle as .tar.gz.
 type LinuxTar struct{}
 
-func (*LinuxTar) Name() string            { return "linux" }
+// Name implements [Target].
+func (*LinuxTar) Name() string { return "linux" }
+
+// Platform implements [Target].
 func (*LinuxTar) Platform() host.Platform { return host.Linux }
-func (*LinuxTar) Formats() []string       { return []string{".tar.gz"} }
-func (*LinuxTar) Optional() bool          { return false }
+
+// Formats implements [Target].
+func (*LinuxTar) Formats() []string { return []string{".tar.gz"} }
+
+// Optional implements [Target].
+func (*LinuxTar) Optional() bool { return false }
+
+// Description implements [Target].
 func (*LinuxTar) Description() string {
 	return i18n.S("Linux app bundle (tar.gz)", "Linux 应用目录（tar.gz）")
 }
-func (*LinuxTar) Preflight(c *Context) []Issue            { return linuxPreflight(c) }
+
+// Preflight implements [Target].
+func (*LinuxTar) Preflight(c *Context) []Issue { return linuxPreflight(c) }
+
+// Steps implements [Target].
 func (*LinuxTar) Steps(c *Context) ([]FlutterStep, error) { return linuxStep(c), nil }
+
+// Locate implements [Target].
 func (*LinuxTar) Locate(c *Context, p bool, _ time.Time) (Inputs, error) {
 	return locateLinuxBundle(c, p)
 }
+
+// Package implements [Target].
 func (*LinuxTar) Package(c *Context, in Inputs) (*Plan, error) {
 	dst, err := c.ArtifactPath(host.Linux, linuxArch(c), "", ".tar.gz")
 	if err != nil {
@@ -192,7 +206,9 @@ func stageLinuxRoot(c *Context, bundle, root string) ([]string, error) {
 	}
 	files := []string{prefix}
 	bin := filepath.Join(root, "usr", "bin")
-	os.MkdirAll(bin, 0o755)
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		return nil, err
+	}
 	if err := os.Symlink(prefix+"/"+c.linuxBinary(), filepath.Join(bin, pkg)); err != nil {
 		return nil, err
 	}
@@ -204,19 +220,25 @@ func stageLinuxRoot(c *Context, bundle, root string) ([]string, error) {
 			if err := pack.ResizePNG(src, filepath.Join(root, filepath.FromSlash(rel)), sz); err != nil {
 				return nil, err
 			}
-			os.Chmod(filepath.Join(root, filepath.FromSlash(rel)), 0o644)
+			if err := os.Chmod(filepath.Join(root, filepath.FromSlash(rel)), 0o644); err != nil {
+				return nil, err
+			}
 			files = append(files, rel)
 		}
 		pix := "/usr/share/pixmaps/" + pkg + ".png"
 		if err := pack.CopyFile(src, filepath.Join(root, filepath.FromSlash(pix))); err != nil {
 			return nil, err
 		}
-		os.Chmod(filepath.Join(root, filepath.FromSlash(pix)), 0o644)
+		if err := os.Chmod(filepath.Join(root, filepath.FromSlash(pix)), 0o644); err != nil {
+			return nil, err
+		}
 		files = append(files, pix)
 		icon = pkg
 	}
 	desktop := "/usr/share/applications/" + pkg + ".desktop"
-	os.MkdirAll(filepath.Join(root, "usr", "share", "applications"), 0o755)
+	if err := os.MkdirAll(filepath.Join(root, "usr", "share", "applications"), 0o755); err != nil {
+		return nil, err
+	}
 	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(desktop)), []byte(c.desktopEntry(pkg, icon)), 0o644); err != nil {
 		return nil, err
 	}
@@ -226,11 +248,15 @@ func stageLinuxRoot(c *Context, bundle, root string) ([]string, error) {
 		if err := pack.CopyFile(c.Project.Abs(m), filepath.Join(root, filepath.FromSlash(rel))); err != nil {
 			return nil, err
 		}
-		os.Chmod(filepath.Join(root, filepath.FromSlash(rel)), 0o644)
+		if err := os.Chmod(filepath.Join(root, filepath.FromSlash(rel)), 0o644); err != nil {
+			return nil, err
+		}
 		files = append(files, rel)
 	}
 	doc := "/usr/share/doc/" + pkg + "/copyright"
-	os.MkdirAll(filepath.Dir(filepath.Join(root, filepath.FromSlash(doc))), 0o755)
+	if err := os.MkdirAll(filepath.Dir(filepath.Join(root, filepath.FromSlash(doc))), 0o755); err != nil {
+		return nil, err
+	}
 	cp := fmt.Sprintf("Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: %s\n", c.DisplayName())
 	if h := c.Config.App.Homepage; h != "" {
 		cp += "Source: " + h + "\n"
@@ -255,7 +281,7 @@ func debCopyright(s string) string {
 
 func dirSizeKB(dir string) int64 {
 	var n int64
-	filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
 		if err == nil && d.Type().IsRegular() {
 			if info, err := d.Info(); err == nil {
 				n += info.Size()
@@ -269,13 +295,24 @@ func dirSizeKB(dir string) int64 {
 // Deb builds a Debian package with dpkg-deb.
 type Deb struct{}
 
-func (*Deb) Name() string            { return "deb" }
+// Name implements [Target].
+func (*Deb) Name() string { return "deb" }
+
+// Platform implements [Target].
 func (*Deb) Platform() host.Platform { return host.Linux }
-func (*Deb) Formats() []string       { return []string{".deb"} }
-func (*Deb) Optional() bool          { return true }
+
+// Formats implements [Target].
+func (*Deb) Formats() []string { return []string{".deb"} }
+
+// Optional implements [Target].
+func (*Deb) Optional() bool { return true }
+
+// Description implements [Target].
 func (*Deb) Description() string {
 	return i18n.S("Debian/Ubuntu package (dpkg-deb)", "Debian/Ubuntu 安装包（dpkg-deb）")
 }
+
+// Preflight implements [Target].
 func (*Deb) Preflight(c *Context) []Issue {
 	out := linuxPreflight(c)
 	if c.Tools.Find("dpkg-deb") == "" {
@@ -283,7 +320,11 @@ func (*Deb) Preflight(c *Context) []Issue {
 	}
 	return out
 }
-func (*Deb) Steps(c *Context) ([]FlutterStep, error)                { return linuxStep(c), nil }
+
+// Steps implements [Target].
+func (*Deb) Steps(c *Context) ([]FlutterStep, error) { return linuxStep(c), nil }
+
+// Locate implements [Target].
 func (*Deb) Locate(c *Context, p bool, _ time.Time) (Inputs, error) { return locateLinuxBundle(c, p) }
 
 // DebArch maps Flutter arch names to Debian ones.
@@ -294,6 +335,7 @@ func DebArch(a string) string {
 	return "amd64"
 }
 
+// Package implements [Target].
 func (*Deb) Package(c *Context, in Inputs) (*Plan, error) {
 	dst, err := c.ArtifactPath(host.Linux, linuxArch(c), "", ".deb")
 	if err != nil {
@@ -309,7 +351,9 @@ func (*Deb) Package(c *Context, in Inputs) (*Plan, error) {
 			if _, err := stageLinuxRoot(c, bundle, root); err != nil {
 				return err
 			}
-			os.MkdirAll(filepath.Join(root, "DEBIAN"), 0o755)
+			if err := os.MkdirAll(filepath.Join(root, "DEBIAN"), 0o755); err != nil {
+				return err
+			}
 			if err := os.WriteFile(filepath.Join(root, "DEBIAN", "control"), []byte(DebControl(c, dirSizeKB(root))), 0o644); err != nil {
 				return err
 			}
@@ -380,13 +424,24 @@ func debVersion(c *Context) string {
 // Rpm builds an RPM with rpmbuild.
 type Rpm struct{}
 
-func (*Rpm) Name() string            { return "rpm" }
+// Name implements [Target].
+func (*Rpm) Name() string { return "rpm" }
+
+// Platform implements [Target].
 func (*Rpm) Platform() host.Platform { return host.Linux }
-func (*Rpm) Formats() []string       { return []string{".rpm"} }
-func (*Rpm) Optional() bool          { return true }
+
+// Formats implements [Target].
+func (*Rpm) Formats() []string { return []string{".rpm"} }
+
+// Optional implements [Target].
+func (*Rpm) Optional() bool { return true }
+
+// Description implements [Target].
 func (*Rpm) Description() string {
 	return i18n.S("Fedora/RHEL/openSUSE package (rpmbuild)", "Fedora/RHEL/openSUSE 安装包（rpmbuild）")
 }
+
+// Preflight implements [Target].
 func (*Rpm) Preflight(c *Context) []Issue {
 	out := linuxPreflight(c)
 	if c.Tools.Find("rpmbuild") == "" {
@@ -394,7 +449,11 @@ func (*Rpm) Preflight(c *Context) []Issue {
 	}
 	return out
 }
-func (*Rpm) Steps(c *Context) ([]FlutterStep, error)                { return linuxStep(c), nil }
+
+// Steps implements [Target].
+func (*Rpm) Steps(c *Context) ([]FlutterStep, error) { return linuxStep(c), nil }
+
+// Locate implements [Target].
 func (*Rpm) Locate(c *Context, p bool, _ time.Time) (Inputs, error) { return locateLinuxBundle(c, p) }
 
 // RpmArch maps Flutter arch names to RPM ones.
@@ -405,6 +464,7 @@ func RpmArch(a string) string {
 	return "x86_64"
 }
 
+// Package implements [Target].
 func (*Rpm) Package(c *Context, in Inputs) (*Plan, error) {
 	dst, err := c.ArtifactPath(host.Linux, linuxArch(c), "", ".rpm")
 	if err != nil {
@@ -493,10 +553,19 @@ func RpmSpec(c *Context, root string, files []string) (string, error) {
 // AppImage builds a portable AppImage with appimagetool.
 type AppImage struct{}
 
-func (*AppImage) Name() string            { return "appimage" }
+// Name implements [Target].
+func (*AppImage) Name() string { return "appimage" }
+
+// Platform implements [Target].
 func (*AppImage) Platform() host.Platform { return host.Linux }
-func (*AppImage) Formats() []string       { return []string{".AppImage"} }
-func (*AppImage) Optional() bool          { return true }
+
+// Formats implements [Target].
+func (*AppImage) Formats() []string { return []string{".AppImage"} }
+
+// Optional implements [Target].
+func (*AppImage) Optional() bool { return true }
+
+// Description implements [Target].
 func (*AppImage) Description() string {
 	return i18n.S("Linux AppImage (appimagetool)", "Linux AppImage（appimagetool）")
 }
@@ -513,6 +582,8 @@ func appimagetoolOrName(c *Context) string {
 	}
 	return "appimagetool"
 }
+
+// Preflight implements [Target].
 func (*AppImage) Preflight(c *Context) []Issue {
 	out := linuxPreflight(c)
 	if appimagetool(c) == "" {
@@ -524,10 +595,16 @@ func (*AppImage) Preflight(c *Context) []Issue {
 	}
 	return out
 }
+
+// Steps implements [Target].
 func (*AppImage) Steps(c *Context) ([]FlutterStep, error) { return linuxStep(c), nil }
+
+// Locate implements [Target].
 func (*AppImage) Locate(c *Context, p bool, _ time.Time) (Inputs, error) {
 	return locateLinuxBundle(c, p)
 }
+
+// Package implements [Target].
 func (*AppImage) Package(c *Context, in Inputs) (*Plan, error) {
 	dst, err := c.ArtifactPath(host.Linux, linuxArch(c), "", ".AppImage")
 	if err != nil {

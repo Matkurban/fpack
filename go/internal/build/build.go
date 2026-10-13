@@ -265,7 +265,7 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 	// 3. Predict artifacts: conflicts + dry-run plan.
 	planned := map[string]string{}
 	for _, tr := range s.Targets {
-		if tr.Status != Planned && !(req.DryRun && len(tr.steps) > 0) {
+		if tr.Status != Planned && (!req.DryRun || len(tr.steps) == 0) {
 			continue
 		}
 		in, err := tr.target.Locate(c, true, time.Time{})
@@ -884,7 +884,7 @@ func runOps(ctx context.Context, c *targets.Context, u *ui.UI, ops []targets.Op,
 			if cerr != nil && err == nil {
 				err = cerr
 			} else if cerr != nil {
-				err = fmt.Errorf("%v: %v", err, cerr)
+				err = fmt.Errorf("%w: %w", err, cerr)
 			}
 		}
 		if note != "" {

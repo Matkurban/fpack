@@ -22,10 +22,19 @@ import (
 // and signs it with a "Developer ID Installer" identity.
 type Pkg struct{}
 
-func (*Pkg) Name() string            { return "pkg" }
+// Name implements [Target].
+func (*Pkg) Name() string { return "pkg" }
+
+// Platform implements [Target].
 func (*Pkg) Platform() host.Platform { return host.MacOS }
-func (*Pkg) Formats() []string       { return []string{".pkg"} }
-func (*Pkg) Optional() bool          { return false }
+
+// Formats implements [Target].
+func (*Pkg) Formats() []string { return []string{".pkg"} }
+
+// Optional implements [Target].
+func (*Pkg) Optional() bool { return false }
+
+// Description implements [Target].
 func (*Pkg) Description() string {
 	return i18n.S("macOS installer package (pkgbuild + productbuild, Developer ID Installer signing + notarization)", "macOS 安装包（pkgbuild + productbuild，可用 Developer ID Installer 签名 + 公证）")
 }
@@ -45,6 +54,7 @@ func pkgResources(c *Context) [][2]string {
 var pkgPageExts = []string{".html", ".htm", ".rtf", ".rtfd", ".txt"}
 var pkgImageExts = []string{".png", ".jpg", ".jpeg", ".tif", ".tiff", ".gif", ".pdf"}
 
+// Preflight implements [Target].
 func (*Pkg) Preflight(c *Context) []Issue {
 	out := append(xcodePreflight(c, "macos"), macSigningPreflight(c)...)
 	if c.Tools.Find("pkgbuild") == "" || c.Tools.Find("productbuild") == "" {
@@ -122,8 +132,10 @@ func installerPreflight(c *Context) []Issue {
 	return nil
 }
 
+// Steps implements [Target].
 func (*Pkg) Steps(c *Context) ([]FlutterStep, error) { return macStep(c), nil }
 
+// Locate implements [Target].
 func (*Pkg) Locate(c *Context, predicted bool, _ time.Time) (Inputs, error) {
 	return locateMacApp(c, predicted)
 }
@@ -221,6 +233,7 @@ type pkgDistOptions struct {
 	Scripts bool
 }
 
+// Package implements [Target].
 func (*Pkg) Package(c *Context, in Inputs) (*Plan, error) {
 	dst, err := c.ArtifactPath(host.MacOS, "", "", ".pkg")
 	if err != nil {

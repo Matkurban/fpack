@@ -290,7 +290,7 @@ func notaryDir(c *targets.Context, arg string) (string, error) {
 	var found []string
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr // unreadable entries are skipped; the search is best-effort
 		}
 		if d.IsDir() && strings.Count(strings.TrimPrefix(path, root), string(filepath.Separator)) > 3 {
 			return filepath.SkipDir

@@ -136,8 +136,8 @@ func TestSchemaUpToDate(t *testing.T) {
 	got = append(got, '\n')
 	path := filepath.Join("..", "..", "..", "schema", "fpack.schema.json")
 	if os.Getenv("FPACK_UPDATE") == "1" {
-		os.MkdirAll(filepath.Dir(path), 0o755)
-		if err := os.WriteFile(path, got, 0o644); err != nil {
+		must(t, os.MkdirAll(filepath.Dir(path), 0o755))
+		if err = os.WriteFile(path, got, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -169,7 +169,7 @@ func TestDocsUpToDate(t *testing.T) {
 		}
 	}
 	if os.Getenv("FPACK_UPDATE") == "1" {
-		os.WriteFile(path, []byte(doc), 0o644)
+		must(t, os.WriteFile(path, []byte(doc), 0o644))
 	} else if doc != orig {
 		t.Fatal("doc/configuration.md is out of date: run FPACK_UPDATE=1 go test ./internal/config")
 	}

@@ -45,8 +45,7 @@ func (f *fakeNotary) env() OpEnv {
 				return runner.Result{Output: `{"id":"2efe2717-52ef-43a5-96dc-0797e4ca1041","status":"` + f.status + `","message":"Processing complete"}`}, nil
 			case "log":
 				path := cm.Args[len(cm.Args)-1]
-				os.WriteFile(path, []byte(`{"status":"Invalid","statusSummary":"Archive contains critical validation errors","issues":[{"severity":"error","path":"a.dmg/XueHua.app/Contents/MacOS/XueHua","message":"The executable does not have the hardened runtime enabled.","architecture":"arm64"},{"severity":"error","path":"a.dmg/XueHua.app/Contents/MacOS/XueHua","message":"The executable does not have the hardened runtime enabled.","architecture":"x86_64"}]}`), 0o644)
-				return runner.Result{}, nil
+				return runner.Result{}, os.WriteFile(path, []byte(`{"status":"Invalid","statusSummary":"Archive contains critical validation errors","issues":[{"severity":"error","path":"a.dmg/XueHua.app/Contents/MacOS/XueHua","message":"The executable does not have the hardened runtime enabled.","architecture":"arm64"},{"severity":"error","path":"a.dmg/XueHua.app/Contents/MacOS/XueHua","message":"The executable does not have the hardened runtime enabled.","architecture":"x86_64"}]}`), 0o644)
 			}
 			return runner.Result{}, nil
 		},
@@ -60,8 +59,8 @@ func notaryCtx(t *testing.T, cfg string) (*Context, string, string) {
 	c := newCtx(t, "darwin", "macos:\n  sign:\n    identity: \""+devID+"\"\n    notary_profile: XueHua\n"+cfg, "")
 	c.DryRun = false
 	file := filepath.Join(c.WorkDir, "stage", "dmg", "app.dmg")
-	os.MkdirAll(filepath.Dir(file), 0o755)
-	os.WriteFile(file, []byte("dmg bytes"), 0o644)
+	must(t, os.MkdirAll(filepath.Dir(file), 0o755))
+	must(t, os.WriteFile(file, []byte("dmg bytes"), 0o644))
 	return c, file, filepath.Join(c.OutDir, "app.dmg")
 }
 
@@ -111,8 +110,8 @@ func TestNotarizeWaitAccepted(t *testing.T) {
 		}
 	}
 	// after the move the done op marks it stapled
-	os.MkdirAll(c.OutDir, 0o755)
-	os.Rename(file, dst)
+	must(t, os.MkdirAll(c.OutDir, 0o755))
+	must(t, os.Rename(file, dst))
 	if err := notaryDoneOp(c, dst, true).Fn(); err != nil {
 		t.Fatal(err)
 	}
@@ -186,8 +185,8 @@ func TestNotaryAppleIDNeverWritesPassword(t *testing.T) {
 	c := newCtx(t, "darwin", "macos:\n  sign:\n    identity: \""+devID+"\"\n    notary_apple_id: dev@example.com\n    notary_team_id: ABCDE12345\n    notary_password: s3cret-pass\n", "")
 	c.DryRun = false
 	file := filepath.Join(c.WorkDir, "app.pkg")
-	os.MkdirAll(c.WorkDir, 0o755)
-	os.WriteFile(file, []byte("pkg"), 0o644)
+	must(t, os.MkdirAll(c.WorkDir, 0o755))
+	must(t, os.WriteFile(file, []byte("pkg"), 0o644))
 	auth, secrets, _ := c.Mac.NotaryAuth()
 	f := &fakeNotary{status: "Accepted"}
 	if _, err := runNotarize(context.Background(), c, f.env(), "pkg", file, filepath.Join(c.OutDir, "app.pkg"), "", auth, secrets, true); err != nil {
@@ -203,7 +202,7 @@ func TestNotaryAppleIDNeverWritesPassword(t *testing.T) {
 	}
 	// later queries take the password from the environment
 	var r NotaryRecord
-	json.Unmarshal(data, &r)
+	must(t, json.Unmarshal(data, &r))
 	c2 := newCtx(t, "darwin", "", "")
 	if _, _, err := c2.NotaryAuthFor(r.Submissions[0], func(string) string { return "" }); err == nil {
 		t.Fatal("expected missing password error")
