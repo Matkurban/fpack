@@ -105,6 +105,8 @@ Options:
   --notarize                    macOS: notarize + staple the zip/DMG/pkg
   --no-notarize                 macOS: skip notarization (faster local builds)
   --notarize-no-wait            macOS: submit for notarization and finish without waiting (later: fpack notarize finish)
+  --provisioning-profile FILE   macOS: Developer ID provisioning profile to embed
+  --smoke-test                  macOS: launch the signed app and check it keeps running
   --notary-profile NAME         macOS: notarytool keychain profile
   --dmg-tool T                  macOS: auto | hdiutil | create-dmg
   --base-href PATH              web: base href, e.g. /app/

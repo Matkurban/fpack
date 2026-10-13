@@ -130,6 +130,30 @@ not rebuilt). Install snapcraft with `sudo snap install snapcraft --classic`.
 so sudo must not ask for a password) and with LXD elsewhere. Test with
 `sudo snap install --dangerous dist/*/*.snap`.
 
+### macOS provisioning profile (push, iCloud, associated domains…)
+
+A Developer ID app whose entitlements use restricted keys
+(`com.apple.developer.aps-environment`, iCloud, associated domains,
+keychain access groups) needs a **Developer ID provisioning profile**;
+otherwise it is signed and notarized but does not launch
+(`RBSRequestErrorDomain Code=5`). fpack stops before signing in that case.
+
+```yaml
+macos:
+  sign:
+    provisioning_profile: macos/MyApp.provisionprofile   # FPACK_MACOS_PROVISIONING_PROFILE, --provisioning-profile
+    provisioning_profiles: {com.example.app.share: macos/Share.provisionprofile}
+  smoke_test: true                                       # --smoke-test: launch the signed app, check it keeps running
+```
+
+fpack embeds the profile, checks type/team/app id/expiry and that every
+restricted entitlement is authorized (`aps-environment` must be
+`production`); `macos.sign.profile_check: false` skips the checks.
+Get the profile at developer.apple.com → Profiles → + → **Developer ID**
+(enable the capabilities on the app id first). Errors such as "is a
+development/ad hoc profile", "belongs to team …", "is for app id …", "generated for another Developer ID Application certificate",
+"expired", "is not authorized by" name the exact mismatch.
+
 ### Windows signing
 
 Optional. Set `FPACK_WINDOWS_CERTIFICATE` (.pfx) + `FPACK_WINDOWS_CERTIFICATE_PASSWORD`,
@@ -170,6 +194,7 @@ More recipes (macOS, Windows, Linux): https://matkurban.github.io/fpack/ci/
 | `signing identity … not found in the keychain` | use a listed Developer ID identity or `--no-sign` |
 | `already exists` | bump the version, `--build-number N` or `--force` |
 | `needs macOS/Windows/Linux` | build on that OS |
+| signed macOS app won't launch (`RBSRequestErrorDomain Code=5`) | set a Developer ID `macos.sign.provisioning_profile`; verify with `--smoke-test` |
 | `Inno Setup (ISCC.exe) not found` / `dpkg-deb`, `rpmbuild`, `appimagetool`, `snapcraft` missing | install the tool (`fpack doctor` lists all) |
 | `no Flutter project found in … or its parents` (lists the apps below a repo root) | `cd` into one or pass `fpack -C <dir>` |
 | `which targets?` | name targets, use `--all`, or set `build.targets` |

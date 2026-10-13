@@ -105,6 +105,8 @@ fpack -C apps/client build web --base-href /app/
   --notarize                    macOS：公证并装订 zip/DMG/pkg
   --no-notarize                 macOS：跳过公证（本地构建更快）
   --notarize-no-wait            macOS：提交公证后不等待结果直接结束（之后：fpack notarize finish）
+  --provisioning-profile FILE   macOS：要嵌入的 Developer ID 描述文件
+  --smoke-test                  macOS：启动签名后的 App 并检查能否正常运行
   --notary-profile NAME         macOS：notarytool 钥匙串配置名
   --dmg-tool T                  macOS：auto | hdiutil | create-dmg
   --base-href PATH              web：base href，例如 /app/

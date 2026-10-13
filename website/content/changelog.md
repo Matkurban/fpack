@@ -4,6 +4,14 @@ description: "Changes in every fpack release."
 ---
 
 <!-- BEGIN GENERATED CHANGELOG -->
+## Unreleased
+
+### Added
+- macOS provisioning profiles for Developer ID apps: `macos.sign.provisioning_profile` (`--provisioning-profile`, `FPACK_MACOS_PROVISIONING_PROFILE`) and `macos.sign.provisioning_profiles` (bundle id → profile, for app extensions, login items and other nested bundles). fpack copies each profile to `Contents/embedded.provisionprofile` (replacing Xcode's development profile) and signs inside-out: nested bundles with their own entitlements, then the app.
+- Profile validation before the Xcode build and again on the built app: Developer ID type (`ProvisionsAllDevices`, no `ProvisionedDevices`), team, signing certificate (the profile must list the exact Developer ID Application certificate), app id (wildcards allowed), expiry, and every restricted entitlement (`aps-environment`, iCloud, associated domains, keychain access groups, …) with consistent values (e.g. `aps-environment` `production`). Errors are in English and Chinese and say how to fix them.
+- Restricted entitlements without a profile, or an app that embeds Xcode's development profile, now stop the build before Developer ID signing (otherwise the signed app does not launch: `RBSRequestErrorDomain Code=5`, POSIX 163). `macos.sign.profile_check: false` (`FPACK_MACOS_PROFILE_CHECK`) turns the checks off. `fpack doctor` reports the same problems.
+- `macos.smoke_test` (`--smoke-test`, `FPACK_MACOS_SMOKE_TEST`) and `macos.smoke_test_seconds`: after signing (before notarization) fpack opens the app, checks that it is still running after N seconds and quits it; a failure shows the launch error and the `log show` command to find the reason.
+
 ## 1.1.13
 
 ### Fixed

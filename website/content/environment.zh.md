@@ -11,7 +11,7 @@ description: "所有 FPACK_* 变量以及 fpack 读取的其他变量。"
 | `FPACK_OUTPUT_DIR` `FPACK_OVERWRITE` `FPACK_SPLIT_PER_ABI` `FPACK_OBFUSCATE` | 输出 / Android / 混淆 |
 | `FPACK_ANDROID_KEYSTORE` `FPACK_ANDROID_KEYSTORE_BASE64` `FPACK_ANDROID_KEYSTORE_PASSWORD` `FPACK_ANDROID_KEY_ALIAS` `FPACK_ANDROID_KEY_PASSWORD` | Android 签名 |
 | `FPACK_IOS_EXPORT_METHOD` `FPACK_IOS_EXPORT_OPTIONS_PLIST` `FPACK_IOS_CODESIGN` | iOS 导出 |
-| `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_NOTARIZE_WAIT` `FPACK_DMG_TOOL` | macOS |
+| `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_NOTARIZE_WAIT` `FPACK_MACOS_PROVISIONING_PROFILE` `FPACK_MACOS_PROFILE_CHECK` `FPACK_MACOS_SMOKE_TEST` `FPACK_DMG_TOOL` | macOS |
 | `FPACK_NOTARY_APPLE_ID` `FPACK_NOTARY_TEAM_ID` `FPACK_NOTARY_PASSWORD` `FPACK_NOTARY_API_KEY` `FPACK_NOTARY_API_KEY_ID` `FPACK_NOTARY_API_ISSUER` | macOS 公证凭证（Apple ID / API 密钥） |
 | `FPACK_WINDOWS_CERTIFICATE` `FPACK_WINDOWS_CERTIFICATE_PASSWORD` `FPACK_WINDOWS_CERT_THUMBPRINT` `FPACK_WINDOWS_CERT_SUBJECT` `FPACK_WINDOWS_SIGN_DLIB` `FPACK_WINDOWS_SIGN_DLIB_METADATA` | Windows 代码签名（.pfx、证书存储，或 Azure Trusted Signing 等 signtool dlib） |
 | `FPACK_LANG` | `zh` / `en`（默认跟随系统语言，见下文「输出语言」） |
@@ -84,7 +84,10 @@ fpack（Go 核心和 Dart 启动器）在操作系统语言为中文（任何 `z
 | `FPACK_NOTARY_API_KEY_ID` | `macos.sign.notary_api_key_id` | string | API 密钥 ID。 |
 | `FPACK_NOTARY_API_ISSUER` | `macos.sign.notary_api_issuer` | string | API Issuer UUID（个人密钥可省略）。 |
 | `FPACK_MACOS_INSTALLER_IDENTITY` | `macos.sign.installer_identity` | string | 签名 .pkg 的证书，与 App 的 “Developer ID Application” 不同。不设置则 pkg 不签名。 |
+| `FPACK_MACOS_PROVISIONING_PROFILE` | `macos.sign.provisioning_profile` | path | Developer ID 描述文件，签名前复制为 Contents/embedded.provisionprofile。entitlements 使用受限键（aps-environment、iCloud、associated domains、keychain access groups 等）时必需。 |
+| `FPACK_MACOS_PROFILE_CHECK` | `macos.sign.profile_check` | bool | 签名前检查描述文件与受限 entitlements（Developer ID 类型、团队、App ID、有效期、已授权的 entitlements），并拒绝开发描述文件。false 跳过检查。 |
 | `FPACK_NOTARIZE_WAIT` | `macos.notarize.wait` | bool | true：一直等待 Apple 返回结果（显示已等待时间；按 Ctrl-C 只是停止等待，Apple 端会继续处理）。false：提交后写入 NOTARIZATION.md / notarization.json 并结束，状态为 “submitted”；之后运行 `fpack notarize finish` 装订。 |
+| `FPACK_MACOS_SMOKE_TEST` | `macos.smoke_test` | bool | 签名后启动 App，检查 smoke_test_seconds 秒后仍在运行，然后退出（可发现未授权 entitlements 等启动失败）。 |
 | `FPACK_DMG_TOOL` | `macos.dmg.tool` | `auto` \\| `hdiutil` \\| `create-dmg` | auto：装了 create-dmg（或设置了布局键）时用 create-dmg，否则用 hdiutil。 |
 | `FPACK_WINDOWS_CERTIFICATE` | `windows.sign.certificate` | path | 代码签名证书（.pfx）。设置它（或 thumbprint）后会签名应用 .exe、安装程序和 MSIX。 |
 | `FPACK_WINDOWS_CERTIFICATE_PASSWORD` | `windows.sign.password` | string | 证书密码。 |

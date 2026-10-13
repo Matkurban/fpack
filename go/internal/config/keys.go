@@ -283,11 +283,26 @@ var Keys = []Key{
 	k("macos.sign.installer_identity", KString, none, "pkg", "\"Developer ID Installer: Your Name (TEAMID)\"",
 		d("Signs the .pkg; a separate certificate from the app's \"Developer ID Application\". Unset = unsigned pkg.", "签名 .pkg 的证书，与 App 的 “Developer ID Application” 不同。不设置则 pkg 不签名。"), env("FPACK_MACOS_INSTALLER_IDENTITY"), flag("--installer-identity")),
 
+	k("macos.sign.provisioning_profile", KPath, d("Xcode's embedded profile is kept", "保留 Xcode 嵌入的描述文件"), signApp, "macos/XueHua.provisionprofile",
+		d("Developer ID provisioning profile, copied to Contents/embedded.provisionprofile before signing. Required when the entitlements use restricted keys (aps-environment, iCloud, associated domains, keychain access groups, …).", "Developer ID 描述文件，签名前复制为 Contents/embedded.provisionprofile。entitlements 使用受限键（aps-environment、iCloud、associated domains、keychain access groups 等）时必需。"),
+		env("FPACK_MACOS_PROVISIONING_PROFILE"), flag("--provisioning-profile")),
+	k("macos.sign.provisioning_profiles", KMap, none, signApp, "{com.xuehua.im.share: macos/XueHuaShare.provisionprofile}",
+		d("Profiles for nested bundles (app extensions, login items): bundle id → .provisionprofile path.", "内嵌 bundle（App 扩展、登录项）的描述文件：bundle id → .provisionprofile 路径。")),
+	k("macos.sign.profile_check", KBool, d("true", "true"), signApp, "false",
+		d("Check provisioning profiles and restricted entitlements before signing (type Developer ID, team, app id, expiry, authorized entitlements) and refuse development profiles. false skips the checks.", "签名前检查描述文件与受限 entitlements（Developer ID 类型、团队、App ID、有效期、已授权的 entitlements），并拒绝开发描述文件。false 跳过检查。"),
+		env("FPACK_MACOS_PROFILE_CHECK")),
+
 	// ---- macos.notarize ----
 	k("macos.notarize.wait", KBool, d("true", "true"), signApp, "false",
 		d("true: stay attached until Apple answers (shows elapsed time; Ctrl-C stops waiting, the submission continues at Apple). false: submit, write NOTARIZATION.md / notarization.json and finish with status \"submitted\"; later run `fpack notarize finish` to staple.",
 			"true：一直等待 Apple 返回结果（显示已等待时间；按 Ctrl-C 只是停止等待，Apple 端会继续处理）。false：提交后写入 NOTARIZATION.md / notarization.json 并结束，状态为 “submitted”；之后运行 `fpack notarize finish` 装订。"),
 		env("FPACK_NOTARIZE_WAIT"), flag("--notarize-no-wait")),
+
+	k("macos.smoke_test", KBool, d("false", "false"), signApp, "true",
+		d("After signing, launch the app, check that it is still running after smoke_test_seconds, then quit it (catches launch failures such as unauthorized entitlements).", "签名后启动 App，检查 smoke_test_seconds 秒后仍在运行，然后退出（可发现未授权 entitlements 等启动失败）。"),
+		env("FPACK_MACOS_SMOKE_TEST"), flag("--smoke-test")),
+	k("macos.smoke_test_seconds", KInt, d("5", "5"), signApp, "10",
+		d("How long the smoke test waits (1-300).", "启动测试的等待秒数（1-300）。")),
 
 	// ---- macos.dmg ----
 	k("macos.dmg.tool", KEnum, d("auto", "auto"), "dmg", "create-dmg",

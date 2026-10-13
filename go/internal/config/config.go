@@ -144,6 +144,10 @@ type MacOS struct {
 	DMG       DMG      `yaml:"dmg"`
 	Pkg       Pkg      `yaml:"pkg"`
 	ExtraArgs List     `yaml:"extra_args"`
+	// SmokeTest launches the signed app and checks it is still running
+	// after SmokeTestSeconds.
+	SmokeTest        *bool `yaml:"smoke_test"`
+	SmokeTestSeconds int   `yaml:"smoke_test_seconds"`
 }
 
 // MacSign configures Developer ID signing + notarization of the .app/.dmg/.pkg.
@@ -162,6 +166,14 @@ type MacSign struct {
 	NotaryAPIIssuer string `yaml:"notary_api_issuer"`
 	// InstallerIdentity signs the .pkg: "Developer ID Installer: Name (TEAMID)".
 	InstallerIdentity string `yaml:"installer_identity"`
+	// ProvisioningProfile is a Developer ID provisioning profile embedded
+	// as Contents/embedded.provisionprofile before signing.
+	ProvisioningProfile string `yaml:"provisioning_profile"`
+	// ProvisioningProfiles maps bundle ids of nested bundles (extensions,
+	// login items) to their profiles.
+	ProvisioningProfiles map[string]string `yaml:"provisioning_profiles"`
+	// ProfileCheck validates profiles and restricted entitlements (default true).
+	ProfileCheck *bool `yaml:"profile_check"`
 }
 
 // Notarize controls how fpack waits for Apple's notary service.
@@ -1065,6 +1077,9 @@ func (c *Config) Validate() []string {
 		if _, ok := InnoLanguages[strings.ToLower(l)]; !ok && !strings.HasSuffix(strings.ToLower(l), ".isl") {
 			p = append(p, fmt.Sprintf(i18n.S("windows.inno_setup.languages: unknown language %q (use %s, or a path to an .isl file)", "windows.inno_setup.languages：未知语言 %q（可用 %s，或 .isl 文件路径）"), l, strings.Join(InnoLanguageNames(), ", ")))
 		}
+	}
+	if n := c.MacOS.SmokeTestSeconds; n != 0 && (n < 1 || n > 300) {
+		p = append(p, fmt.Sprintf(i18n.S("macos.smoke_test_seconds must be 1-300 (got %d)", "macos.smoke_test_seconds 必须在 1-300 之间（实际为 %d）"), n))
 	}
 	if l := c.MacOS.Pkg.InstallLocation; l != "" && !strings.HasPrefix(l, "/") {
 		p = append(p, fmt.Sprintf(i18n.S("macos.pkg.install_location must be an absolute path (got %q)", "macos.pkg.install_location 必须是绝对路径（实际为 %q）"), l))

@@ -213,6 +213,8 @@ macOS：macos（.app zip）、dmg、pkg。
 
 | 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
 | --- | --- | --- | --- | --- | --- |
+| `macos.smoke_test` | bool | `false` | macos, dmg, pkg | `FPACK_MACOS_SMOKE_TEST`<br>`--smoke-test` | 签名后启动 App，检查 smoke_test_seconds 秒后仍在运行，然后退出（可发现未授权 entitlements 等启动失败）。 示例：`true` |
+| `macos.smoke_test_seconds` | int | `5` | macos, dmg, pkg |  | 启动测试的等待秒数（1-300）。 示例：`10` |
 | `macos.extra_args` | list（或单个字符串） | — | macos, dmg, pkg |  | 追加到 flutter build macos 的参数。 示例：`[--no-tree-shake-icons]` |
 
 #### `macos.sign`
@@ -234,6 +236,9 @@ Developer ID 签名与公证（只来自本文件、FPACK_MACOS_* 和命令行�
 | `macos.sign.notary_api_key_id` | string | — | macos, dmg, pkg | `FPACK_NOTARY_API_KEY_ID` | API 密钥 ID。 示例：`ABC123DEF4` |
 | `macos.sign.notary_api_issuer` | string | — | macos, dmg, pkg | `FPACK_NOTARY_API_ISSUER` | API Issuer UUID（个人密钥可省略）。 示例：`69a6de7e-…` |
 | `macos.sign.installer_identity` | string | — | pkg | `FPACK_MACOS_INSTALLER_IDENTITY`<br>`--installer-identity` | 签名 .pkg 的证书，与 App 的 “Developer ID Application” 不同。不设置则 pkg 不签名。 示例：`"Developer ID Installer: Your Name (TEAMID)"` |
+| `macos.sign.provisioning_profile` | path | `保留 Xcode 嵌入的描述文件` | macos, dmg, pkg | `FPACK_MACOS_PROVISIONING_PROFILE`<br>`--provisioning-profile` | Developer ID 描述文件，签名前复制为 Contents/embedded.provisionprofile。entitlements 使用受限键（aps-environment、iCloud、associated domains、keychain access groups 等）时必需。 示例：`macos/XueHua.provisionprofile` |
+| `macos.sign.provisioning_profiles` | map | — | macos, dmg, pkg |  | 内嵌 bundle（App 扩展、登录项）的描述文件：bundle id → .provisionprofile 路径。 示例：`{com.xuehua.im.share: macos/XueHuaShare.provisionprofile}` |
+| `macos.sign.profile_check` | bool | `true` | macos, dmg, pkg | `FPACK_MACOS_PROFILE_CHECK` | 签名前检查描述文件与受限 entitlements（Developer ID 类型、团队、App ID、有效期、已授权的 entitlements），并拒绝开发描述文件。false 跳过检查。 示例：`false` |
 
 #### `macos.notarize`
 

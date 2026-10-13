@@ -8,8 +8,8 @@ description: "Developer ID signing, notarization, DMG and pkg installers, and ho
 For distribution outside the App Store (Developer ID). Enabled **only** through fpack's own settings (low → high precedence):
 
 1. `macos.sign` in `fpack.yaml` (`fpack init` writes a commented section with placeholders and lists the Developer ID certificates found in your keychain)
-2. environment variables `FPACK_MACOS_SIGN`, `FPACK_MACOS_SIGN_IDENTITY`, `FPACK_MACOS_INSTALLER_IDENTITY`, `FPACK_MACOS_NOTARIZE`, `FPACK_MACOS_NOTARY_PROFILE`
-3. flags `--sign/--no-sign`, `--sign-identity`, `--installer-identity`, `--notarize/--no-notarize`, `--notary-profile`
+2. environment variables `FPACK_MACOS_SIGN`, `FPACK_MACOS_SIGN_IDENTITY`, `FPACK_MACOS_INSTALLER_IDENTITY`, `FPACK_MACOS_NOTARIZE`, `FPACK_MACOS_NOTARY_PROFILE`, `FPACK_MACOS_PROVISIONING_PROFILE`, `FPACK_MACOS_PROFILE_CHECK`, `FPACK_MACOS_SMOKE_TEST`
+3. flags `--sign/--no-sign`, `--sign-identity`, `--installer-identity`, `--notarize/--no-notarize`, `--notary-profile`, `--provisioning-profile`, `--smoke-test`
 
 ```yaml
 macos:
@@ -137,6 +137,49 @@ Priority: `notary_profile` → API key → Apple ID; any of them turns notarizat
    ```
 
    `set-key-partition-list` lets codesign / productbuild use the private key without a prompt; `-lut 21600` keeps the keychain unlocked for 6 hours. Never commit certificates, .p12/.p8 files or passwords.
+
+## Provisioning profiles
+
+Provisioning profiles and restricted entitlements: `flutter build macos` embeds Xcode's development profile ("Mac Team Provisioning Profile"). Once the app is re-signed with Developer ID, restricted entitlements such as `com.apple.developer.aps-environment` (push), iCloud, associated domains or keychain access groups are no longer authorized, and the app does not launch (`RBSRequestErrorDomain Code=5`). Create a **Developer ID** provisioning profile for the app id (developer.apple.com → Profiles → + → Developer ID) and set it:
+
+```yaml
+macos:
+  sign:
+    identity: "Developer ID Application: Your Name (ABCDE12345)"
+    provisioning_profile: macos/MyApp.provisionprofile         # or FPACK_MACOS_PROVISIONING_PROFILE / --provisioning-profile
+    provisioning_profiles:                                     # nested bundles: bundle id → profile
+      com.example.app.share: macos/MyAppShare.provisionprofile
+  smoke_test: true                                             # or FPACK_MACOS_SMOKE_TEST / --smoke-test
+```
+
+Before signing, fpack copies the profile to `Contents/embedded.provisionprofile` (and the mapped profiles into extensions and login items), then signs inside-out: nested code, nested bundles with their own entitlements, the app. It checks every profile with `security cms -D -i`: Developer ID type (`ProvisionsAllDevices`), the signing certificate's team, the app id (`TEAM.bundle.id`, wildcards allowed), the expiry date, and that every restricted entitlement used for signing is authorized with a matching value (e.g. `aps-environment` must be `production`). Without a profile, restricted entitlements or an embedded development profile stop the build before signing; `fpack doctor` reports the same. `macos.sign.profile_check: false` (`FPACK_MACOS_PROFILE_CHECK=false`) skips the checks. `macos.smoke_test` opens the signed app, checks that it is still running after `smoke_test_seconds` (default 5) and quits it.
+
+**Getting a Developer ID provisioning profile** (Account Holder or Admin):
+
+1. developer.apple.com → Certificates, IDs & Profiles → **Identifiers**: open the app id (e.g. `com.example.app`, the `PRODUCT_BUNDLE_IDENTIFIER` in `macos/Runner/Configs/AppInfo.xcconfig`) and enable the capabilities your entitlements use (Push Notifications, iCloud, Associated Domains, …). Save.
+2. **Profiles** → **+** → under *Distribution* choose **Developer ID** → platform macOS → the app id → the **Developer ID Application** certificate you sign with (the exact certificate: check its SHA-1 with `security find-identity -v -p codesigning`; a profile made for another certificate is rejected at launch) → name it → **Generate** → **Download**.
+3. Put the `.provisionprofile` in the project (e.g. `macos/MyApp.provisionprofile`; it holds no secret, but you may keep it out of git and point to it with `FPACK_MACOS_PROVISIONING_PROFILE` in CI). Repeat for every extension/login item with its own bundle id and map them under `provisioning_profiles`.
+4. Make the release entitlements match the profile: Developer ID profiles authorize `aps-environment` **production**, so set `<key>com.apple.developer.aps-environment</key><string>production</string>` in `macos/Runner/Release.entitlements`.
+5. Inspect a profile with `security cms -D -i macos/MyApp.provisionprofile`; check a built app with `codesign -d --entitlements - --xml MyApp.app` and `security cms -D -i MyApp.app/Contents/embedded.provisionprofile`.
+
+**Validation messages** (all stop the build before signing; `fpack doctor` shows them too):
+
+| Message | Meaning / fix |
+| --- | --- |
+| `… uses restricted entitlements (…) that a Developer ID app may only use with a provisioning profile` | no profile configured: set `macos.sign.provisioning_profile` |
+| `the app embeds Xcode's development profile "…"` / `… embeds Xcode's development profile` (doctor) | Xcode embedded the Mac Team (development) profile: configure a Developer ID profile so fpack replaces it |
+| `… is a development/ad hoc profile (N registered devices)` | you downloaded a Development profile: create a **Developer ID** one |
+| `… is not a Developer ID profile (ProvisionsAllDevices is missing)` | App Store profile: create a **Developer ID** one |
+| `… was generated for another Developer ID Application certificate (…), not the signing certificate …` | the profile lists other certificates than the one fpack signs with (e.g. after a certificate was recreated); macOS logs `Unsatisfied entitlements` and refuses to launch: edit the profile, select the signing certificate, download it again |
+| `… belongs to team X, but the signing certificate is from team Y` | profile and certificate are from different teams |
+| `… is for app id TEAM.a, not TEAM.b` | the profile was made for another bundle id |
+| `… expired on YYYY-MM-DD` | generate and download the profile again |
+| `entitlement … is not authorized by …` | enable the capability for the app id, regenerate the profile |
+| `aps-environment is "development" in the entitlements but the profile allows "production"` | set `production` in the release entitlements |
+
+If you really need to sign anyway, `macos.sign.profile_check: false` (or `FPACK_MACOS_PROFILE_CHECK=false`) skips the checks (the profile is still embedded).
+
+**Smoke test**: with `macos.smoke_test: true` (or `--smoke-test`), fpack runs `open -n` on the signed app, waits `macos.smoke_test_seconds` (default 5, 1-300), checks with `pgrep` that the app is still running and quits it with `pkill`. If it is not running, the build fails with `the app was not running … after launch (it crashed or macOS refused to start it)` and a `log show` command that shows why (amfid / RunningBoard). It runs before notarization, so a broken app is never uploaded.
 
 ## macOS installer (pkg)
 

@@ -213,6 +213,8 @@ macOS: macos (.app zip), dmg, pkg.
 
 | Key | Type | Default | Targets | Env / flag | Description |
 | --- | --- | --- | --- | --- | --- |
+| `macos.smoke_test` | bool | `false` | macos, dmg, pkg | `FPACK_MACOS_SMOKE_TEST`<br>`--smoke-test` | After signing, launch the app, check that it is still running after smoke_test_seconds, then quit it (catches launch failures such as unauthorized entitlements). Example: `true` |
+| `macos.smoke_test_seconds` | int | `5` | macos, dmg, pkg |  | How long the smoke test waits (1-300). Example: `10` |
 | `macos.extra_args` | list (or one string) | — | macos, dmg, pkg |  | Extra arguments for flutter build macos. Example: `[--no-tree-shake-icons]` |
 
 #### `macos.sign`
@@ -234,6 +236,9 @@ Developer ID signing and notarization (only from this file, FPACK_MACOS_* and fl
 | `macos.sign.notary_api_key_id` | string | — | macos, dmg, pkg | `FPACK_NOTARY_API_KEY_ID` | API key ID. Example: `ABC123DEF4` |
 | `macos.sign.notary_api_issuer` | string | — | macos, dmg, pkg | `FPACK_NOTARY_API_ISSUER` | API issuer UUID (omit for individual keys). Example: `69a6de7e-…` |
 | `macos.sign.installer_identity` | string | — | pkg | `FPACK_MACOS_INSTALLER_IDENTITY`<br>`--installer-identity` | Signs the .pkg; a separate certificate from the app's "Developer ID Application". Unset = unsigned pkg. Example: `"Developer ID Installer: Your Name (TEAMID)"` |
+| `macos.sign.provisioning_profile` | path | `Xcode's embedded profile is kept` | macos, dmg, pkg | `FPACK_MACOS_PROVISIONING_PROFILE`<br>`--provisioning-profile` | Developer ID provisioning profile, copied to Contents/embedded.provisionprofile before signing. Required when the entitlements use restricted keys (aps-environment, iCloud, associated domains, keychain access groups, …). Example: `macos/XueHua.provisionprofile` |
+| `macos.sign.provisioning_profiles` | map | — | macos, dmg, pkg |  | Profiles for nested bundles (app extensions, login items): bundle id → .provisionprofile path. Example: `{com.xuehua.im.share: macos/XueHuaShare.provisionprofile}` |
+| `macos.sign.profile_check` | bool | `true` | macos, dmg, pkg | `FPACK_MACOS_PROFILE_CHECK` | Check provisioning profiles and restricted entitlements before signing (type Developer ID, team, app id, expiry, authorized entitlements) and refuse development profiles. false skips the checks. Example: `false` |
 
 #### `macos.notarize`
 

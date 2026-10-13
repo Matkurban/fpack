@@ -2567,12 +2567,85 @@
               ],
               "markdownDescription": "**Team ID for Apple ID notarization.**  \nApple ID 公证时的团队 ID。\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_NOTARY_TEAM_ID`",
               "type": "string"
+            },
+            "profile_check": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
+              "description": "Check provisioning profiles and restricted entitlements before signing (type Developer ID, team, app id, expiry, authorized entitlements) and refuse development profiles. false skips the checks. Default: true. Env: FPACK_MACOS_PROFILE_CHECK. Targets: macos, dmg, pkg.",
+              "examples": [
+                false
+              ],
+              "markdownDescription": "**Check provisioning profiles and restricted entitlements before signing (type Developer ID, team, app id, expiry, authorized entitlements) and refuse development profiles. false skips the checks.**  \n签名前检查描述文件与受限 entitlements（Developer ID 类型、团队、App ID、有效期、已授权的 entitlements），并拒绝开发描述文件。false 跳过检查。\n\nDefault / 默认: `true`\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_MACOS_PROFILE_CHECK`"
+            },
+            "provisioning_profile": {
+              "description": "Developer ID provisioning profile, copied to Contents/embedded.provisionprofile before signing. Required when the entitlements use restricted keys (aps-environment, iCloud, associated domains, keychain access groups, …). Default: Xcode's embedded profile is kept. Env: FPACK_MACOS_PROVISIONING_PROFILE. Targets: macos, dmg, pkg.",
+              "examples": [
+                "macos/XueHua.provisionprofile"
+              ],
+              "markdownDescription": "**Developer ID provisioning profile, copied to Contents/embedded.provisionprofile before signing. Required when the entitlements use restricted keys (aps-environment, iCloud, associated domains, keychain access groups, …).**  \nDeveloper ID 描述文件，签名前复制为 Contents/embedded.provisionprofile。entitlements 使用受限键（aps-environment、iCloud、associated domains、keychain access groups 等）时必需。\n\nDefault / 默认: `保留 Xcode 嵌入的描述文件`\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_MACOS_PROVISIONING_PROFILE` · Flag: `--provisioning-profile`",
+              "type": "string"
+            },
+            "provisioning_profiles": {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "description": "Profiles for nested bundles (app extensions, login items): bundle id → .provisionprofile path. Targets: macos, dmg, pkg.",
+              "examples": [
+                {
+                  "com.xuehua.im.share": "macos/XueHuaShare.provisionprofile"
+                }
+              ],
+              "markdownDescription": "**Profiles for nested bundles (app extensions, login items): bundle id → .provisionprofile path.**  \n内嵌 bundle（App 扩展、登录项）的描述文件：bundle id → .provisionprofile 路径。\n\nTargets / 目标: macos, dmg, pkg",
+              "type": "object"
             }
           },
           "type": [
             "object",
             "null"
           ]
+        },
+        "smoke_test": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
+          "description": "After signing, launch the app, check that it is still running after smoke_test_seconds, then quit it (catches launch failures such as unauthorized entitlements). Default: false. Env: FPACK_MACOS_SMOKE_TEST. Targets: macos, dmg, pkg.",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "**After signing, launch the app, check that it is still running after smoke_test_seconds, then quit it (catches launch failures such as unauthorized entitlements).**  \n签名后启动 App，检查 smoke_test_seconds 秒后仍在运行，然后退出（可发现未授权 entitlements 等启动失败）。\n\nDefault / 默认: `false`\n\nTargets / 目标: macos, dmg, pkg · Env: `FPACK_MACOS_SMOKE_TEST` · Flag: `--smoke-test`"
+        },
+        "smoke_test_seconds": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+              "type": "string"
+            }
+          ],
+          "description": "How long the smoke test waits (1-300). Default: 5. Targets: macos, dmg, pkg.",
+          "examples": [
+            10
+          ],
+          "markdownDescription": "**How long the smoke test waits (1-300).**  \n启动测试的等待秒数（1-300）。\n\nDefault / 默认: `5`\n\nTargets / 目标: macos, dmg, pkg"
         }
       },
       "type": [

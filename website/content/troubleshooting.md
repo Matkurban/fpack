@@ -22,6 +22,10 @@ When a build fails, fpack prints the key error excerpt (Gradle's "What went wron
 | `Inno Setup (ISCC.exe) not found` | install Inno Setup 6 (`winget install --id JRSoftware.InnoSetup -e`) or set `windows.inno_setup.iscc` |
 | `dpkg-deb` / `rpmbuild` / `appimagetool` / `snapcraft` missing | install them (see [Linux](/platforms/linux)) – fpack lists every missing tool at once |
 | `no Flutter project found in … or its parents` (at a repository root fpack also lists the Flutter apps below it) | `cd` into one, or pick it with `fpack -C <dir>` |
+| signed + notarized macOS app does not launch (`RBSRequestErrorDomain Code=5`, POSIX 163, "Launch failed") | the entitlements use restricted keys (push, iCloud, …) authorized only by Xcode's development profile: set a Developer ID `macos.sign.provisioning_profile` – see [Provisioning profiles](/platforms/macos#provisioning-profiles); `--smoke-test` catches this before notarization |
+| `uses restricted entitlements … only use with a provisioning profile` / `embeds Xcode's development profile` / `is a development/ad hoc profile` / `is not authorized by` | see the validation table on the [macOS page](/platforms/macos#provisioning-profiles) |
+| macOS log: `Unsatisfied entitlements` / `No matching profile found` (amfid, taskgated-helper) | the profile does not cover the signature: wrong certificate, team, app id or entitlement value – `fpack doctor` names which |
+| `the app was not running … after launch` (smoke test) | run the printed `log show` command; usually unauthorized entitlements or a crash at startup |
 | `which targets?` | name targets (`fpack build apk`), use `--all`, or set `build.targets` in fpack.yaml |
 
 ## Exit codes

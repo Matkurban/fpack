@@ -46,6 +46,8 @@ var buildFlags = []flagSpec{
 	{names: []string{"--notarize"}, kind: kBool, en: "macOS: notarize + staple the zip/DMG/pkg", zh: "macOS：公证并装订 zip/DMG/pkg"},
 	{names: []string{"--no-notarize"}, kind: kBool, en: "macOS: skip notarization (faster local builds)", zh: "macOS：跳过公证（本地构建更快）"},
 	{names: []string{"--notarize-no-wait"}, kind: kBool, en: "macOS: submit for notarization and finish without waiting (later: fpack notarize finish)", zh: "macOS：提交公证后不等待结果直接结束（之后：fpack notarize finish）"},
+	{names: []string{"--provisioning-profile"}, kind: kString, metavar: "FILE", en: "macOS: Developer ID provisioning profile to embed", zh: "macOS：要嵌入的 Developer ID 描述文件"},
+	{names: []string{"--smoke-test"}, kind: kBool, en: "macOS: launch the signed app and check it keeps running", zh: "macOS：启动签名后的 App 并检查能否正常运行"},
 	{names: []string{"--notary-profile"}, kind: kString, metavar: "NAME", en: "macOS: notarytool keychain profile", zh: "macOS：notarytool 钥匙串配置名"},
 	{names: []string{"--dmg-tool"}, kind: kString, metavar: "T", en: "macOS: auto | hdiutil | create-dmg", zh: "macOS：auto | hdiutil | create-dmg"},
 	{names: []string{"--base-href"}, kind: kString, metavar: "PATH", en: "web: base href, e.g. /app/", zh: "web：base href，例如 /app/"},
@@ -121,6 +123,10 @@ func applyBuildFlags(p *parsed) (func(*config.Config) error, error) {
 		set("sign-identity", &c.MacOS.Sign.Identity)
 		set("installer-identity", &c.MacOS.Sign.InstallerIdentity)
 		set("notary-profile", &c.MacOS.Sign.NotaryProfile)
+		set("provisioning-profile", &c.MacOS.Sign.ProvisioningProfile)
+		if p.b("smoke-test") {
+			c.MacOS.SmokeTest = &t
+		}
 		set("dmg-tool", &c.MacOS.DMG.Tool)
 		set("base-href", &c.Web.BaseHref)
 		if p.has("build-name") {

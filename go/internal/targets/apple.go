@@ -215,8 +215,19 @@ func identitySummary(ids []string) string {
 	return strings.Join(parts, ", ")
 }
 
-// macSigningPreflight validates (and auto-selects) the signing identity.
+// macSigningPreflight validates (and auto-selects) the signing identity,
+// then the provisioning profiles and restricted entitlements.
 func macSigningPreflight(c *Context) []Issue {
+	out := macIdentityPreflight(c)
+	for _, is := range out {
+		if is.Fatal {
+			return out
+		}
+	}
+	return append(out, profilePreflight(c)...)
+}
+
+func macIdentityPreflight(c *Context) []Issue {
 	if !c.Mac.Enabled {
 		return nil
 	}
@@ -299,8 +310,10 @@ func (c *Context) entitlements() string {
 }
 
 // signAppOps re-signs a staged .app with the Developer ID identity, inside
-// out: nested code via --deep, then the bundle itself with the project's
-// entitlements and the hardened runtime (required for notarization).
+// out: provisioning profiles are embedded first, nested code is signed via
+// --deep, nested bundles again with their own entitlements, then the bundle
+// itself with the project's entitlements and the hardened runtime (required
+// for notarization). An optional launch smoke test follows.
 func signAppOps(c *Context, app string) []Op {
 	id := c.Mac.IdentityLabel()
 	rt := []string{"--options", "runtime"}
@@ -312,11 +325,18 @@ func signAppOps(c *Context, app string) []Op {
 		sign2 = append(sign2, "--entitlements", e)
 	}
 	sign2 = append(sign2, "--sign", id, app)
-	return []Op{
+	nested := new([]nestedSignature)
+	ops := []Op{
+		macProfileOps(c, app, nested),
 		{Desc: i18n.S("sign nested code", "签名内嵌代码"), Cmd: cmd("codesign", append(append([]string{"--force", "--deep"}, rt...), "--timestamp", "--sign", id, app)...), Hint: hintIdentity()},
+		signNestedOp(c, nested, rt),
 		{Desc: i18n.S("sign app bundle", "签名 App"), Cmd: cmd("codesign", sign2...), Hint: hintIdentity()},
 		{Desc: i18n.S("verify signature", "校验签名"), Cmd: cmd("codesign", "--verify", "--deep", "--strict", "--verbose=2", app)},
 	}
+	if c.smokeTest() {
+		ops = append(ops, smokeTestOp(c, app))
+	}
+	return ops
 }
 
 func hintIdentity() string {

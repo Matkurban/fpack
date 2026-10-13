@@ -11,7 +11,7 @@ description: "All FPACK_* variables and the variables fpack reads."
 | `FPACK_OUTPUT_DIR` `FPACK_OVERWRITE` `FPACK_SPLIT_PER_ABI` `FPACK_OBFUSCATE` | output / Android / obfuscation |
 | `FPACK_ANDROID_KEYSTORE` `FPACK_ANDROID_KEYSTORE_BASE64` `FPACK_ANDROID_KEYSTORE_PASSWORD` `FPACK_ANDROID_KEY_ALIAS` `FPACK_ANDROID_KEY_PASSWORD` | Android signing |
 | `FPACK_IOS_EXPORT_METHOD` `FPACK_IOS_EXPORT_OPTIONS_PLIST` `FPACK_IOS_CODESIGN` | iOS export |
-| `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_NOTARIZE_WAIT` `FPACK_DMG_TOOL` | macOS |
+| `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_NOTARIZE_WAIT` `FPACK_MACOS_PROVISIONING_PROFILE` `FPACK_MACOS_PROFILE_CHECK` `FPACK_MACOS_SMOKE_TEST` `FPACK_DMG_TOOL` | macOS |
 | `FPACK_NOTARY_APPLE_ID` `FPACK_NOTARY_TEAM_ID` `FPACK_NOTARY_PASSWORD` `FPACK_NOTARY_API_KEY` `FPACK_NOTARY_API_KEY_ID` `FPACK_NOTARY_API_ISSUER` | macOS notary credentials (Apple ID / API key) |
 | `FPACK_WINDOWS_CERTIFICATE` `FPACK_WINDOWS_CERTIFICATE_PASSWORD` `FPACK_WINDOWS_CERT_THUMBPRINT` `FPACK_WINDOWS_CERT_SUBJECT` `FPACK_WINDOWS_SIGN_DLIB` `FPACK_WINDOWS_SIGN_DLIB_METADATA` | Windows code signing (.pfx, certificate store, or a signtool dlib such as Azure Trusted Signing) |
 | `FPACK_LANG` | `zh` / `en` (default: the OS language – see [Output language](#output-language)) |
@@ -84,7 +84,10 @@ Generated from the key registry. They override `fpack.yaml` and are overridden b
 | `FPACK_NOTARY_API_KEY_ID` | `macos.sign.notary_api_key_id` | string | API key ID. |
 | `FPACK_NOTARY_API_ISSUER` | `macos.sign.notary_api_issuer` | string | API issuer UUID (omit for individual keys). |
 | `FPACK_MACOS_INSTALLER_IDENTITY` | `macos.sign.installer_identity` | string | Signs the .pkg; a separate certificate from the app's "Developer ID Application". Unset = unsigned pkg. |
+| `FPACK_MACOS_PROVISIONING_PROFILE` | `macos.sign.provisioning_profile` | path | Developer ID provisioning profile, copied to Contents/embedded.provisionprofile before signing. Required when the entitlements use restricted keys (aps-environment, iCloud, associated domains, keychain access groups, …). |
+| `FPACK_MACOS_PROFILE_CHECK` | `macos.sign.profile_check` | bool | Check provisioning profiles and restricted entitlements before signing (type Developer ID, team, app id, expiry, authorized entitlements) and refuse development profiles. false skips the checks. |
 | `FPACK_NOTARIZE_WAIT` | `macos.notarize.wait` | bool | true: stay attached until Apple answers (shows elapsed time; Ctrl-C stops waiting, the submission continues at Apple). false: submit, write NOTARIZATION.md / notarization.json and finish with status "submitted"; later run `fpack notarize finish` to staple. |
+| `FPACK_MACOS_SMOKE_TEST` | `macos.smoke_test` | bool | After signing, launch the app, check that it is still running after smoke_test_seconds, then quit it (catches launch failures such as unauthorized entitlements). |
 | `FPACK_DMG_TOOL` | `macos.dmg.tool` | `auto` \\| `hdiutil` \\| `create-dmg` | auto = create-dmg when installed (or when layout keys are set), else hdiutil. |
 | `FPACK_WINDOWS_CERTIFICATE` | `windows.sign.certificate` | path | Code signing certificate (.pfx). Setting it (or thumbprint) signs the app .exe, the installer and the MSIX. |
 | `FPACK_WINDOWS_CERTIFICATE_PASSWORD` | `windows.sign.password` | string | Certificate password. |

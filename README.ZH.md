@@ -20,7 +20,7 @@ fpack build --all                 # 本机能打的全部打出来，打不了�
 - **零配置可用**：直接读取 `pubspec.yaml`、Gradle、Xcode 工程中的信息；`fpack init` 生成的 `fpack.yaml` 完全可选。
 - **绝不修改你的项目文件**：只调用 Flutter 工具链和打包工具。签名信息通过环境变量注入，不改 Gradle。唯一会写入的文件是 `fpack init` 生成的 `fpack.yaml`，产物写到 `dist/`，临时文件写到 `build/fpack/`。
 - **原生核心**：核心用 Go 编写并编译为原生二进制（启动约 10 ms，无运行时依赖）；Dart 包只是一个很薄的启动器，负责找到/准备与之版本完全一致的二进制。
-- **一切可配置**：211 个 fpack.yaml 键（安装包元数据、签名、DMG 布局、Inno Setup 语言/权限、MSIX、deb/rpm 元数据与脚本、钩子、文件名模板……），任何值都可以引用环境变量（`${VAR}` / `${VAR:-默认值}`，布尔值和数字也可以），构建、签名、公证相关设置还有专门的 `FPACK_*` 变量；配置会被严格校验（未知键提示「你是不是想写 …」、类型错误指出行号），并提供 JSON Schema 供编辑器补全。
+- **一切可配置**：216 个 fpack.yaml 键（安装包元数据、签名、DMG 布局、Inno Setup 语言/权限、MSIX、deb/rpm 元数据与脚本、钩子、文件名模板……），任何值都可以引用环境变量（`${VAR}` / `${VAR:-默认值}`，布尔值和数字也可以），构建、签名、公证相关设置还有专门的 `FPACK_*` 变量；配置会被严格校验（未知键提示「你是不是想写 …」、类型错误指出行号），并提供 JSON Schema 供编辑器补全。
 - **为人设计**：彩色输出与进度动画（CI 中自动降级为纯文本）、失败时给出关键错误摘录 + 修复建议 + 完整日志路径、`--dry-run` 精确展示每一条将执行的命令、`--json` 机器可读输出、中英文自动切换。
 
 ---
@@ -326,8 +326,8 @@ fpack build ipa --no-codesign                     # 未签名 IPA，用于后续
 用于 App Store 之外的分发（Developer ID）。**只**通过 fpack 自己的配置开启（低 → 高）：
 
 1. `fpack.yaml` 的 `macos.sign`（`fpack init` 会生成带占位符的注释段，并在注释中列出本机钥匙串里的 Developer ID 证书）
-2. 环境变量 `FPACK_MACOS_SIGN`、`FPACK_MACOS_SIGN_IDENTITY`、`FPACK_MACOS_INSTALLER_IDENTITY`、`FPACK_MACOS_NOTARIZE`、`FPACK_MACOS_NOTARY_PROFILE`
-3. 命令行 `--sign/--no-sign`、`--sign-identity`、`--installer-identity`、`--notarize/--no-notarize`、`--notary-profile`
+2. 环境变量 `FPACK_MACOS_SIGN`、`FPACK_MACOS_SIGN_IDENTITY`、`FPACK_MACOS_INSTALLER_IDENTITY`、`FPACK_MACOS_NOTARIZE`、`FPACK_MACOS_NOTARY_PROFILE`、`FPACK_MACOS_PROVISIONING_PROFILE`、`FPACK_MACOS_PROFILE_CHECK`、`FPACK_MACOS_SMOKE_TEST`
+3. 命令行 `--sign/--no-sign`、`--sign-identity`、`--installer-identity`、`--notarize/--no-notarize`、`--notary-profile`、`--provisioning-profile`、`--smoke-test`
 
 ```yaml
 macos:
@@ -454,6 +454,49 @@ DMG 流程：复制 .app → `codesign --deep` 签名内嵌代码 → 用 Harden
 
    `set-key-partition-list` 让 codesign / productbuild 无需弹窗即可使用私钥；`-lut 21600` 让钥匙串 6 小时内不自动锁定。证书、.p12、.p8 与密码都不要提交到仓库。
 
+#### 描述文件
+
+描述文件与受限 entitlements：`flutter build macos` 会嵌入 Xcode 的开发描述文件（“Mac Team Provisioning Profile”）。用 Developer ID 重新签名后，`com.apple.developer.aps-environment`（推送）、iCloud、associated domains、keychain access groups 等受限 entitlements 不再被授权，App 无法启动（`RBSRequestErrorDomain Code=5`）。请为该 App ID 创建 **Developer ID** 描述文件（developer.apple.com → Profiles → + → Developer ID）并配置：
+
+```yaml
+macos:
+  sign:
+    identity: "Developer ID Application: Your Name (ABCDE12345)"
+    provisioning_profile: macos/MyApp.provisionprofile         # 或 FPACK_MACOS_PROVISIONING_PROFILE / --provisioning-profile
+    provisioning_profiles:                                     # 内嵌 bundle：bundle id → 描述文件
+      com.example.app.share: macos/MyAppShare.provisionprofile
+  smoke_test: true                                             # 或 FPACK_MACOS_SMOKE_TEST / --smoke-test
+```
+
+签名前，fpack 把描述文件复制为 `Contents/embedded.provisionprofile`（映射的描述文件则放入扩展和登录项），再由内向外签名：内嵌代码、各自带 entitlements 的内嵌 bundle、App 本身。每个描述文件都会用 `security cms -D -i` 检查：Developer ID 类型（`ProvisionsAllDevices`）、与签名证书相同的团队、App ID（`TEAM.bundle.id`，允许通配符）、有效期，以及签名用的每个受限 entitlement 都已授权且取值一致（如 `aps-environment` 必须为 `production`）。未配置描述文件时，受限 entitlements 或嵌入的开发描述文件会在签名前终止构建；`fpack doctor` 也会报告。`macos.sign.profile_check: false`（`FPACK_MACOS_PROFILE_CHECK=false`）跳过检查。`macos.smoke_test` 会打开签名后的 App，检查 `smoke_test_seconds`（默认 5）秒后仍在运行，然后退出。
+
+**获取 Developer ID 描述文件**（账户持有人或管理员）：
+
+1. developer.apple.com → Certificates, IDs & Profiles → **Identifiers**：打开该 App ID（如 `com.example.app`，即 `macos/Runner/Configs/AppInfo.xcconfig` 中的 `PRODUCT_BUNDLE_IDENTIFIER`），启用 entitlements 用到的功能（Push Notifications、iCloud、Associated Domains 等）并保存。
+2. **Profiles** → **+** → 在 *Distribution* 下选择 **Developer ID** → 平台 macOS → 选择 App ID → 选择用于签名的那一张 **Developer ID Application** 证书（可用 `security find-identity -v -p codesigning` 查看其 SHA-1；为其他证书生成的描述文件会在启动时被拒绝） → 命名 → **Generate** → **Download**。
+3. 把 `.provisionprofile` 放进项目（如 `macos/MyApp.provisionprofile`；其中没有机密信息，也可以不放进 git，在 CI 中用 `FPACK_MACOS_PROVISIONING_PROFILE` 指定路径）。每个有独立 bundle id 的扩展/登录项都重复以上步骤，并在 `provisioning_profiles` 中映射。
+4. 让发布用 entitlements 与描述文件一致：Developer ID 描述文件授权的 `aps-environment` 是 **production**，因此在 `macos/Runner/Release.entitlements` 中设置 `<key>com.apple.developer.aps-environment</key><string>production</string>`。
+5. 用 `security cms -D -i macos/MyApp.provisionprofile` 查看描述文件；用 `codesign -d --entitlements - --xml MyApp.app` 和 `security cms -D -i MyApp.app/Contents/embedded.provisionprofile` 检查构建出的 App。
+
+**校验信息**（都会在签名前终止构建；`fpack doctor` 也会显示）：
+
+| 信息 | 含义 / 解决 |
+| --- | --- |
+| `… 使用了受限 entitlements（…），Developer ID App 必须配合描述文件才能使用` | 未配置描述文件：设置 `macos.sign.provisioning_profile` |
+| `App 嵌入了 Xcode 的开发描述文件 “…”` / `… 嵌入了 Xcode 的开发描述文件`（doctor） | Xcode 嵌入了 Mac Team（开发）描述文件：配置 Developer ID 描述文件，fpack 会替换它 |
+| `… 是开发/Ad Hoc 描述文件（登记了 N 台设备）` | 下载的是 Development 描述文件：请创建 **Developer ID** 类型 |
+| `… 不是 Developer ID 描述文件（缺少 ProvisionsAllDevices）` | App Store 描述文件：请创建 **Developer ID** 类型 |
+| `… 是为另一张 Developer ID Application 证书（…）生成的，而不是签名证书 …` | 描述文件中的证书不是 fpack 用来签名的证书（例如证书重新创建过）；macOS 会记录 `Unsatisfied entitlements` 并拒绝启动：编辑描述文件，选择签名证书后重新下载 |
+| `… 属于团队 X，但签名证书属于团队 Y` | 描述文件与证书不属于同一团队 |
+| `… 对应的 App ID 是 TEAM.a，而不是 TEAM.b` | 描述文件是为其他 bundle id 创建的 |
+| `… 已于 YYYY-MM-DD 过期` | 重新生成并下载描述文件 |
+| `… 未授权 entitlement …` | 为 App ID 启用对应功能后重新生成描述文件 |
+| `entitlements 中 aps-environment 为 "development"，但描述文件只允许 "production"` | 在发布用 entitlements 中改为 `production` |
+
+确实需要强行签名时，`macos.sign.profile_check: false`（或 `FPACK_MACOS_PROFILE_CHECK=false`）可跳过检查（描述文件仍会嵌入）。
+
+**启动测试**：设置 `macos.smoke_test: true`（或 `--smoke-test`）后，fpack 对签名后的 App 执行 `open -n`，等待 `macos.smoke_test_seconds`（默认 5，范围 1-300）秒，用 `pgrep` 确认仍在运行，再用 `pkill` 退出。若 App 已不在运行，构建失败并显示 `启动 … 后 App 已不在运行（崩溃或被 macOS 拒绝启动）`，同时给出可查看原因（amfid / RunningBoard）的 `log show` 命令。测试在公证之前进行，因此不会上传无法运行的 App。
+
 ### macOS 安装包（pkg）
 
 `fpack build pkg` 用 `pkgbuild` 生成把 App 安装到 `/Applications` 的组件包（不可重定位，升级时总是覆盖 /Applications 中的版本），再用 `productbuild` 生成分发包（支持 Apple silicon 与 Intel，不会提示安装 Rosetta）。可在 `macos.pkg` 中设置 `identifier`、`install_location`、`title` 以及安装界面的 `welcome` / `readme` / `license` / `conclusion`（.html/.rtf/.txt）和 `background`（图片）。
@@ -565,7 +608,7 @@ dart run skills@ get --package fpack --skill fpack-cli   # 非交互式（CI / �
 | `FPACK_OUTPUT_DIR` `FPACK_OVERWRITE` `FPACK_SPLIT_PER_ABI` `FPACK_OBFUSCATE` | 输出 / Android / 混淆 |
 | `FPACK_ANDROID_KEYSTORE` `FPACK_ANDROID_KEYSTORE_BASE64` `FPACK_ANDROID_KEYSTORE_PASSWORD` `FPACK_ANDROID_KEY_ALIAS` `FPACK_ANDROID_KEY_PASSWORD` | Android 签名 |
 | `FPACK_IOS_EXPORT_METHOD` `FPACK_IOS_EXPORT_OPTIONS_PLIST` `FPACK_IOS_CODESIGN` | iOS 导出 |
-| `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_NOTARIZE_WAIT` `FPACK_DMG_TOOL` | macOS |
+| `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_NOTARIZE_WAIT` `FPACK_MACOS_PROVISIONING_PROFILE` `FPACK_MACOS_PROFILE_CHECK` `FPACK_MACOS_SMOKE_TEST` `FPACK_DMG_TOOL` | macOS |
 | `FPACK_NOTARY_APPLE_ID` `FPACK_NOTARY_TEAM_ID` `FPACK_NOTARY_PASSWORD` `FPACK_NOTARY_API_KEY` `FPACK_NOTARY_API_KEY_ID` `FPACK_NOTARY_API_ISSUER` | macOS 公证凭证（Apple ID / API 密钥） |
 | `FPACK_WINDOWS_CERTIFICATE` `FPACK_WINDOWS_CERTIFICATE_PASSWORD` `FPACK_WINDOWS_CERT_THUMBPRINT` `FPACK_WINDOWS_CERT_SUBJECT` `FPACK_WINDOWS_SIGN_DLIB` `FPACK_WINDOWS_SIGN_DLIB_METADATA` | Windows 代码签名（.pfx、证书存储，或 Azure Trusted Signing 等 signtool dlib） |
 | `FPACK_LANG` | `zh` / `en`（默认跟随系统语言：macOS 界面语言、Windows 显示语言、Linux 的 `LC_ALL`/`LC_MESSAGES`/`LANGUAGE`/`LANG`；中文 → 中文，其他 → 英文；[详情](https://matkurban.github.io/fpack/environment?lang=zh#输出语言)） |
