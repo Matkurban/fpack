@@ -32,7 +32,7 @@ var buildFlags = []flagSpec{
 	{names: []string{"--build-number"}, kind: kString, metavar: "N", en: "override build number from pubspec.yaml", zh: "覆盖 pubspec.yaml 中的构建号"},
 	{names: []string{"--split-per-abi"}, kind: kOptional, metavar: "true|both", en: "APK: one file per ABI; =both also keeps the universal APK", zh: "APK：按 ABI 拆分；=both 同时保留通用包"},
 	{names: []string{"--abis"}, kind: kString, metavar: "LIST", en: "Android ABIs, e.g. arm64-v8a,armeabi-v7a", zh: "Android ABI 列表，例如 arm64-v8a,armeabi-v7a"},
-	{names: []string{"--obfuscate"}, kind: kBool, en: "obfuscate Dart code (symbols go to <output>/debug-info)", zh: "混淆 Dart 代码（符号文件保存到 <输出目录>/debug-info）"},
+	{names: []string{"--obfuscate"}, kind: kBool, en: "obfuscate Dart code (symbols go to <output>/debug-info/<platform>)", zh: "混淆 Dart 代码（符号文件保存到 <输出目录>/debug-info/<平台>）"},
 	{names: []string{"--split-debug-info"}, kind: kString, metavar: "DIR", en: "where to store debug symbols", zh: "调试符号保存目录"},
 	{names: []string{"--output", "-o"}, kind: kString, metavar: "DIR", en: "output directory (default dist/{version}{+build})", zh: "输出目录（默认 dist/{version}{+build}）"},
 	{names: []string{"--force", "-f"}, kind: kBool, en: "overwrite existing artifacts", zh: "覆盖已存在的产物"},

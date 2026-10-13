@@ -3,8 +3,6 @@ title: "环境变量"
 description: "所有 FPACK_* 变量以及 fpack 读取的其他变量。"
 ---
 
-完整说明（类型、默认值、影响的目标）见 [doc/configuration.md](/environment)。
-
 | 变量 | 作用 |
 | --- | --- |
 | `FPACK_FLUTTER` | Flutter SDK 路径 |
@@ -15,8 +13,8 @@ description: "所有 FPACK_* 变量以及 fpack 读取的其他变量。"
 | `FPACK_IOS_EXPORT_METHOD` `FPACK_IOS_EXPORT_OPTIONS_PLIST` `FPACK_IOS_CODESIGN` | iOS 导出 |
 | `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_NOTARIZE_WAIT` `FPACK_DMG_TOOL` | macOS |
 | `FPACK_NOTARY_APPLE_ID` `FPACK_NOTARY_TEAM_ID` `FPACK_NOTARY_PASSWORD` `FPACK_NOTARY_API_KEY` `FPACK_NOTARY_API_KEY_ID` `FPACK_NOTARY_API_ISSUER` | macOS 公证凭证（Apple ID / API 密钥） |
-| `FPACK_WINDOWS_CERTIFICATE` `FPACK_WINDOWS_CERTIFICATE_PASSWORD` `FPACK_WINDOWS_CERT_THUMBPRINT` | Windows 代码签名 |
-| `FPACK_LANG` | `zh` / `en`（默认依次读取 `LC_ALL`、`LC_MESSAGES`、`LANG`、macOS/Windows 系统语言） |
+| `FPACK_WINDOWS_CERTIFICATE` `FPACK_WINDOWS_CERTIFICATE_PASSWORD` `FPACK_WINDOWS_CERT_THUMBPRINT` `FPACK_WINDOWS_CERT_SUBJECT` `FPACK_WINDOWS_SIGN_DLIB` `FPACK_WINDOWS_SIGN_DLIB_METADATA` | Windows 代码签名（.pfx、证书存储，或 Azure Trusted Signing 等 signtool dlib） |
+| `FPACK_LANG` | `zh` / `en`（默认跟随系统语言，见下文「输出语言」） |
 | `NO_COLOR` / `FPACK_NO_COLOR` / `FORCE_COLOR` | 颜色控制 |
 | `FPACK_CORE` | 指定原生核心二进制（开发用） |
 | `FPACK_HOME` | 核心缓存目录 |
@@ -37,6 +35,20 @@ fpack（Go 核心和 Dart 启动器）在操作系统语言为中文（任何 `z
    - **Windows**：用户的显示语言（`GetUserDefaultUILanguage`，不启动子进程）；忽略 Git Bash/MSYS 设置的 `LANG`，显式的 `LC_ALL` / `LC_MESSAGES` 仍然优先。
    - **Linux 等**：依次读取 `LC_ALL`、`LC_MESSAGES`、`LANGUAGE`（第一项）、`LANG`；跳过 `C` / `POSIX`。
 
+## fpack 读取的其他变量
+
+| 变量 | 用途 |
+| --- | --- |
+| `FLUTTER_ROOT`、`FVM_CACHE_PATH` | 查找 Flutter SDK（在 `--flutter`、`FPACK_FLUTTER`、`flutter.sdk` 与项目的 FVM 链接之后） |
+| `ANDROID_HOME` / `ANDROID_SDK_ROOT` | Android SDK 工具（`apksigner`），顺序与 Flutter 相同：先 `flutter config --android-sdk`，再这两个变量，最后默认安装目录 |
+| `JAVA_HOME` | `keytool` / Java 版本检查：先 `flutter config --jdk-dir` 与 Android Studio 自带的 JDK，再 `JAVA_HOME`，最后 `PATH` |
+| `XDG_CONFIG_HOME`、`APPDATA` | 读取 Flutter 设置文件的位置（`--android-sdk` / `--jdk-dir`） |
+| `LOCALAPPDATA`、`ProgramFiles`、`ProgramFiles(x86)` | Windows：Android SDK、Inno Setup、FVM 与 Flutter 的默认安装位置 |
+| `LC_ALL`、`LC_MESSAGES`、`LANGUAGE`、`LANG` | 输出语言（见上文） |
+| `NO_COLOR`、`FPACK_NO_COLOR`、`TERM=dumb`、`FORCE_COLOR` | 颜色；`TERM=dumb` 同时关闭进度动画 |
+| `COLUMNS` | 无法获取终端宽度时的表格宽度 |
+| `XDG_CACHE_HOME` | 启动器：Linux 上的缓存根目录（可被 `FPACK_HOME` 覆盖） |
+
 ## 对应 fpack.yaml 键的变量
 
 由键注册表生成。它们覆盖 `fpack.yaml`，又会被命令行参数覆盖。`fpack.yaml` 中的任何值也都可以用 `${VAR}` / `${VAR:-默认值}` 引用任意环境变量。
@@ -51,7 +63,7 @@ fpack（Go 核心和 Dart 启动器）在操作系统语言为中文（任何 `z
 | `FPACK_BUILD_NAME` | `build.build_name` | string/number | 版本名（{version}）。 |
 | `FPACK_BUILD_NUMBER` | `build.build_number` | string/number | 构建号（{build}）。 |
 | `FPACK_OBFUSCATE` | `build.obfuscate` | bool | 混淆 Dart 代码；符号文件保存到 split_debug_info（默认 <输出目录>/debug-info/<平台>）。 |
-| `FPACK_OUTPUT_DIR` | `output.dir` | string | 产物目录（相对于项目，可用占位符）。 |
+| `FPACK_OUTPUT_DIR` | `output.dir` | string | 产物目录（相对于项目）。占位符：{app} {version} {build} {flavor} {mode}。 |
 | `FPACK_OVERWRITE` | `output.overwrite` | bool | 已存在同名产物时覆盖，而不是停止。 |
 | `FPACK_SPLIT_PER_ABI` | `android.split_per_abi` | `false` \\| `true` \\| `both` | false：一个通用 APK；true：每个 ABI 一个 APK；both：两者都要。 |
 | `FPACK_ANDROID_KEYSTORE` | `android.signing.store_file` | path | keystore 文件（.jks/.keystore）。CI 中可用 FPACK_ANDROID_KEYSTORE_BASE64 提供。 |

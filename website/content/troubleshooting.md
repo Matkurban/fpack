@@ -19,18 +19,21 @@ When a build fails, fpack prints the key error excerpt (Gradle's "What went wron
 | upload timeouts while notarizing | fpack retries the upload twice; otherwise check the network and run the build again – nothing was submitted |
 | `already exists (a real run stops unless --force)` | bump the version, use `--build-number N` or pass `--force` |
 | `needs macOS/Windows/Linux` | Flutter cannot cross-compile desktop/iOS apps; build on a runner of that OS |
-| `ISCC.exe not found` | install Inno Setup 6 or set `windows.inno_setup.iscc` |
+| `Inno Setup (ISCC.exe) not found` | install Inno Setup 6 (`winget install --id JRSoftware.InnoSetup -e`) or set `windows.inno_setup.iscc` |
 | `dpkg-deb` / `rpmbuild` / `appimagetool` missing | install them (see [Linux](/platforms/linux)) – fpack lists every missing tool at once |
-| At the repository root: "found Flutter projects …" | pick one with `fpack -C <dir>` |
+| `no Flutter project found in … or its parents` (at a repository root fpack also lists the Flutter apps below it) | `cd` into one, or pick it with `fpack -C <dir>` |
+| `which targets?` | name targets (`fpack build apk`), use `--all`, or set `build.targets` in fpack.yaml |
 
 ## Exit codes
 
+<!-- BEGIN GENERATED EXIT -->
 | Code | Meaning |
 | --- | --- |
 | 0 | success (`--dry-run`: the plan was produced) |
-| 1 | at least one target failed to build/package, or a hook failed; `fpack notarize`: a submission was rejected or a query failed |
-| 2 | usage or configuration error (unknown flag, unknown target, invalid fpack.yaml) |
-| 3 | prerequisites missing / artifact already exists / nothing buildable / Flutter not found |
+| 1 | at least one target failed to build/package, or a hook failed; `fpack doctor`: problems were found; `fpack notarize`: a submission was rejected or a query failed |
+| 2 | usage or configuration error (unknown flag or target, no targets and no `build.targets`, invalid fpack.yaml, no Flutter project found) |
+| 3 | prerequisites missing / artifact already exists / nothing buildable / Flutter SDK not found; `fpack notarize`: no notarization record found |
 | 130 | interrupted by Ctrl-C (an interrupted notarization wait keeps processing on Apple's side) |
+<!-- END GENERATED EXIT -->
 
 With `--json`, stdout carries only the JSON result (targets, states, artifact paths, sizes, SHA-256/512, notarization state `notarization.state`, durations, error excerpts, fixes); all human-readable output goes to stderr.

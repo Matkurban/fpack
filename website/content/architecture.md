@@ -20,8 +20,9 @@ fpack/
     internal/ui, i18n, pack, host, doctor, version
   schema/                   fpack.schema.json (generated from the key registry)
   prebuilt/                 prebuilt binaries + manifest.json (release artifacts, not in git)
-  scripts/                  build_binaries.sh, check_versions.sh, package_dist.sh
-  .github/workflows/        ci.yml, e2e.yml, release.yml
+  scripts/                  build_binaries.sh, check_versions.sh, package_dist.sh, e2e_*.py + fake-apple/ (E2E)
+  website/                  documentation site (Jaspr; generated tables come from the Go tests)
+  .github/workflows/        ci.yml (tests + lint), e2e.yml, docs.yml, release.yml
 ```
 
 ## Development and releases

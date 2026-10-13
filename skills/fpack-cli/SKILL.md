@@ -23,8 +23,9 @@ files to `dist/<version>+<build>/`. Full docs: https://matkurban.github.io/fpack
 * Run `fpack doctor` when a build fails on prerequisites; it lists every missing
   tool with an install hint. `fpack list` shows which targets this machine can build.
 * fpack works without configuration. Create `fpack.yaml` only when needed, with
-  `fpack init --yes`: every key is listed, commented and disabled; uncomment
-  only what you change. Never invent keys; run `fpack schema` or read
+  `fpack init --yes`: every key is listed with a comment; only values detected
+  in the project (default targets, flavor, display name…) are active, the rest
+  stays commented out – uncomment only what you change. Never invent keys; run `fpack schema` or read
   https://matkurban.github.io/fpack/configuration/ for the authoritative list.
 * Precedence: command-line flags > `FPACK_*` environment variables >
   `fpack.yaml` > defaults. `fpack.yaml` values may reference `${VAR}` or `${VAR:-default}`.
@@ -38,8 +39,9 @@ files to `dist/<version>+<build>/`. Full docs: https://matkurban.github.io/fpack
 * An existing artifact stops a real build (exit code 3). Bump the version,
   pass `--build-number N`, or use `--force`.
 * For scripts and CI use `--json` (JSON result on stdout, human output on
-  stderr) and check the exit code: 0 ok, 1 build failed, 2 usage/config
-  error, 3 prerequisites missing or nothing buildable, 130 interrupted.
+  stderr) and check the exit code: 0 ok, 1 build failed (`fpack doctor`:
+  problems found), 2 usage/config error or no Flutter project, 3 prerequisites
+  missing, artifact exists or nothing buildable, 130 interrupted.
 * Output language follows the OS (Chinese on a Chinese system, else English);
   use `--lang en` when you need to parse English messages.
 
@@ -48,15 +50,16 @@ files to `dist/<version>+<build>/`. Full docs: https://matkurban.github.io/fpack
 | Platform | Targets |
 | --- | --- |
 | Android | `apk` (`--split-per-abi=both` keeps the universal APK too), `aab` |
-| iOS | `ipa` (`--export-method app-store\|ad-hoc\|development\|enterprise`, `--no-codesign`) |
+| iOS | `ipa` (`--export-method app-store-connect\|release-testing\|ad-hoc\|enterprise\|debugging` or the older `app-store`/`development`, `--no-codesign`) |
 | macOS | `macos` (zipped .app), `dmg`, `pkg` |
 | Windows | `windows` (portable zip), `exe` (Inno Setup 6), `msix` (needs the `msix` dev_dependency) |
 | Linux | `linux` (tar.gz), `deb`, `rpm`, `appimage` |
 | Web | `web` (`--base-href /app/`, `--wasm`) |
 
 Targets of one platform share a single `flutter build`. `fpack build` with no
-targets builds the defaults for this OS; `--all` builds everything this
-machine can build and skips the rest with a reason.
+targets builds `build.targets` from fpack.yaml (without it, it stops with exit
+code 2 and asks which targets); `--all` builds everything this machine can
+build and skips the rest with a reason.
 
 ## Examples
 
@@ -149,8 +152,9 @@ More recipes (macOS, Windows, Linux): https://matkurban.github.io/fpack/ci/
 | `signing identity … not found in the keychain` | use a listed Developer ID identity or `--no-sign` |
 | `already exists` | bump the version, `--build-number N` or `--force` |
 | `needs macOS/Windows/Linux` | build on that OS |
-| `ISCC.exe not found` / `dpkg-deb`, `rpmbuild`, `appimagetool` missing | install the tool (`fpack doctor` lists all) |
-| "found Flutter projects …" at a repo root | `fpack -C <dir>` |
+| `Inno Setup (ISCC.exe) not found` / `dpkg-deb`, `rpmbuild`, `appimagetool` missing | install the tool (`fpack doctor` lists all) |
+| `no Flutter project found in … or its parents` (lists the apps below a repo root) | `cd` into one or pass `fpack -C <dir>` |
+| `which targets?` | name targets, use `--all`, or set `build.targets` |
 
 More: https://matkurban.github.io/fpack/troubleshooting/ and
 https://matkurban.github.io/fpack/environment/

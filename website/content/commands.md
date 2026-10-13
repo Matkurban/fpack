@@ -55,6 +55,8 @@ fpack -C apps/client build web --base-href /app/
 
 **Precedence**: command-line flags > `FPACK_*` environment variables > `fpack.yaml` > defaults.
 
+**No targets**: `fpack build` without targets builds `build.targets` from `fpack.yaml`; without that key it stops with exit code 2 and asks which targets to build.
+
 **Interrupting**: one Ctrl-C stops the running flutter/gradle/xcodebuild gracefully (the whole process group), a second one kills it; exit code 130.
 
 **Monorepos**: in a project subdirectory fpack walks up to `pubspec.yaml`; at the repository root it lists the Flutter projects it found — pick one with `-C <dir>`.
@@ -89,7 +91,7 @@ Options:
   --build-number N              override build number from pubspec.yaml
   --split-per-abi[=true|both]   APK: one file per ABI; =both also keeps the universal APK
   --abis LIST                   Android ABIs, e.g. arm64-v8a,armeabi-v7a
-  --obfuscate                   obfuscate Dart code (symbols go to <output>/debug-info)
+  --obfuscate                   obfuscate Dart code (symbols go to <output>/debug-info/<platform>)
   --split-debug-info DIR        where to store debug symbols
   -o, --output DIR              output directory (default dist/{version}{+build})
   -f, --force                   overwrite existing artifacts

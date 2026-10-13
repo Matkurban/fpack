@@ -36,7 +36,7 @@
 | 版本号 / 构建号 | `pubspec.yaml` 的 `version:` → `build.build_name` / `build.build_number` → `FPACK_BUILD_NAME` / `FPACK_BUILD_NUMBER` → `--build-name` / `--build-number` |
 | Android release 签名 | 项目自己的 `android/key.properties` + `signingConfigs`（fpack 不配置签名时使用）→ `android.signing` → `FPACK_ANDROID_*` → （没有命令行参数，密码不应出现在命令行中） |
 | macOS Developer ID 签名 / 公证 | `macos.sign` → `FPACK_MACOS_*` → `--sign/--no-sign`、`--sign-identity`、`--installer-identity`、`--notarize/--no-notarize`、`--notary-profile` |
-| 输出语言 | 系统语言（`LC_ALL` → `LC_MESSAGES` → `LANG` → macOS/Windows 系统设置）→ `FPACK_LANG` → `--lang` |
+| 输出语言 | 系统语言（macOS 界面语言、Windows 显示语言；显式设置的 `LC_ALL` / `LC_MESSAGES` 优先；Linux 依次读取 `LC_ALL`、`LC_MESSAGES`、`LANGUAGE`、`LANG`）→ `FPACK_LANG` → `--lang` |
 
 补充规则：
 
@@ -116,7 +116,7 @@ Flutter SDK 选择。
 
 | 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
 | --- | --- | --- | --- | --- | --- |
-| `output.dir` | string | `dist/{version}{+build}` | 全部 | `FPACK_OUTPUT_DIR`<br>`-o, --output` | 产物目录（相对于项目，可用占位符）。 示例：`"dist/{version}{+build}"` |
+| `output.dir` | string | `dist/{version}{+build}` | 全部 | `FPACK_OUTPUT_DIR`<br>`-o, --output` | 产物目录（相对于项目）。占位符：{app} {version} {build} {flavor} {mode}。 示例：`"dist/{version}{+build}"` |
 | `output.name` | string | `{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}` | 全部 |  | 文件名模板（不含扩展名）。占位符：{app} {version} {build} {platform} {arch} {variant} {mode} {flavor} {target} {date}；{-x}/{+x} 表示 x 非空时才加分隔符。 示例：`"{app}-{version}-{platform}{-arch}"` |
 | `output.names` | map | — | 全部 |  | 按目标单独设置文件名模板（目标 → 模板），优先于 output.name。 示例：`{exe: "{app}-setup-{version}", web: "{app}-web"}` |
 | `output.overwrite` | bool | `false` | 全部 | `FPACK_OVERWRITE`<br>`-f, --force` | 已存在同名产物时覆盖，而不是停止。 示例：`true` |
@@ -448,7 +448,7 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 
 **Linux 软件包**：安装到 `linux.prefix`（默认 `/opt/<包名>`），`/usr/bin/<包名>` 为符号链接；`.desktop` 文件包含 `Name`、`GenericName`、`Comment`、`Categories`、`Keywords`、`MimeType`、`StartupWMClass`；图标按 `icon_sizes` 缩放到 `/usr/share/icons/hicolor/<N>x<N>/apps/`（不会放大），另放一份到 `/usr/share/pixmaps/`；`metainfo` 安装到 `/usr/share/metainfo/`；`/usr/share/doc/<包名>/copyright` 写入 `app.copyright` 和 `app.license`。deb 的维护脚本、rpm 的 `%pre/%post/%preun/%postun` 来自对应的文件。AppImage 的 `.desktop` 额外包含 `X-AppImage-Version`，`update_information` 会嵌入 AppImage（`appimagetool --updateinformation`）。
 
-**钩子**：`hooks.pre_build` 在第一个 flutter build 之前运行一次（失败则停止构建）；`hooks.pre_package.<目标>` / `hooks.post_package.<目标>` 在该目标打包前后运行；`hooks.post_build` 在最后运行一次（即使有目标构建失败；但如果所有目标都未通过构建前检查——例如缺少工具、flavor 不存在——则跳过，并提示 “已跳过 hooks.post_build”）。命令在项目根目录用 `sh -c`（Windows 为 `cmd /C`）执行，可用环境变量：`FPACK_PROJECT_ROOT`、`FPACK_OUTPUT_DIR`、`FPACK_VERSION`、`FPACK_BUILD_NUMBER`、`FPACK_MODE`、`FPACK_FLAVOR`；打包钩子另有 `FPACK_TARGET`、`FPACK_ARTIFACT`（第一个产物）、`FPACK_ARTIFACTS`（换行分隔）；`post_build` 另有 `FPACK_ARTIFACTS` 与 `FPACK_SUCCESS`（`1`/`0`）。注意 `${VAR}` 会在加载 fpack.yaml 时被替换，钩子运行时才有的变量请写成 `$FPACK_ARTIFACT`（不带花括号）。`--dry-run` 会列出所有钩子命令。
+**钩子**：`hooks.pre_build` 在第一个 flutter build 之前运行一次（失败则停止构建）；`hooks.pre_package.<目标>` / `hooks.post_package.<目标>` 在该目标打包前后运行；`hooks.post_build` 在最后运行一次（即使有目标构建失败；但如果所有目标都未通过构建前检查——例如缺少工具、flavor 不存在——则跳过，并提示 “已跳过 hooks.post_build”）。命令在项目根目录用 `sh -c`（Windows 为 `cmd /S /C`）执行，可用环境变量：`FPACK_PROJECT_ROOT`、`FPACK_OUTPUT_DIR`、`FPACK_VERSION`、`FPACK_BUILD_NUMBER`、`FPACK_MODE`、`FPACK_FLAVOR`；打包钩子另有 `FPACK_TARGET`、`FPACK_ARTIFACT`（第一个产物）、`FPACK_ARTIFACTS`（换行分隔）；`post_build` 另有 `FPACK_ARTIFACTS` 与 `FPACK_SUCCESS`（`1`/`0`）。注意 `${VAR}` 会在加载 fpack.yaml 时被替换，钩子运行时才有的变量请写成 `$FPACK_ARTIFACT`（不带花括号）。`--dry-run` 会列出所有钩子命令。
 
 **Web**：Flutter 3.x 已移除 `--pwa-strategy` 与 `--web-renderer`，因此没有对应的键；`web.wasm`、`source_maps`、`csp`、`optimization_level`、`static_assets_url`、`web_resources_cdn`、`web_define` 分别对应 `flutter build web` 的同名参数。zip 文件名可用 `output.names.web` 修改。
 
@@ -574,7 +574,7 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 | `FPACK_BUILD_NAME` | `build.build_name` | string/number | 版本名（{version}）。 |
 | `FPACK_BUILD_NUMBER` | `build.build_number` | string/number | 构建号（{build}）。 |
 | `FPACK_OBFUSCATE` | `build.obfuscate` | bool | 混淆 Dart 代码；符号文件保存到 split_debug_info（默认 <输出目录>/debug-info/<平台>）。 |
-| `FPACK_OUTPUT_DIR` | `output.dir` | string | 产物目录（相对于项目，可用占位符）。 |
+| `FPACK_OUTPUT_DIR` | `output.dir` | string | 产物目录（相对于项目）。占位符：{app} {version} {build} {flavor} {mode}。 |
 | `FPACK_OVERWRITE` | `output.overwrite` | bool | 已存在同名产物时覆盖，而不是停止。 |
 | `FPACK_SPLIT_PER_ABI` | `android.split_per_abi` | `false` \\| `true` \\| `both` | false：一个通用 APK；true：每个 ABI 一个 APK；both：两者都要。 |
 | `FPACK_ANDROID_KEYSTORE` | `android.signing.store_file` | path | keystore 文件（.jks/.keystore）。CI 中可用 FPACK_ANDROID_KEYSTORE_BASE64 提供。 |
@@ -642,6 +642,12 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 | `FLUTTER_ROOT` | 查找 Flutter SDK。 |
 | `ANDROID_HOME` / `ANDROID_SDK_ROOT` | 查找 `apksigner` 等 Android SDK 工具。 |
 | `JAVA_HOME` | 查找 `keytool`（以及 `flutter config --jdk-dir` 的设置）。 |
+| `FVM_CACHE_PATH` | 查找 FVM 安装的 Flutter 版本。 |
+| `XDG_CONFIG_HOME` / `APPDATA` | 读取 Flutter 设置文件（`--android-sdk` / `--jdk-dir`）的位置。 |
+| `LOCALAPPDATA`、`ProgramFiles`、`ProgramFiles(x86)` | Windows：Android SDK、Inno Setup、FVM 与 Flutter 的默认安装位置。 |
+| `LC_ALL`、`LC_MESSAGES`、`LANGUAGE`、`LANG` | 输出语言（见 1. 优先级规则）。 |
+| `TERM` / `COLUMNS` | `TERM=dumb` 关闭颜色与进度动画；无法获取终端宽度时用 `COLUMNS` 决定表格宽度。 |
+| `XDG_CACHE_HOME` | 启动器：Linux 上的缓存根目录（可被 `FPACK_HOME` 覆盖）。 |
 
 ---
 
@@ -717,19 +723,21 @@ fpack 不读取 `pubspec.yaml` 中 [`dmg`](https://pub.dev/packages/dmg) 包的 
 
 ### 4.4 退出码
 
-| 码 | 含义 |
+<!-- BEGIN GENERATED EXIT -->
+| 退出码 | 含义 |
 | --- | --- |
-| 0 | 全部成功（`--dry-run`：计划生成成功） |
-| 1 | 至少一个目标在构建/打包时失败，或钩子失败；`fpack notarize`：有提交被拒绝或查询失败 |
-| 2 | 用法或配置错误（未知参数、未知目标、fpack.yaml 有误） |
-| 3 | 前置条件不满足 / 产物已存在 / 没有可构建的目标 / 找不到 Flutter；`fpack notarize`：找不到公证记录 |
+| 0 | 成功（`--dry-run`：计划成功生成） |
+| 1 | 至少一个目标在构建/打包时失败，或钩子失败；`fpack doctor`：发现问题；`fpack notarize`：有提交被拒绝或查询失败 |
+| 2 | 用法或配置错误（未知参数或目标、未指定目标且没有 `build.targets`、fpack.yaml 有误、找不到 Flutter 项目） |
+| 3 | 前置条件不满足 / 产物已存在 / 没有可构建的目标 / 找不到 Flutter SDK；`fpack notarize`：找不到公证记录 |
 | 130 | 被 Ctrl-C 中断（公证等待被中断时，Apple 端仍会继续处理） |
+<!-- END GENERATED EXIT -->
 
 ---
 
 ## 5. 文件名模板
 
-`output.dir` 与 `output.name` 支持以下占位符：
+`output.name` / `output.names.<目标>` 支持以下全部占位符；`output.dir` 只支持 `{app}`、`{version}`、`{build}`、`{flavor}`、`{mode}`（其余占位符按产物而定，在目录中为空）：
 
 | 占位符 | 值 | 示例 |
 | --- | --- | --- |
@@ -784,7 +792,7 @@ build:
   dart_define:                     # 编译期常量（--dart-define）
     API_BASE: ${API_BASE:-https://api.example.com}
   # dart_define_from_file: [env/prod.json]
-  obfuscate: false                 # true 时符号保存到 dist/<版本>/debug-info/
+  obfuscate: false                 # true 时符号保存到 <输出目录>/debug-info/<平台>/
   # build_number: ${BUILD_NUMBER}  # CI 中用流水线编号作为构建号
 
 output:

@@ -20,8 +20,9 @@ fpack/
     internal/ui, i18n, pack, host, doctor, version
   schema/                   fpack.schema.json（由键注册表生成）
   prebuilt/                 预编译二进制 + manifest.json（发布产物，不进 git）
-  scripts/                  build_binaries.sh、check_versions.sh、package_dist.sh
-  .github/workflows/        ci.yml、e2e.yml、release.yml
+  scripts/                  build_binaries.sh、check_versions.sh、package_dist.sh、e2e_*.py + fake-apple/（E2E）
+  website/                  文档网站（Jaspr；生成的表格来自 Go 测试）
+  .github/workflows/        ci.yml（测试 + lint）、e2e.yml、docs.yml、release.yml
 ```
 
 ## 开发与发布

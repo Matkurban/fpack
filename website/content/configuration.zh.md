@@ -69,11 +69,11 @@ web:
   source_maps: true
 ```
 
-**钩子**（`hooks`）：`pre_build`（第一次 flutter build 前执行一次，失败则停止）、`pre_package.<目标>` / `post_package.<目标>`（打包前后，提供 `FPACK_TARGET`、`FPACK_ARTIFACT`、`FPACK_ARTIFACTS`）、`post_build`（最后执行一次，提供 `FPACK_ARTIFACTS`、`FPACK_SUCCESS` = `1`/`0`；构建失败后也会执行，但如果所有目标都未通过构建前检查（例如缺少工具、flavor 不存在）则跳过）。所有钩子都在项目根目录用 `sh -c`（Windows：`cmd /C`）执行，并提供 `FPACK_PROJECT_ROOT`、`FPACK_OUTPUT_DIR`、`FPACK_VERSION`、`FPACK_BUILD_NUMBER`、`FPACK_MODE`、`FPACK_FLAVOR`；钩子运行时才有的变量请写 `$VAR`（Windows `cmd` 中写 `%VAR%`；`${VAR}` 会在加载配置时被替换）。钩子失败时退出码为 1。
+**钩子**（`hooks`）：`pre_build`（第一次 flutter build 前执行一次，失败则停止）、`pre_package.<目标>` / `post_package.<目标>`（打包前后，提供 `FPACK_TARGET`、`FPACK_ARTIFACT`、`FPACK_ARTIFACTS`）、`post_build`（最后执行一次，提供 `FPACK_ARTIFACTS`、`FPACK_SUCCESS` = `1`/`0`；构建失败后也会执行，但如果所有目标都未通过构建前检查（例如缺少工具、flavor 不存在）则跳过）。所有钩子都在项目根目录用 `sh -c`（Windows：`cmd /S /C`，带引号的路径按原样生效）执行，并提供 `FPACK_PROJECT_ROOT`、`FPACK_OUTPUT_DIR`、`FPACK_VERSION`、`FPACK_BUILD_NUMBER`、`FPACK_MODE`、`FPACK_FLAVOR`；钩子运行时才有的变量请写 `$VAR`（Windows `cmd` 中写 `%VAR%`；`${VAR}` 会在加载配置时被替换）。钩子失败时退出码为 1。
 
 ## 文件名模板
 
-`output.name` 和 `output.names.<目标>` 支持以下占位符；`{-x}` / `{+x}` 只在值非空时才加上分隔符：
+`output.name` 和 `output.names.<目标>` 支持以下占位符（`output.dir` 只支持 `{app}`、`{version}`、`{build}`、`{flavor}`、`{mode}`，其余按产物而定的占位符在目录中为空）；`{-x}` / `{+x}` 只在值非空时才加上分隔符：
 
 | 占位符 | 值 |
 | --- | --- |
@@ -142,7 +142,7 @@ Flutter SDK 选择。
 
 | 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
 | --- | --- | --- | --- | --- | --- |
-| `output.dir` | string | `dist/{version}{+build}` | 全部 | `FPACK_OUTPUT_DIR`<br>`-o, --output` | 产物目录（相对于项目，可用占位符）。 示例：`"dist/{version}{+build}"` |
+| `output.dir` | string | `dist/{version}{+build}` | 全部 | `FPACK_OUTPUT_DIR`<br>`-o, --output` | 产物目录（相对于项目）。占位符：{app} {version} {build} {flavor} {mode}。 示例：`"dist/{version}{+build}"` |
 | `output.name` | string | `{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}` | 全部 |  | 文件名模板（不含扩展名）。占位符：{app} {version} {build} {platform} {arch} {variant} {mode} {flavor} {target} {date}；{-x}/{+x} 表示 x 非空时才加分隔符。 示例：`"{app}-{version}-{platform}{-arch}"` |
 | `output.names` | map | — | 全部 |  | 按目标单独设置文件名模板（目标 → 模板），优先于 output.name。 示例：`{exe: "{app}-setup-{version}", web: "{app}-web"}` |
 | `output.overwrite` | bool | `false` | 全部 | `FPACK_OVERWRITE`<br>`-f, --force` | 已存在同名产物时覆盖，而不是停止。 示例：`true` |

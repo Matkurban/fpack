@@ -176,7 +176,7 @@ var Keys = []Key{
 
 	// ---- output ----
 	k("output.dir", KString, d("dist/{version}{+build}", "dist/{version}{+build}"), "all", "\"dist/{version}{+build}\"",
-		d("Artifact directory (relative to the project; placeholders allowed).", "产物目录（相对于项目，可用占位符）。"), env("FPACK_OUTPUT_DIR"), flag("-o, --output")),
+		d("Artifact directory (relative to the project). Placeholders: {app} {version} {build} {flavor} {mode}.", "产物目录（相对于项目）。占位符：{app} {version} {build} {flavor} {mode}。"), env("FPACK_OUTPUT_DIR"), flag("-o, --output")),
 	k("output.name", KString, d("{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}", "{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}"), "all", "\"{app}-{version}-{platform}{-arch}\"",
 		d("File name template without extension. Placeholders: {app} {version} {build} {platform} {arch} {variant} {mode} {flavor} {target} {date}; {-x}/{+x} add the separator only when x is set.", "文件名模板（不含扩展名）。占位符：{app} {version} {build} {platform} {arch} {variant} {mode} {flavor} {target} {date}；{-x}/{+x} 表示 x 非空时才加分隔符。")),
 	k("output.names", KMap, none, "all", "{exe: \"{app}-setup-{version}\", web: \"{app}-web\"}",

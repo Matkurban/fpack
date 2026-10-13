@@ -69,11 +69,11 @@ web:
   source_maps: true
 ```
 
-**Hooks** (`hooks`): `pre_build` (once before the first flutter build; a failure stops the run), `pre_package.<target>` / `post_package.<target>` (around packaging, with `FPACK_TARGET`, `FPACK_ARTIFACT`, `FPACK_ARTIFACTS`), `post_build` (once at the end, with `FPACK_ARTIFACTS`, `FPACK_SUCCESS` = `1`/`0`; it also runs after build failures, but is skipped when every target already failed its checks, e.g. a missing tool or unknown flavor). All hooks run in the project root through `sh -c` (Windows: `cmd /C`) with `FPACK_PROJECT_ROOT`, `FPACK_OUTPUT_DIR`, `FPACK_VERSION`, `FPACK_BUILD_NUMBER`, `FPACK_MODE`, `FPACK_FLAVOR`; write `$VAR` (Windows `cmd`: `%VAR%`) for variables that only exist while the hook runs (`${VAR}` is expanded when the configuration is loaded). A failing hook means exit code 1.
+**Hooks** (`hooks`): `pre_build` (once before the first flutter build; a failure stops the run), `pre_package.<target>` / `post_package.<target>` (around packaging, with `FPACK_TARGET`, `FPACK_ARTIFACT`, `FPACK_ARTIFACTS`), `post_build` (once at the end, with `FPACK_ARTIFACTS`, `FPACK_SUCCESS` = `1`/`0`; it also runs after build failures, but is skipped when every target already failed its checks, e.g. a missing tool or unknown flavor). All hooks run in the project root through `sh -c` (Windows: `cmd /S /C`, so quoted paths work as typed) with `FPACK_PROJECT_ROOT`, `FPACK_OUTPUT_DIR`, `FPACK_VERSION`, `FPACK_BUILD_NUMBER`, `FPACK_MODE`, `FPACK_FLAVOR`; write `$VAR` (Windows `cmd`: `%VAR%`) for variables that only exist while the hook runs (`${VAR}` is expanded when the configuration is loaded). A failing hook means exit code 1.
 
 ## File name templates
 
-`output.name` and `output.names.<target>` accept these placeholders; `{-x}` / `{+x}` add the separator only when the value is not empty:
+`output.name` and `output.names.<target>` accept these placeholders (`output.dir` only `{app}`, `{version}`, `{build}`, `{flavor}` and `{mode}`; the per-artifact ones are empty there); `{-x}` / `{+x}` add the separator only when the value is not empty:
 
 | Placeholder | Value |
 | --- | --- |
@@ -142,7 +142,7 @@ Where artifacts go and how they are named.
 
 | Key | Type | Default | Targets | Env / flag | Description |
 | --- | --- | --- | --- | --- | --- |
-| `output.dir` | string | `dist/{version}{+build}` | all | `FPACK_OUTPUT_DIR`<br>`-o, --output` | Artifact directory (relative to the project; placeholders allowed). Example: `"dist/{version}{+build}"` |
+| `output.dir` | string | `dist/{version}{+build}` | all | `FPACK_OUTPUT_DIR`<br>`-o, --output` | Artifact directory (relative to the project). Placeholders: {app} {version} {build} {flavor} {mode}. Example: `"dist/{version}{+build}"` |
 | `output.name` | string | `{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}` | all |  | File name template without extension. Placeholders: {app} {version} {build} {platform} {arch} {variant} {mode} {flavor} {target} {date}; {-x}/{+x} add the separator only when x is set. Example: `"{app}-{version}-{platform}{-arch}"` |
 | `output.names` | map | — | all |  | Per-target file name templates (target → template), overriding output.name. Example: `{exe: "{app}-setup-{version}", web: "{app}-web"}` |
 | `output.overwrite` | bool | `false` | all | `FPACK_OVERWRITE`<br>`-f, --force` | Replace existing artifacts instead of stopping. Example: `true` |

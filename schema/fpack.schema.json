@@ -2350,11 +2350,11 @@
           "markdownDescription": "**Write a checksum file next to the artifacts.**  \n在产物旁写入校验和文件。\n\nDefault / 默认: `true`\n\nTargets / 目标: all"
         },
         "dir": {
-          "description": "Artifact directory (relative to the project; placeholders allowed). Default: dist/{version}{+build}. Env: FPACK_OUTPUT_DIR. Targets: all.",
+          "description": "Artifact directory (relative to the project). Placeholders: {app} {version} {build} {flavor} {mode}. Default: dist/{version}{+build}. Env: FPACK_OUTPUT_DIR. Targets: all.",
           "examples": [
             "dist/{version}{+build}"
           ],
-          "markdownDescription": "**Artifact directory (relative to the project; placeholders allowed).**  \n产物目录（相对于项目，可用占位符）。\n\nDefault / 默认: `dist/{version}{+build}`\n\nTargets / 目标: all · Env: `FPACK_OUTPUT_DIR` · Flag: `-o, --output`",
+          "markdownDescription": "**Artifact directory (relative to the project). Placeholders: {app} {version} {build} {flavor} {mode}.**  \n产物目录（相对于项目）。占位符：{app} {version} {build} {flavor} {mode}。\n\nDefault / 默认: `dist/{version}{+build}`\n\nTargets / 目标: all · Env: `FPACK_OUTPUT_DIR` · Flag: `-o, --output`",
           "type": "string"
         },
         "name": {

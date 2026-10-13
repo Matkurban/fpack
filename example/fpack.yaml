@@ -40,7 +40,7 @@ build:
   dart_define:
     BUILD_CHANNEL: ${BUILD_CHANNEL:-local}
 
-  # Obfuscate release builds; symbols go to dist/<version>/debug-info/.
+  # Obfuscate release builds; symbols go to <output>/debug-info/<platform>/.
   # obfuscate: true
 
 # ---------------------------------------------------------------- output
@@ -53,7 +53,7 @@ output:
   checksum_algorithm: sha256     # writes SHA256SUMS next to the artifacts
 
 # ---------------------------------------------------------------- hooks
-# Hooks run in the project root with sh -c (Windows: cmd /C).
+# Hooks run in the project root with sh -c (Windows: cmd /S /C).
 # Write $VAR (Windows: %VAR%), not ${VAR}, for variables that only exist while a hook runs.
 hooks:
   # pre_build: [dart run build_runner build --delete-conflicting-outputs]

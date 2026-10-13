@@ -40,7 +40,7 @@ fpack --version
 | 变量 | 作用 |
 | --- | --- |
 | `FPACK_NO_DOWNLOAD=1` | 离线/内网：不下载，直接用本机 Go 编译（或使用包内二进制） |
-| `FPACK_DOWNLOAD_URL` | 从镜像下载（目录中需包含 `checksums.txt` 与 `fpack-core-<os>-<arch>`，与 GitHub Release 相同） |
+| `FPACK_DOWNLOAD_URL` | 从镜像下载（目录中需包含 `checksums.txt` 与 `fpack-core-<os>-<arch>`（Windows 为 `.exe`），与 GitHub Release 相同） |
 | `FPACK_GO=/path/to/go` / `FPACK_GO=none` | 指定编译用的 Go / 完全禁止本机编译 |
 | `FPACK_REBUILD=1` | 开发用：忽略缓存，先用本机 Go 编译（修改 Go 源码后） |
 | `FPACK_HOME` | 缓存目录 |

@@ -13,8 +13,8 @@ description: "All FPACK_* variables and the variables fpack reads."
 | `FPACK_IOS_EXPORT_METHOD` `FPACK_IOS_EXPORT_OPTIONS_PLIST` `FPACK_IOS_CODESIGN` | iOS export |
 | `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_NOTARIZE_WAIT` `FPACK_DMG_TOOL` | macOS |
 | `FPACK_NOTARY_APPLE_ID` `FPACK_NOTARY_TEAM_ID` `FPACK_NOTARY_PASSWORD` `FPACK_NOTARY_API_KEY` `FPACK_NOTARY_API_KEY_ID` `FPACK_NOTARY_API_ISSUER` | macOS notary credentials (Apple ID / API key) |
-| `FPACK_WINDOWS_CERTIFICATE` `FPACK_WINDOWS_CERTIFICATE_PASSWORD` `FPACK_WINDOWS_CERT_THUMBPRINT` | Windows code signing |
-| `FPACK_LANG` | `zh` / `en` (default: `LC_ALL`, `LC_MESSAGES`, `LANG`, then the macOS/Windows system language) |
+| `FPACK_WINDOWS_CERTIFICATE` `FPACK_WINDOWS_CERTIFICATE_PASSWORD` `FPACK_WINDOWS_CERT_THUMBPRINT` `FPACK_WINDOWS_CERT_SUBJECT` `FPACK_WINDOWS_SIGN_DLIB` `FPACK_WINDOWS_SIGN_DLIB_METADATA` | Windows code signing (.pfx, certificate store, or a signtool dlib such as Azure Trusted Signing) |
+| `FPACK_LANG` | `zh` / `en` (default: the OS language – see [Output language](#output-language)) |
 | `NO_COLOR` / `FPACK_NO_COLOR` / `FORCE_COLOR` | colors |
 | `FPACK_CORE` | use this native core binary (development) |
 | `FPACK_HOME` | core cache directory |
@@ -35,6 +35,20 @@ Precedence (first match wins):
    - **Windows**: the user's display language (`GetUserDefaultUILanguage`, no subprocess); `LANG` set by Git Bash/MSYS is ignored, an explicit `LC_ALL` / `LC_MESSAGES` still wins.
    - **Linux and others**: `LC_ALL`, `LC_MESSAGES`, `LANGUAGE` (first entry), `LANG`; `C` / `POSIX` are skipped.
 
+## Other variables fpack reads
+
+| Variable | Used for |
+| --- | --- |
+| `FLUTTER_ROOT`, `FVM_CACHE_PATH` | finding the Flutter SDK (after `--flutter`, `FPACK_FLUTTER`, `flutter.sdk` and the project's FVM link) |
+| `ANDROID_HOME` / `ANDROID_SDK_ROOT` | Android SDK tools (`apksigner`), after `flutter config --android-sdk` and before the default install folders (Flutter's own order) |
+| `JAVA_HOME` | `keytool` / Java version check, after `flutter config --jdk-dir` and Android Studio's bundled JDK, before `PATH` |
+| `XDG_CONFIG_HOME`, `APPDATA` | where Flutter's settings file is read from (for `--android-sdk` / `--jdk-dir`) |
+| `LOCALAPPDATA`, `ProgramFiles`, `ProgramFiles(x86)` | Windows: default locations of the Android SDK, Inno Setup, FVM and Flutter |
+| `LC_ALL`, `LC_MESSAGES`, `LANGUAGE`, `LANG` | output language (see above) |
+| `NO_COLOR`, `FPACK_NO_COLOR`, `TERM=dumb`, `FORCE_COLOR` | colors; `TERM=dumb` also turns off spinners |
+| `COLUMNS` | table width when the terminal size is unknown |
+| `XDG_CACHE_HOME` | launcher: cache root on Linux (`FPACK_HOME` overrides it) |
+
 ## Variables that map to fpack.yaml keys
 
 Generated from the key registry. They override `fpack.yaml` and are overridden by command-line flags. Any value in `fpack.yaml` can also reference arbitrary variables with `${VAR}` / `${VAR:-default}`.
@@ -49,7 +63,7 @@ Generated from the key registry. They override `fpack.yaml` and are overridden b
 | `FPACK_BUILD_NAME` | `build.build_name` | string/number | Version name ({version}). |
 | `FPACK_BUILD_NUMBER` | `build.build_number` | string/number | Build number ({build}). |
 | `FPACK_OBFUSCATE` | `build.obfuscate` | bool | Obfuscate Dart code; symbols go to split_debug_info (default <output>/debug-info/<platform>). |
-| `FPACK_OUTPUT_DIR` | `output.dir` | string | Artifact directory (relative to the project; placeholders allowed). |
+| `FPACK_OUTPUT_DIR` | `output.dir` | string | Artifact directory (relative to the project). Placeholders: {app} {version} {build} {flavor} {mode}. |
 | `FPACK_OVERWRITE` | `output.overwrite` | bool | Replace existing artifacts instead of stopping. |
 | `FPACK_SPLIT_PER_ABI` | `android.split_per_abi` | `false` \\| `true` \\| `both` | false = one universal APK, true = one APK per ABI, both = universal + per-ABI. |
 | `FPACK_ANDROID_KEYSTORE` | `android.signing.store_file` | path | Keystore file (.jks/.keystore). FPACK_ANDROID_KEYSTORE_BASE64 can provide it in CI. |

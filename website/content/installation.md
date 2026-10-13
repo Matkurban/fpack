@@ -40,7 +40,7 @@ Controls:
 | Variable | Effect |
 | --- | --- |
 | `FPACK_NO_DOWNLOAD=1` | offline / air-gapped: never download; use the bundled binary or build locally with Go |
-| `FPACK_DOWNLOAD_URL` | download from a mirror (a directory with `checksums.txt` and `fpack-core-<os>-<arch>`, laid out like the GitHub Release) |
+| `FPACK_DOWNLOAD_URL` | download from a mirror (a directory with `checksums.txt` and `fpack-core-<os>-<arch>` (`.exe` on Windows), laid out like the GitHub Release) |
 | `FPACK_GO=/path/to/go` / `FPACK_GO=none` | the Go used for the fallback build / never build locally |
 | `FPACK_REBUILD=1` | development: ignore the cache and build with local Go first (after changing the Go sources) |
 | `FPACK_HOME` | cache directory |

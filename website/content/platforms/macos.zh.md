@@ -20,7 +20,7 @@ macos:
 
 公证凭证三选一（优先级从高到低）：钥匙串配置 `notary_profile`（本机推荐）→ App Store Connect API 密钥 `notary_api_key` + `notary_api_key_id`（+ `notary_api_issuer`，CI 推荐）→ Apple ID `notary_apple_id` + `notary_team_id` + `notary_password`（App 专用密码，日志中隐藏）。签名默认启用 Hardened Runtime（`hardened_runtime`，公证必需）。
 
-规则：设置了证书即启用签名；设置了任一公证凭证即启用公证；关闭签名同时关闭公证；`--sign` 不带证书时自动选用钥匙串中第一个 “Developer ID Application” 证书；指定的证书不存在时会列出可用证书。**什么都不配置时**，.app 保留 Xcode 工程自己的签名、DMG 不签名，产物说明中会提示如何配置。fpack 不读取 `pubspec.yaml` 中其他插件（如 [`dmg`](https://pub.dev/packages/dmg) 包的 `dmg:` 段）的配置。
+规则：设置了证书即启用签名；设置了任一公证凭证即启用公证；关闭签名同时关闭公证；`--sign` 不带证书时自动选用钥匙串中第一个 “Developer ID Application” 证书；`--notarize`（或 `notarize: true`）没有任何凭证时使用钥匙串配置 `NotaryProfile`；指定的证书不存在时会列出可用证书。**什么都不配置时**，.app 保留 Xcode 工程自己的签名、DMG 不签名，产物说明中会提示如何配置。fpack 不读取 `pubspec.yaml` 中其他插件（如 [`dmg`](https://pub.dev/packages/dmg) 包的 `dmg:` 段）的配置。
 
 DMG 流程：复制 .app → `codesign --deep` 签名内嵌代码 → 用 Hardened Runtime + `macos/Runner/Release.entitlements` 重新签名 App → 校验 → `hdiutil`（或 `create-dmg`，支持背景图、窗口大小/位置、图标大小与位置、卷图标、许可协议；`format`/`filesystem` 两种工具都支持）制作 DMG → 签名 DMG → `xcrun notarytool submit` → 等待结果 → `stapler staple` → `spctl` 评估。
 

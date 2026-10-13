@@ -19,18 +19,21 @@ description: "如何阅读失败信息、常见问题与退出码。"
 | 公证上传超时 | fpack 会自动重试两次；仍失败时请检查网络后重新构建——此时什么都没有提交 |
 | `已存在（实际运行会停止，除非 --force）` | 提升版本号、使用 `--build-number N` 或加 `--force` |
 | `需要 macOS/Windows/Linux` | Flutter 无法交叉编译桌面/iOS 应用；请在对应系统的机器上构建 |
-| 找不到 `ISCC.exe` | 安装 Inno Setup 6，或设置 `windows.inno_setup.iscc` |
+| `找不到 Inno Setup（ISCC.exe）` | 安装 Inno Setup 6（`winget install --id JRSoftware.InnoSetup -e`），或设置 `windows.inno_setup.iscc` |
 | 缺少 `dpkg-deb` / `rpmbuild` / `appimagetool` | 安装它们（见 [Linux](/platforms/linux)）——fpack 会一次列出所有缺少的工具 |
-| 在仓库根目录：“找到了 Flutter 项目 …” | 用 `fpack -C <目录>` 选择其中一个 |
+| `在 … 及其上级目录中找不到 Flutter 项目`（在仓库根目录时还会列出下层的 Flutter 应用） | 进入其中一个目录，或用 `fpack -C <目录>` 指定 |
+| `要构建哪些目标？` | 指定目标（`fpack build apk`）、使用 `--all`，或在 fpack.yaml 中设置 `build.targets` |
 
 ## 退出码
 
-| 码 | 含义 |
+<!-- BEGIN GENERATED EXIT -->
+| 退出码 | 含义 |
 | --- | --- |
 | 0 | 成功（`--dry-run`：计划成功生成） |
-| 1 | 至少一个目标在构建/打包时失败，或钩子失败；`fpack notarize`：有提交被拒绝或查询失败 |
-| 2 | 用法或配置错误（未知参数、未知目标、fpack.yaml 有误） |
-| 3 | 前置条件不满足 / 产物已存在 / 没有可构建的目标 / 找不到 Flutter |
-| 130 | 被 Ctrl-C 中断（公证等待被中断时 Apple 端仍会继续处理） |
+| 1 | 至少一个目标在构建/打包时失败，或钩子失败；`fpack doctor`：发现问题；`fpack notarize`：有提交被拒绝或查询失败 |
+| 2 | 用法或配置错误（未知参数或目标、未指定目标且没有 `build.targets`、fpack.yaml 有误、找不到 Flutter 项目） |
+| 3 | 前置条件不满足 / 产物已存在 / 没有可构建的目标 / 找不到 Flutter SDK；`fpack notarize`：找不到公证记录 |
+| 130 | 被 Ctrl-C 中断（公证等待被中断时，Apple 端仍会继续处理） |
+<!-- END GENERATED EXIT -->
 
 `--json` 时 stdout 只输出 JSON 结果（目标、状态、产物路径、大小、SHA-256/512、公证状态 `notarization.state`、耗时、错误摘录、修复建议），所有人类可读输出走 stderr。

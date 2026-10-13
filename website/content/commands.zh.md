@@ -55,6 +55,8 @@ fpack -C apps/client build web --base-href /app/
 
 **优先级**：命令行参数 > `FPACK_*` 环境变量 > `fpack.yaml` > 默认值。
 
+**不指定目标**：`fpack build` 不带目标时构建 `fpack.yaml` 中的 `build.targets`；没有设置该键时以退出码 2 结束，并提示要构建哪些目标。
+
 **中断**：按一次 Ctrl-C 会优雅停止正在运行的 flutter/gradle/xcodebuild（整个进程组），再按一次强制结束；退出码 130。
 
 **Monorepo**：在项目子目录中运行会向上查找 `pubspec.yaml`；在仓库根目录运行时会列出找到的 Flutter 项目，用 `-C <目录>` 选择。
@@ -89,7 +91,7 @@ fpack -C apps/client build web --base-href /app/
   --build-number N              覆盖 pubspec.yaml 中的构建号
   --split-per-abi[=true|both]   APK：按 ABI 拆分；=both 同时保留通用包
   --abis LIST                   Android ABI 列表，例如 arm64-v8a,armeabi-v7a
-  --obfuscate                   混淆 Dart 代码（符号文件保存到 <输出目录>/debug-info）
+  --obfuscate                   混淆 Dart 代码（符号文件保存到 <输出目录>/debug-info/<平台>）
   --split-debug-info DIR        调试符号保存目录
   -o, --output DIR              输出目录（默认 dist/{version}{+build}）
   -f, --force                   覆盖已存在的产物
