@@ -4,6 +4,13 @@ description: "Changes in every fpack release."
 ---
 
 <!-- BEGIN GENERATED CHANGELOG -->
+## 1.1.9
+
+### Changed
+- Go core is lint-clean: zero findings from `go vet`, `staticcheck -checks all` and golangci-lint (errcheck, revive, govet incl. shadow, errorlint, gocritic, nilerr, unparam, misspell, …) on Linux, Windows and macOS builds. CI has a new `lint` job, and `go/.golangci.yml` and `go/qodana.yaml` are in the repository.
+- Errors from failed staging steps of Linux packages (creating directories, setting icon permissions) are now reported instead of being ignored, and wrapped errors keep their cause (`%w`).
+- The internal "no Flutter SDK found" error text is now lowercase (the message users see is unchanged).
+
 ## 1.1.8
 
 ### Added
