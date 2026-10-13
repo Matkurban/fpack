@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -61,7 +62,7 @@ func TestRunCancel(t *testing.T) {
 	go func() { time.Sleep(200 * time.Millisecond); cancel() }()
 	start := time.Now()
 	_, err := Run(ctx, Cmd{Name: "sh", Args: []string{"-c", "sleep 30"}}, Options{})
-	if err != ErrInterrupted {
+	if !errors.Is(err, ErrInterrupted) {
 		t.Fatalf("want ErrInterrupted, got %v", err)
 	}
 	if time.Since(start) > 5*time.Second {

@@ -8,7 +8,6 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
-	"hash"
 	"io"
 	"io/fs"
 	"os"
@@ -189,7 +188,7 @@ func HashFile(path, alg string) (string, error) {
 		return "", err
 	}
 	defer f.Close()
-	var h hash.Hash = sha256.New()
+	var h = sha256.New()
 	if alg == "sha512" {
 		h = sha512.New()
 	}

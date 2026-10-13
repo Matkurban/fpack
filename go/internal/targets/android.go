@@ -22,12 +22,12 @@ import (
 // `android.injected.signing.*` properties through ORG_GRADLE_PROJECT_*
 // environment variables, so secrets never appear on a command line.
 type AndroidSigning struct {
-	Enabled       bool
 	StoreFile     string // absolute
 	StorePassword string
 	KeyAlias      string
 	KeyPassword   string
 	base64        string // keystore content from FPACK_ANDROID_KEYSTORE_BASE64
+	Enabled       bool
 	written       bool
 }
 
@@ -424,9 +424,9 @@ func signerCheck(c *Context, pattern string) func(runner.Result) (string, error)
 			return "", nil
 		}
 		dn := strings.TrimSpace(m[1])
-		schemes := ""
+		var schemes strings.Builder
 		for _, v := range regexp.MustCompile(`(?m)^Verified using (v[0-9.]+) scheme[^:]*: true`).FindAllStringSubmatch(r.Output, -1) {
-			schemes += " " + v[1]
+			schemes.WriteString(" " + v[1])
 		}
 		if strings.Contains(dn, "CN=Android Debug") {
 			if injected {
@@ -437,8 +437,8 @@ func signerCheck(c *Context, pattern string) func(runner.Result) (string, error)
 			}
 			return "WARN:" + i18n.S("signed with the Android DEBUG key – not accepted by Google Play", "使用 Android DEBUG 密钥签名 —— Google Play 不接受"), nil
 		}
-		if schemes != "" {
-			return i18n.F("signed by %s (schemes:%s)", "签名者：%s（签名方案：%s）", dn, schemes), nil
+		if schemes.String() != "" {
+			return i18n.F("signed by %s (schemes:%s)", "签名者：%s（签名方案：%s）", dn, schemes.String()), nil
 		}
 		return i18n.F("signed by %s", "签名者：%s", dn), nil
 	}

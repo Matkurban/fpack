@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -71,57 +72,56 @@ type Notarization struct {
 
 // TargetResult is the outcome of one target.
 type TargetResult struct {
-	Target   string `json:"target"`
-	Platform string `json:"platform"`
-	Status   Status `json:"status"`
+	start      time.Time
+	target     targets.Target
+	Target     string           `json:"target"`
+	Platform   string           `json:"platform"`
+	Status     Status           `json:"status"`
+	Reason     string           `json:"reason,omitempty"`
+	Fix        string           `json:"fix,omitempty"`
+	Error      string           `json:"error,omitempty"`
+	Hint       string           `json:"hint,omitempty"`
+	Log        string           `json:"log,omitempty"`
+	Excerpt    []string         `json:"errorExcerpt,omitempty"`
+	Artifacts  []ArtifactResult `json:"artifacts"`
+	Warnings   []string         `json:"warnings,omitempty"`
+	Notes      []string         `json:"notes,omitempty"`
+	Commands   []string         `json:"commands,omitempty"`
+	ifFails    []string         // warnings shown only if the build fails (Issue.IfFails)
+	steps      []string
+	DurationMs int64 `json:"durationMs"`
+	duration   time.Duration
 	// ReferenceOnly marks a dry-run plan for a target this host cannot build.
-	ReferenceOnly bool             `json:"referenceOnly,omitempty"`
-	Reason        string           `json:"reason,omitempty"`
-	Fix           string           `json:"fix,omitempty"`
-	Error         string           `json:"error,omitempty"`
-	Hint          string           `json:"hint,omitempty"`
-	Excerpt       []string         `json:"errorExcerpt,omitempty"`
-	Log           string           `json:"log,omitempty"`
-	DurationMs    int64            `json:"durationMs"`
-	Artifacts     []ArtifactResult `json:"artifacts"`
-	Warnings      []string         `json:"warnings,omitempty"`
-	Notes         []string         `json:"notes,omitempty"`
-	Commands      []string         `json:"commands,omitempty"`
-
-	target    targets.Target
-	ifFails   []string // warnings shown only if the build fails (Issue.IfFails)
-	steps     []string
-	attempted bool
-	start     time.Time
-	duration  time.Duration
+	ReferenceOnly bool `json:"referenceOnly,omitempty"`
+	attempted     bool
 }
 
 // Summary is the result of `fpack build` (also the --json document).
 type Summary struct {
-	FpackVersion string          `json:"fpackVersion"`
-	Project      string          `json:"project"`
-	ProjectRoot  string          `json:"projectRoot"`
-	Version      string          `json:"version"`
-	BuildNumber  string          `json:"buildNumber"`
-	Flutter      string          `json:"flutter"`
-	FlutterRoot  string          `json:"flutterRoot"`
-	Host         string          `json:"host"`
-	Mode         string          `json:"mode"`
-	Flavor       string          `json:"flavor,omitempty"`
-	OutputDir    string          `json:"outputDir"`
-	DryRun       bool            `json:"dryRun"`
-	Success      bool            `json:"success"`
-	ExitCode     int             `json:"exitCode"`
-	Interrupted  bool            `json:"interrupted,omitempty"`
-	Checksums    string          `json:"checksumsFile,omitempty"`
-	LogDir       string          `json:"logDir,omitempty"`
-	DurationMs   int64           `json:"durationMs"`
-	Targets      []*TargetResult `json:"targets"`
-	Conflicts    []string        `json:"conflicts,omitempty"`
-	// Hooks lists pre/post build hook commands (dry run).
-	Hooks []string `json:"hooks,omitempty"`
+	FpackVersion string `json:"fpackVersion"`
+	Project      string `json:"project"`
+	ProjectRoot  string `json:"projectRoot"`
+	Version      string `json:"version"`
+	BuildNumber  string `json:"buildNumber"`
+	Flutter      string `json:"flutter"`
+	FlutterRoot  string `json:"flutterRoot"`
+	Host         string `json:"host"`
+	Mode         string `json:"mode"`
+	Flavor       string `json:"flavor,omitempty"`
+	OutputDir    string `json:"outputDir"`
+	Checksums    string `json:"checksumsFile,omitempty"`
+	LogDir       string `json:"logDir,omitempty"`
 	// HookError is set when a post_build hook failed.
-	HookError string `json:"hookError,omitempty"`
+	HookError string          `json:"hookError,omitempty"`
+	Targets   []*TargetResult `json:"targets"`
+	Conflicts []string        `json:"conflicts,omitempty"`
+	// Hooks lists pre/post build hook commands (dry run).
+	Hooks       []string `json:"hooks,omitempty"`
+	ExitCode    int      `json:"exitCode"`
+	DurationMs  int64    `json:"durationMs"`
+	DryRun      bool     `json:"dryRun"`
+	Success     bool     `json:"success"`
+	Interrupted bool     `json:"interrupted,omitempty"`
 }
 
 type stepState struct {
@@ -984,8 +984,8 @@ func failStep(c *targets.Context, u *ui.UI, st *stepState, f *opFailure) {
 // they say why an optional check failed.
 func toolError(tail []string) string {
 	for _, marker := range []string{"error:", "error"} {
-		for i := len(tail) - 1; i >= 0; i-- {
-			l := strings.TrimSpace(tail[i])
+		for _, t := range slices.Backward(tail) {
+			l := strings.TrimSpace(t)
 			if strings.Contains(strings.ToLower(l), marker) {
 				return " (" + l + ")"
 			}

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -328,8 +329,8 @@ type notaryJSON struct {
 // output (submit prints {"id","message","path"}, wait/info add "status").
 func parseNotaryJSON(out string) (notaryJSON, bool) {
 	lines := strings.Split(strings.TrimSpace(out), "\n")
-	for i := len(lines) - 1; i >= 0; i-- {
-		l := strings.TrimSpace(lines[i])
+	for _, line := range slices.Backward(lines) {
+		l := strings.TrimSpace(line)
 		if strings.HasPrefix(l, "{") {
 			var r notaryJSON
 			if json.Unmarshal([]byte(l), &r) == nil && r.ID != "" {
@@ -681,14 +682,15 @@ func runNotarize(ctx context.Context, c *Context, env OpEnv, target, file, artif
 	if s.Status == NotaryAccepted {
 		return i18n.F("notarized ✓ (id %s, Apple took %s)", "已公证 ✓（id %s，Apple 用时 %s）", s.ID, el), nil
 	}
-	msg := i18n.F("notarization %s: %s (id %s)", "公证结果 %s：%s（id %s）", s.Status, s.Message, s.ID)
+	var msg strings.Builder
+	msg.WriteString(i18n.F("notarization %s: %s (id %s)", "公证结果 %s：%s（id %s）", s.Status, s.Message, s.ID))
 	for _, is := range s.Issues {
-		msg += "\n  " + is
+		msg.WriteString("\n  " + is)
 	}
 	if s.Log != "" {
-		msg += "\n  " + i18n.F("Apple's log: %s · details: %s", "Apple 日志：%s · 详情：%s", c.Rel(s.Log), c.Rel(md))
+		msg.WriteString("\n  " + i18n.F("Apple's log: %s · details: %s", "Apple 日志：%s · 详情：%s", c.Rel(s.Log), c.Rel(md)))
 	}
-	return "", fmt.Errorf("%s", msg)
+	return "", fmt.Errorf("%s", msg.String())
 }
 
 // notaryDoneOp updates the record once the artifact is final (moved into the

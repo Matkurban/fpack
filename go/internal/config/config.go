@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/Matkurban/fpack/go/internal/i18n"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,6 +15,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/Matkurban/fpack/go/internal/i18n"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -807,7 +808,7 @@ func levenshtein(a, b string) int {
 
 // envRef matches an innermost ${VAR} / ${VAR:-default} (the default holds no
 // further references), so nested defaults like ${A:-${B}} expand inside out.
-var envRef = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)(:-([^${}]*))?\}`)
+var envRef = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)(:-([^${}]*))?}`)
 
 // interpolate expands ${VAR} and ${VAR:-default} in every string field and
 // returns the names of referenced variables that are not set.
@@ -1116,7 +1117,7 @@ func (c *Config) Validate() []string {
 // pack.Placeholders; a test keeps them in sync).
 var NamePlaceholders = []string{"app", "version", "build", "platform", "arch", "variant", "mode", "flavor", "target", "date"}
 
-var namePlaceholder = regexp.MustCompile(`\{([-_.+]?)([a-z]+)\}`)
+var namePlaceholder = regexp.MustCompile(`\{([-_.+]?)([a-z]+)}`)
 
 // unknownPlaceholders returns the placeholders of tmpl that are not known.
 func unknownPlaceholders(tmpl string) []string {

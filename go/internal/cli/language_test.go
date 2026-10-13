@@ -19,7 +19,7 @@ var (
 	codeish = []*regexp.Regexp{
 		regexp.MustCompile("`[^`]*`"),
 		regexp.MustCompile(`https?://\S+`),
-		regexp.MustCompile(`\$\{[^}]*\}|\$\w+`),
+		regexp.MustCompile(`\$\{[^}]*}|\$\w+`),
 		regexp.MustCompile(`--?[\w-]+(=\S*)?`),
 		regexp.MustCompile(`\b[A-Z0-9_]{2,}\b`),
 		regexp.MustCompile(`"[^"]*"`),

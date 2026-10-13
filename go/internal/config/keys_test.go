@@ -71,7 +71,7 @@ func TestEnvVarsAreUniqueAndSettable(t *testing.T) {
 			t.Errorf("%s (%s): %v", k.Env, k.Path, err)
 		}
 	}
-	names := []string{}
+	var names []string
 	for _, e := range EnvVars() {
 		names = append(names, e[0])
 	}

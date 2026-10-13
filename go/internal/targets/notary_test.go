@@ -167,7 +167,7 @@ func TestNotarizeCtrlCKeepsFileAndPointsToRecord(t *testing.T) {
 	c, file, dst := notaryCtx(t, "")
 	f := &fakeNotary{waitErr: runner.ErrInterrupted}
 	_, err := runNotarize(context.Background(), c, f.env(), "dmg", file, dst, "", []string{"--keychain-profile", "XueHua"}, nil, true)
-	if err != runner.ErrInterrupted {
+	if !errors.Is(err, runner.ErrInterrupted) {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(dst); err != nil {

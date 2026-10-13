@@ -3,9 +3,10 @@ package pack
 
 import (
 	"fmt"
-	"github.com/Matkurban/fpack/go/internal/i18n"
 	"regexp"
 	"strings"
+
+	"github.com/Matkurban/fpack/go/internal/i18n"
 )
 
 // Fields are the values available to name templates.
@@ -22,7 +23,7 @@ type Fields struct {
 	Date     string // build date, YYYYMMDD
 }
 
-var placeholder = regexp.MustCompile(`\{([-_.+]?)([a-z]+)\}`)
+var placeholder = regexp.MustCompile(`\{([-_.+]?)([a-z]+)}`)
 
 // Placeholders lists valid template keys.
 var Placeholders = []string{"app", "version", "build", "platform", "arch", "variant", "mode", "flavor", "target", "date"}

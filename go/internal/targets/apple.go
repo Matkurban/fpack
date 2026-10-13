@@ -3,9 +3,11 @@ package targets
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -21,24 +23,24 @@ import (
 // the macOS .app (zip) and .dmg targets. It comes only from fpack's own
 // configuration: fpack.yaml `macos.sign`, FPACK_MACOS_* and the command line.
 type MacSigning struct {
-	Enabled      bool
 	Identity     string // "" = pick the first "Developer ID Application" identity
 	Entitlements string // explicit entitlements file (absolute); "" = project default
-	Notarize     bool
 	Profile      string // notarytool keychain profile
+	// Installer signs the .pkg ("Developer ID Installer: …", a separate
+	// certificate from the app's); "" = unsigned pkg. Cleared by --no-sign.
+	Installer string
+	// Notary credentials other than a keychain profile.
+	AppleID, TeamID, Password   string
+	APIKey, APIKeyID, APIIssuer string
+	Enabled                     bool
+	Notarize                    bool
 	// Configured: an identity or notary profile is set somewhere.
 	Configured bool
 	// TurnedOff: signing was switched off explicitly (--no-sign,
 	// FPACK_MACOS_SIGN=false, macos.sign.enabled: false).
 	TurnedOff bool
-	// Installer signs the .pkg ("Developer ID Installer: …", a separate
-	// certificate from the app's); "" = unsigned pkg. Cleared by --no-sign.
-	Installer string
 	// HardenedRuntime adds --options runtime (required for notarization).
 	HardenedRuntime bool
-	// Notary credentials other than a keychain profile.
-	AppleID, TeamID, Password   string
-	APIKey, APIKeyID, APIIssuer string
 }
 
 // NotaryAuth returns the notarytool credential arguments and the secrets
@@ -149,7 +151,7 @@ type Identity struct {
 func ParseIdentities(out string) []Identity {
 	var list []Identity
 	idx := map[string]int{}
-	for _, l := range strings.Split(out, "\n") {
+	for l := range strings.SplitSeq(out, "\n") {
 		m := identityLine.FindStringSubmatch(l)
 		if m == nil {
 			continue
@@ -331,8 +333,8 @@ type NotaryResult struct {
 // ParseNotary extracts the last JSON object from notarytool output.
 func ParseNotary(out string) (NotaryResult, bool) {
 	lines := strings.Split(strings.TrimSpace(out), "\n")
-	for i := len(lines) - 1; i >= 0; i-- {
-		l := strings.TrimSpace(lines[i])
+	for _, line := range slices.Backward(lines) {
+		l := strings.TrimSpace(line)
 		if strings.HasPrefix(l, "{") {
 			var r NotaryResult
 			if json.Unmarshal([]byte(l), &r) == nil && r.Status != "" {
@@ -475,9 +477,7 @@ func IOSExportOptions(c *Context) map[string]any {
 	if i.StripSwiftSymbols != nil {
 		m["stripSwiftSymbols"] = *i.StripSwiftSymbols
 	}
-	for k, v := range i.ExportOptions {
-		m[k] = v
-	}
+	maps.Copy(m, i.ExportOptions)
 	return m
 }
 
@@ -846,10 +846,5 @@ func distributionTeams(ids []string) []string {
 }
 
 func contains(list []string, s string) bool {
-	for _, x := range list {
-		if x == s {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, s)
 }

@@ -144,7 +144,7 @@ func applyBuildFlags(p *parsed) (func(*config.Config) error, error) {
 			c.Android.SplitPerABI = abiMode
 		}
 		if p.has("abis") {
-			c.Android.ABIs = config.List(strings.Split(strings.ReplaceAll(p.s("abis"), " ", ""), ","))
+			c.Android.ABIs = strings.Split(strings.ReplaceAll(p.s("abis"), " ", ""), ",")
 		}
 		if p.b("obfuscate") {
 			c.Build.Obfuscate = &t

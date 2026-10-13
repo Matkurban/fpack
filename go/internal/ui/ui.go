@@ -5,21 +5,22 @@ package ui
 
 import (
 	"fmt"
-	"github.com/Matkurban/fpack/go/internal/i18n"
 	"io"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Matkurban/fpack/go/internal/i18n"
 )
 
 // UI writes human readable output.
 type UI struct {
-	mu      sync.Mutex
 	w       io.Writer
+	spin    *Spinner
+	mu      sync.Mutex
 	color   bool
 	tty     bool
-	spin    *Spinner
 	Verbose bool
 }
 

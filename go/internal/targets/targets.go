@@ -133,9 +133,9 @@ type Artifact struct {
 
 // Issue is a preflight finding.
 type Issue struct {
-	Fatal bool
 	Msg   string
 	Fix   string
+	Fatal bool
 	// IfFails: a warning that only matters if the build then fails (e.g. a
 	// certificate missing locally that Xcode may still fetch through
 	// cloud-managed signing). Real builds show it only on failure;

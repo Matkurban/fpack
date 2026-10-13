@@ -22,7 +22,7 @@ var pinnedDocs = []string{
 var (
 	// CI steps (`run: dart pub global activate fpack…`) and already pinned
 	// mentions; plain install instructions keep installing the latest version.
-	activatePin = regexp.MustCompile(`(run: dart pub global activate fpack|dart pub global activate fpack(?: \d+\.\d+\.\d+))(?: \d+\.\d+\.\d+)?`)
+	activatePin = regexp.MustCompile(`(run: dart pub global activate fpack|dart pub global activate fpack \d+\.\d+\.\d+)(?: \d+\.\d+\.\d+)?`)
 	usesPin     = regexp.MustCompile(`(uses: )([\w.-]+/[\w.-]+)@(v\d+)`)
 )
 

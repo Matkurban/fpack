@@ -149,7 +149,7 @@ func Schema() ([]byte, error) {
 	}
 	section := func(path string) obj {
 		cur, acc := root, ""
-		for _, part := range strings.Split(path, ".") {
+		for part := range strings.SplitSeq(path, ".") {
 			if acc != "" {
 				acc += "."
 			}

@@ -6,12 +6,13 @@ package project
 import (
 	"errors"
 	"fmt"
-	"github.com/Matkurban/fpack/go/internal/i18n"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/Matkurban/fpack/go/internal/i18n"
 
 	"github.com/Matkurban/fpack/go/internal/host"
 	"go.yaml.in/yaml/v3"

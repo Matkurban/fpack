@@ -2,10 +2,11 @@ package config
 
 import (
 	"fmt"
-	"github.com/Matkurban/fpack/go/internal/i18n"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/Matkurban/fpack/go/internal/i18n"
 )
 
 // leafTypes are struct types treated as single values, not sections.
@@ -16,8 +17,7 @@ func LeafPaths() []string {
 	var out []string
 	var walk func(prefix string, t reflect.Type)
 	walk = func(prefix string, t reflect.Type) {
-		for i := 0; i < t.NumField(); i++ {
-			f := t.Field(i)
+		for f := range t.Fields() {
 			tag := yamlName(f)
 			if tag == "" {
 				continue
@@ -33,12 +33,12 @@ func LeafPaths() []string {
 			out = append(out, p)
 		}
 	}
-	walk("", reflect.TypeOf(Config{}))
+	walk("", reflect.TypeFor[Config]())
 	return out
 }
 
 func yamlName(f reflect.StructField) string {
-	tag := strings.Split(f.Tag.Get("yaml"), ",")[0]
+	tag, _, _ := strings.Cut(f.Tag.Get("yaml"), ",")
 	if tag == "-" || !f.IsExported() {
 		return ""
 	}
@@ -48,7 +48,7 @@ func yamlName(f reflect.StructField) string {
 // field returns the settable value for a dotted path.
 func field(c *Config, path string) (reflect.Value, bool) {
 	v := reflect.ValueOf(c).Elem()
-	for _, part := range strings.Split(path, ".") {
+	for part := range strings.SplitSeq(path, ".") {
 		found := false
 		for i := 0; i < v.NumField(); i++ {
 			if yamlName(v.Type().Field(i)) == part {
@@ -127,7 +127,7 @@ func (c *Config) SetString(path, s string) error {
 				return fmt.Errorf(i18n.S("entry %q must be KEY=VALUE", "条目 %q 必须是 KEY=VALUE 形式"), e)
 			}
 		}
-		*x = Defines(l)
+		*x = l
 	case *ABIMode:
 		m, err := ParseABIMode(s)
 		if err != nil {
@@ -165,7 +165,7 @@ func (c *Config) SetString(path, s string) error {
 
 func splitList(s string) []string {
 	var out []string
-	for _, p := range strings.Split(s, ",") {
+	for p := range strings.SplitSeq(s, ",") {
 		if p = strings.TrimSpace(p); p != "" {
 			out = append(out, p)
 		}

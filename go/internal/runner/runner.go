@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Matkurban/fpack/go/internal/i18n"
 	"io"
 	"os"
 	"os/exec"
@@ -20,6 +19,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Matkurban/fpack/go/internal/i18n"
 )
 
 // Cmd describes one external command.
@@ -179,9 +180,7 @@ func Run(ctx context.Context, c Cmd, o Options) (Result, error) {
 		full strings.Builder
 		wg   sync.WaitGroup
 	)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		sc := bufio.NewScanner(pr)
 		sc.Buffer(make([]byte, 64*1024), 4*1024*1024)
 		sc.Split(scanLinesCR)
@@ -208,7 +207,7 @@ func Run(ctx context.Context, c Cmd, o Options) (Result, error) {
 			mu.Unlock()
 		}
 		io.Copy(io.Discard, pr)
-	}()
+	})
 
 	track(cmd)
 	defer untrack(cmd)
@@ -253,8 +252,7 @@ func exitCode(cmd *exec.Cmd, err error) int {
 	if err == nil {
 		return 0
 	}
-	var ee *exec.ExitError
-	if errors.As(err, &ee) {
+	if ee, ok := errors.AsType[*exec.ExitError](err); ok {
 		if c := ee.ExitCode(); c >= 0 {
 			return c
 		}

@@ -2,13 +2,14 @@ package pack
 
 import (
 	"fmt"
-	"github.com/Matkurban/fpack/go/internal/i18n"
 	"image"
 	"image/color"
 	"image/draw"
 	"image/png"
 	"os"
 	"path/filepath"
+
+	"github.com/Matkurban/fpack/go/internal/i18n"
 )
 
 // PNGSize returns the pixel size of a PNG file.
@@ -46,9 +47,9 @@ func ResizePNG(src, dst string, size int) error {
 	draw.Draw(sq, image.Rect((side-b.Dx())/2, (side-b.Dy())/2, side, side), img, b.Min, draw.Src)
 	out := image.NewNRGBA(image.Rect(0, 0, size, size))
 	scale := float64(side) / float64(size)
-	for y := 0; y < size; y++ {
+	for y := range size {
 		y0, y1 := float64(y)*scale, float64(y+1)*scale
-		for x := 0; x < size; x++ {
+		for x := range size {
 			x0, x1 := float64(x)*scale, float64(x+1)*scale
 			var r, g, bl, a, wsum float64
 			for sy := int(y0); sy < int(ceil(y1)) && sy < side; sy++ {

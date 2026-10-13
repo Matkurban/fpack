@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/Matkurban/fpack/go/internal/build"
@@ -67,8 +68,8 @@ func Main(args []string, e *Env) int {
 		if a == "--" {
 			break
 		}
-		if strings.HasPrefix(a, "--lang=") {
-			langFlag = strings.TrimPrefix(a, "--lang=")
+		if after, ok := strings.CutPrefix(a, "--lang="); ok {
+			langFlag = after
 		} else if a == "--lang" && i+1 < len(args) {
 			langFlag = args[i+1]
 		}
@@ -155,10 +156,8 @@ func takesValue(a string) bool {
 		return false
 	}
 	for _, f := range globalFlags {
-		for _, n := range f.names {
-			if n == a {
-				return f.kind == kString || f.kind == kList
-			}
+		if slices.Contains(f.names, a) {
+			return f.kind == kString || f.kind == kList
 		}
 	}
 	return false
@@ -166,10 +165,8 @@ func takesValue(a string) bool {
 
 func hasFlag(args []string, names ...string) bool {
 	for _, a := range args {
-		for _, n := range names {
-			if a == n {
-				return true
-			}
+		if slices.Contains(names, a) {
+			return true
 		}
 	}
 	return false
@@ -229,7 +226,7 @@ func contextError(u *ui.UI, err error) int {
 		return build.ExitUsage
 	case errors.As(err, &ce):
 		u.Errorf("%s", i18n.S("invalid configuration:", "配置无效："))
-		for _, l := range strings.Split(ce.Error(), "\n") {
+		for l := range strings.SplitSeq(ce.Error(), "\n") {
 			u.Info(l)
 		}
 		u.Hint(i18n.S("see https://matkurban.github.io/fpack/configuration or run fpack init", "参见 https://matkurban.github.io/fpack/configuration?lang=zh，或运行 fpack init"))
