@@ -6,6 +6,11 @@ description: "每个 fpack 版本的变更。"
 更新日志仅提供英文版本。
 
 <!-- BEGIN GENERATED CHANGELOG -->
+## 1.1.10
+
+### Changed
+- Go core is clean under JetBrains Qodana / GoLand inspections as well (63 → 0): results of `fmt.Fprint*` into builders are handled explicitly, `switch`es over iota constants have explicit defaults, `AndroidSigning` uses pointer receivers only, and unused constants, variables and functions were removed (including the never-injected `version.Commit`). No user-visible behavior change.
+
 ## 1.1.9
 
 ### Changed
