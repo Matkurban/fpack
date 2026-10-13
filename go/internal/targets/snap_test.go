@@ -79,7 +79,7 @@ func TestSnapcraftYAMLDefaults(t *testing.T) {
 		t.Errorf("auto on Ubuntu 24.04 = %s", m)
 	}
 	p := plan(t, &Snap{}, c)
-	if cs := cmds(p); len(cs) != 1 || !strings.HasPrefix(cs[0], "snapcraft pack --destructive-mode --output ") {
+	if cs := cmds(p); len(cs) != 1 || cs[0] != "snapcraft pack --destructive-mode --output xue_hua_im-1.0.0+1-linux-arm64.snap" {
 		t.Errorf("cmds %v", cs)
 	}
 	if n := names(p); len(n) != 1 || n[0] != "xue_hua_im-1.0.0+1-linux-arm64.snap" {
