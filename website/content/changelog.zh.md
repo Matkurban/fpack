@@ -6,6 +6,14 @@ description: "每个 fpack 版本的变更。"
 更新日志仅提供英文版本。
 
 <!-- BEGIN GENERATED CHANGELOG -->
+## 1.1.12
+
+### Added
+- New `snap` target (alias `snapcraft`): fpack generates `snap/snapcraft.yaml` around the already built bundle (dump plugin, so Flutter is not rebuilt), with base `core24`, `strict` confinement, the `gnome` extension, desktop/wayland/x11/opengl/audio-playback/network/home plugs, a `.desktop` file and the icon in `snap/gui/`, and version, summary, description, license and website from the config.
+- `linux.snap` keys: `name`, `summary`, `description`, `base` (core24/core22), `grade`, `confinement` (strict/classic/devmode), `license`, `plugs`, `extensions`, `stage_packages`, `apps`, `desktop`, `template` (your own snapcraft.yaml with placeholders), `build_mode` and `extra_args`.
+- `linux.snap.build_mode` / `FPACK_SNAP_BUILD_MODE`: `auto` (the default) uses `destructive` on the matching Ubuntu release, otherwise `lxd`; `multipass` is also available. In destructive mode fpack runs snapcraft with `sudo -n` unless it is already root, then gives the build files back to your user.
+- `fpack doctor` and preflight checks for snapcraft and LXD/Multipass (with install commands), for a host that does not match the base, and for sudo that would ask for a password. The E2E workflow builds, installs, starts and removes a snap on Ubuntu 24.04.
+
 ## 1.1.11
 
 ### Fixed (documentation)
