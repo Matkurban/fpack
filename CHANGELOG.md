@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.13
+
+### Fixed
+- `snap` with `linux.snap.build_mode: lxd` or `multipass` failed at the end with "Cannot create packages outside of the project tree": fpack passed snapcraft an absolute host path for `--output`, which does not exist inside the build instance. It now passes a path relative to the snapcraft project.
+
+### Changed
+- The generated snapcraft.yaml sets `title` from the app's display name.
+- Documented that a snap is always for the build machine's architecture (LXD/Multipass do not cross-compile Flutter).
+- New CI workflow `snap-modes.yml` builds the example snap with LXD and with Multipass for real, then installs, starts and removes it.
+
 ## 1.1.12
 
 ### Added
