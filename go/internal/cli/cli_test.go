@@ -77,12 +77,14 @@ func summary(t *testing.T, r result) build.Summary {
 	return s
 }
 
-func target(s build.Summary, name string) *build.TargetResult {
-	for _, t := range s.Targets {
-		if t.Target == name {
-			return t
+func target(t testing.TB, s build.Summary, name string) *build.TargetResult {
+	t.Helper()
+	for _, tr := range s.Targets {
+		if tr.Target == name {
+			return tr
 		}
 	}
+	t.Fatalf("no result for target %q in %+v", name, s.Targets)
 	return nil
 }
 
@@ -93,7 +95,7 @@ func TestDryRunJSONWeb(t *testing.T) {
 		t.Fatalf("exit %d\n%s", r.code, r.all())
 	}
 	s := summary(t, r)
-	web := target(s, "web")
+	web := target(t, s, "web")
 	if web == nil || web.Status != build.Planned || len(web.Artifacts) != 1 {
 		t.Fatalf("%+v", web)
 	}
@@ -120,7 +122,7 @@ func TestPrecedenceFlagsEnvConfig(t *testing.T) {
 		if r.code != 0 {
 			t.Fatalf("exit %d\n%s", r.code, r.all())
 		}
-		return target(summary(t, r), "web")
+		return target(t, summary(t, r), "web")
 	}
 	cmd := func(tr *build.TargetResult) string { return strings.Join(tr.Commands, "\n") }
 
@@ -186,7 +188,7 @@ func TestAllSkipsWhatHostCannotBuild(t *testing.T) {
 			}
 		}
 	}
-	if w := target(s, "web"); w.Status != build.Planned {
+	if w := target(t, s, "web"); w.Status != build.Planned {
 		t.Fatalf("web: %+v", w)
 	}
 }
@@ -198,12 +200,12 @@ func TestExplicitUnsupportedTargetIsReferenceInDryRunAndFailsForReal(t *testing.
 		t.Skip("ipa is buildable here")
 	}
 	r := run(t, nil, "build", other, "--dry-run", "--json", "-C", proj, "--flutter", sdk)
-	tr := target(summary(t, r), other)
+	tr := target(t, summary(t, r), other)
 	if r.code != 0 || tr.Status != build.Planned || !tr.ReferenceOnly || len(tr.Commands) == 0 {
 		t.Fatalf("exit %d %+v", r.code, tr)
 	}
 	r = run(t, nil, "build", other, "--json", "-C", proj, "--flutter", sdk)
-	tr = target(summary(t, r), other)
+	tr = target(t, summary(t, r), other)
 	if r.code != build.ExitPrereq || tr.Status != build.Failed || tr.Fix == "" {
 		t.Fatalf("exit %d %+v", r.code, tr)
 	}
@@ -249,7 +251,7 @@ func TestNoTargetsAndNoConfigIsUsageError(t *testing.T) {
 func TestConfigTargetsAndUnknownKey(t *testing.T) {
 	proj, sdk := fixture(t, "build:\n  targets: [web]\n")
 	r := run(t, nil, "build", "--dry-run", "--json", "-C", proj, "--flutter", sdk)
-	if r.code != 0 || target(summary(t, r), "web") == nil {
+	if r.code != 0 || target(t, summary(t, r), "web") == nil {
 		t.Fatalf("exit %d\n%s", r.code, r.all())
 	}
 	proj, sdk = fixture(t, "build:\n  modee: release\n")
@@ -335,7 +337,7 @@ esac
 	if r.code != 0 || !s.Success {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
-	art := target(s, "web").Artifacts[0]
+	art := target(t, s, "web").Artifacts[0]
 	if art.File != "my_app-2.3.4+5-web.zip" || art.Size == 0 || len(art.SHA256) != 64 {
 		t.Fatalf("%+v", art)
 	}
@@ -347,7 +349,7 @@ esac
 	// A failing flutter build: exit 1, excerpt, hint and log path.
 	r = run(t, nil, "build", "apk", "--json", "-C", proj, "--flutter", sdk)
 	s = summary(t, r)
-	apk := target(s, "apk")
+	apk := target(t, s, "apk")
 	if r.code != build.ExitFailed || apk.Status != build.Failed {
 		t.Fatalf("exit %d %+v", r.code, apk)
 	}
@@ -405,7 +407,7 @@ func TestUnknownFlavorFailsAndSkipsPostBuild(t *testing.T) {
 	}
 	r := run(t, nil, "build", "apk", "--flavor", "dve", "--dry-run", "--json", "-C", proj, "--flutter", sdk)
 	s := summary(t, r)
-	apk := target(s, "apk")
+	apk := target(t, s, "apk")
 	if r.code == 0 || apk.Status != build.Failed || !strings.Contains(apk.Reason, `flavor "dve" not found`) || !strings.Contains(apk.Fix, `did you mean "dev"?`) {
 		t.Fatalf("exit %d %+v", r.code, apk)
 	}

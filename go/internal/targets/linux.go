@@ -518,17 +518,17 @@ func RpmSpec(c *Context, root string, files []string) (string, error) {
 	}
 	version, release := rpmVersion(c)
 	var b strings.Builder
-	fmt.Fprintf(&b, "%%global debug_package %%{nil}\n%%global __os_install_post %%{nil}\n%%define _build_id_links none\n")
-	fmt.Fprintf(&b, "Name: %s\nVersion: %s\nRelease: %s\nSummary: %s\nLicense: %s\nGroup: %s\n",
+	_, _ = fmt.Fprintf(&b, "%%global debug_package %%{nil}\n%%global __os_install_post %%{nil}\n%%define _build_id_links none\n")
+	_, _ = fmt.Fprintf(&b, "Name: %s\nVersion: %s\nRelease: %s\nSummary: %s\nLicense: %s\nGroup: %s\n",
 		c.PackageName(), version, release, rpmEscape(c.Description()), rpmEscape(orDefault(r.License, c.License())), orDefault(r.Group, "Applications/Internet"))
 	if h := c.Config.App.Homepage; h != "" {
-		fmt.Fprintf(&b, "URL: %s\n", h)
+		_, _ = fmt.Fprintf(&b, "URL: %s\n", h)
 	}
 	if p := c.Publisher(); p != "" {
-		fmt.Fprintf(&b, "Vendor: %s\n", rpmEscape(p))
+		_, _ = fmt.Fprintf(&b, "Vendor: %s\n", rpmEscape(p))
 	}
-	fmt.Fprintf(&b, "Packager: %s\nBuildArch: %s\nAutoReqProv: no\nRequires: %s\n\n", rpmEscape(c.Maintainer()), RpmArch(linuxArch(c)), strings.Join(requires, ", "))
-	fmt.Fprintf(&b, "%%description\n%s\n\n%%install\nmkdir -p %%{buildroot}\ncp -a %s/. %%{buildroot}/\n\n", rpmEscape(c.Description()), root)
+	_, _ = fmt.Fprintf(&b, "Packager: %s\nBuildArch: %s\nAutoReqProv: no\nRequires: %s\n\n", rpmEscape(c.Maintainer()), RpmArch(linuxArch(c)), strings.Join(requires, ", "))
+	_, _ = fmt.Fprintf(&b, "%%description\n%s\n\n%%install\nmkdir -p %%{buildroot}\ncp -a %s/. %%{buildroot}/\n\n", rpmEscape(c.Description()), root)
 	for _, sc := range []struct{ name, path string }{{"pre", r.Pre}, {"post", r.Post}, {"preun", r.Preun}, {"postun", r.Postun}} {
 		if sc.path == "" {
 			continue
@@ -537,12 +537,12 @@ func RpmSpec(c *Context, root string, files []string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(&b, "%%%s\n%s\n\n", sc.name, strings.TrimSpace(strings.ReplaceAll(string(body), "\r\n", "\n")))
+		_, _ = fmt.Fprintf(&b, "%%%s\n%s\n\n", sc.name, strings.TrimSpace(strings.ReplaceAll(string(body), "\r\n", "\n")))
 	}
 	b.WriteString("%files\n")
 	for _, f := range files {
 		if strings.HasPrefix(f, "/usr/share/doc/") {
-			fmt.Fprintf(&b, "%%doc %s\n", f)
+			_, _ = fmt.Fprintf(&b, "%%doc %s\n", f)
 			continue
 		}
 		b.WriteString(f + "\n")

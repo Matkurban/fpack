@@ -6,6 +6,3 @@ package version
 
 // Version is the fpack release version. Keep in sync with pubspec.yaml.
 const Version = "1.1.9"
-
-// Commit may be injected at build time with -ldflags "-X .../version.Commit=abc".
-var Commit = ""

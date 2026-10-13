@@ -64,15 +64,6 @@ func field(c *Config, path string) (reflect.Value, bool) {
 	return v, true
 }
 
-// FieldType returns the Go type of a dotted path (for the schema).
-func FieldType(path string) (reflect.Type, bool) {
-	v, ok := field(&Config{}, path)
-	if !ok {
-		return nil, false
-	}
-	return v.Type(), true
-}
-
 // Get returns the value at a dotted path.
 func (c *Config) Get(path string) (any, bool) {
 	v, ok := field(c, path)

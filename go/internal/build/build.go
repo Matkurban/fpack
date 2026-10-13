@@ -42,7 +42,6 @@ const (
 
 // Exit codes.
 const (
-	ExitOK          = 0
 	ExitFailed      = 1
 	ExitUsage       = 2
 	ExitPrereq      = 3

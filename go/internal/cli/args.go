@@ -161,7 +161,7 @@ func fmtRows(rows [][2]string) string {
 	}
 	var b strings.Builder
 	for _, r := range rows {
-		fmt.Fprintf(&b, "  %-*s  %s\n", w, r[0], r[1])
+		_, _ = fmt.Fprintf(&b, "  %-*s  %s\n", w, r[0], r[1])
 	}
 	return b.String()
 }

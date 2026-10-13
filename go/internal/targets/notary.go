@@ -38,7 +38,6 @@ const (
 	NotaryAccepted  = "Accepted"
 	NotaryInvalid   = "Invalid"
 	NotaryRejected  = "Rejected"
-	NotaryProgress  = "In Progress"
 )
 
 // NotarySubmission is one uploaded file.
@@ -244,7 +243,7 @@ func (s NotarySubmission) Commands(base string) NotaryCommands {
 // NotaryMarkdown renders NOTARIZATION.md (zh/en per --lang).
 func NotaryMarkdown(r *NotaryRecord, dir string) string {
 	var b strings.Builder
-	w := func(f string, a ...any) { fmt.Fprintf(&b, f+"\n", a...) }
+	w := func(f string, a ...any) { _, _ = fmt.Fprintf(&b, f+"\n", a...) }
 	w("# %s", i18n.S("Notarization", "公证记录"))
 	w("")
 	w("%s", i18n.F("Written by %s for %s %s. Updated %s. Machine-readable copy: `%s`.", "由 %s 为 %s %s 生成，更新于 %s。机器可读版本：`%s`。",
@@ -517,6 +516,7 @@ func NotaryFetchLog(env OpEnv, s *NotarySubmission, auth, secrets []string, dir 
 func NotaryInfo(env OpEnv, s *NotarySubmission, auth, secrets []string) error {
 	res, err := env.Run(notaryCmd("info", s.ID, auth, secrets, "--output-format", "json"))
 	r, ok := parseNotaryJSON(res.Output)
+	//goland:noinspection GoDfaErrorMayBeNotNil // notarytool prints JSON even when it exits non-zero; Run returns that output with the error.
 	if !ok || r.Status == "" {
 		if err != nil {
 			return err

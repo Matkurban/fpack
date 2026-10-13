@@ -102,12 +102,12 @@ func (s *AndroidSigning) Cleanup() {
 }
 
 // FromBase64 reports whether the keystore comes from an env variable.
-func (s AndroidSigning) FromBase64() bool { return s.base64 != "" }
+func (s *AndroidSigning) FromBase64() bool { return s.base64 != "" }
 
 const injected = "ORG_GRADLE_PROJECT_android.injected.signing."
 
 // GradleEnv returns env vars that make AGP sign release builds.
-func (s AndroidSigning) GradleEnv() (env, secrets []string) {
+func (s *AndroidSigning) GradleEnv() (env, secrets []string) {
 	if !s.Enabled {
 		return nil, nil
 	}

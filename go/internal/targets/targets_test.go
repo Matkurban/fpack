@@ -249,6 +249,7 @@ func TestAndroidSigningIncomplete(t *testing.T) {
 	s, err := ResolveAndroidSigning(cfg, "/p", "/w", func(k string) string {
 		return map[string]string{"FPACK_ANDROID_KEYSTORE_BASE64": "aGVsbG8="}[k]
 	})
+	//goland:noinspection GoDfaErrorMayBeNotNil // ResolveAndroidSigning returns the partial signing config with the "incomplete" error by design.
 	if err == nil || s.Enabled || !s.FromBase64() {
 		t.Fatalf("base64 keystore without password must be reported as incomplete: %+v %v", s, err)
 	}

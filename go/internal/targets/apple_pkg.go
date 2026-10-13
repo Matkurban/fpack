@@ -192,24 +192,24 @@ func xmlText(s string) string {
 func distributionXML(title, id, version, compPkg string, res [][2]string, o pkgDistOptions) string {
 	var b strings.Builder
 	b.WriteString("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<installer-gui-script minSpecVersion=\"2\">\n")
-	fmt.Fprintf(&b, "    <title>%s</title>\n", xmlText(title))
+	_, _ = fmt.Fprintf(&b, "    <title>%s</title>\n", xmlText(title))
 	for _, r := range res {
 		name := xmlText(filepath.Base(r[1]))
 		if r[0] == "background" {
-			fmt.Fprintf(&b, "    <background file=\"%s\" alignment=\"bottomleft\" scaling=\"proportional\"/>\n", name)
-			fmt.Fprintf(&b, "    <background-darkAqua file=\"%s\" alignment=\"bottomleft\" scaling=\"proportional\"/>\n", name)
+			_, _ = fmt.Fprintf(&b, "    <background file=\"%s\" alignment=\"bottomleft\" scaling=\"proportional\"/>\n", name)
+			_, _ = fmt.Fprintf(&b, "    <background-darkAqua file=\"%s\" alignment=\"bottomleft\" scaling=\"proportional\"/>\n", name)
 			continue
 		}
-		fmt.Fprintf(&b, "    <%s file=\"%s\"/>\n", r[0], name)
+		_, _ = fmt.Fprintf(&b, "    <%s file=\"%s\"/>\n", r[0], name)
 	}
 	if o.MinOS != "" {
-		fmt.Fprintf(&b, "    <volume-check>\n        <allowed-os-versions>\n            <os-version min=\"%s\"/>\n        </allowed-os-versions>\n    </volume-check>\n", xmlText(o.MinOS))
+		_, _ = fmt.Fprintf(&b, "    <volume-check>\n        <allowed-os-versions>\n            <os-version min=\"%s\"/>\n        </allowed-os-versions>\n    </volume-check>\n", xmlText(o.MinOS))
 	}
 	conclusion := "none"
 	if o.Restart {
 		conclusion = "RequireRestart"
 	}
-	fmt.Fprintf(&b, `    <options customize="never" require-scripts="%[5]t" hostArchitectures="arm64,x86_64"/>
+	_, _ = fmt.Fprintf(&b, `    <options customize="never" require-scripts="%[5]t" hostArchitectures="arm64,x86_64"/>
     <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true"/>
     <choices-outline>
         <line choice="default">

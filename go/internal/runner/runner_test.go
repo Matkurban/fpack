@@ -39,6 +39,7 @@ func TestRunCapturesTailLogAndExitCode(t *testing.T) {
 	var lines []string
 	res, err := Run(context.Background(), Cmd{Name: "sh", Args: []string{"-c", "echo one; echo pw=topsecret >&2; printf 'a\\rb\\n'; exit 3"}, Secret: []string{"topsecret"}},
 		Options{LogPath: log, OnLine: func(l string) { lines = append(lines, l) }})
+	//goland:noinspection GoDfaErrorMayBeNotNil // Run returns the populated Result (exit code) together with its error by design.
 	if err == nil || res.ExitCode != 3 {
 		t.Fatalf("want exit 3, got %d %v", res.ExitCode, err)
 	}
@@ -72,6 +73,7 @@ func TestRunCancel(t *testing.T) {
 
 func TestRunMissingBinary(t *testing.T) {
 	res, err := Run(context.Background(), Cmd{Name: "definitely-not-a-real-tool-xyz"}, Options{})
+	//goland:noinspection GoDfaErrorMayBeNotNil // Run returns the populated Result (exit code) together with its error by design.
 	if err == nil || res.ExitCode != 127 {
 		t.Fatalf("want 127, got %d %v", res.ExitCode, err)
 	}

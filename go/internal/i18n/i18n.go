@@ -29,9 +29,6 @@ var current = EN
 // Set sets the active language.
 func Set(l Lang) { current = l }
 
-// Current returns the active language.
-func Current() Lang { return current }
-
 // IsZH reports whether Chinese output is active.
 func IsZH() bool { return current == ZH }
 
@@ -194,6 +191,3 @@ func quick(name string, args ...string) string {
 		return ""
 	}
 }
-
-// Getenv is os.Getenv, exposed for callers that pass an environment lookup.
-func Getenv(k string) string { return os.Getenv(k) }

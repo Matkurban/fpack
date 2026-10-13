@@ -106,12 +106,12 @@ func markdownKeys(lang string, numbered bool) string {
 		if !strings.Contains(s.Path, ".") {
 			n++
 			if numbered {
-				fmt.Fprintf(&b, "### 2.%d `%s`\n\n%s\n\n", n, s.Path, s.Doc.Text(lang))
+				_, _ = fmt.Fprintf(&b, "### 2.%d `%s`\n\n%s\n\n", n, s.Path, s.Doc.Text(lang))
 			} else {
-				fmt.Fprintf(&b, "### `%s`\n\n%s\n\n", s.Path, s.Doc.Text(lang))
+				_, _ = fmt.Fprintf(&b, "### `%s`\n\n%s\n\n", s.Path, s.Doc.Text(lang))
 			}
 		} else {
-			fmt.Fprintf(&b, "#### `%s`\n\n%s\n\n", s.Path, s.Doc.Text(lang))
+			_, _ = fmt.Fprintf(&b, "#### `%s`\n\n%s\n\n", s.Path, s.Doc.Text(lang))
 		}
 		b.WriteString(head)
 		b.WriteString(strings.Join(rows, "\n") + "\n\n")
@@ -131,7 +131,7 @@ func EnvMarkdown(lang string) string {
 		if k.Env == "" {
 			continue
 		}
-		fmt.Fprintf(&b, "| `%s` | `%s` | %s | %s |\n", k.Env, k.Path, mdCell(kindLabel(k, lang)), mdCell(k.Doc.Text(lang)))
+		_, _ = fmt.Fprintf(&b, "| `%s` | `%s` | %s | %s |\n", k.Env, k.Path, mdCell(kindLabel(k, lang)), mdCell(k.Doc.Text(lang)))
 	}
 	return b.String()
 }

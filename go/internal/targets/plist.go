@@ -58,9 +58,9 @@ func plistValue(b *strings.Builder, v any, depth int) {
 			b.WriteString(ind + "<false/>\n")
 		}
 	case int, int64, uint64:
-		fmt.Fprintf(b, "%s<integer>%d</integer>\n", ind, x)
+		_, _ = fmt.Fprintf(b, "%s<integer>%d</integer>\n", ind, x)
 	case float64:
-		fmt.Fprintf(b, "%s<real>%v</real>\n", ind, x)
+		_, _ = fmt.Fprintf(b, "%s<real>%v</real>\n", ind, x)
 	case nil:
 		b.WriteString(ind + "<string></string>\n")
 	default:

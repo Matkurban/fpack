@@ -156,7 +156,7 @@ func renderInitYAML(v initValues) string {
 	S := i18n.S
 	active, detected, hints := initDefaults(v)
 	var b strings.Builder
-	w := func(format string, a ...any) { fmt.Fprintf(&b, format+"\n", a...) }
+	w := func(format string, a ...any) { _, _ = fmt.Fprintf(&b, format+"\n", a...) }
 	w("# yaml-language-server: $schema=%s", config.SchemaURL)
 	w("# fpack %s – %s", S("configuration", "配置文件"), S("https://matkurban.github.io/fpack/configuration", "https://matkurban.github.io/fpack/configuration?lang=zh"))
 	w("# %s", S("Precedence: command-line flags > FPACK_* environment variables > this file > defaults.", "优先级：命令行参数 > FPACK_* 环境变量 > 本文件 > 默认值。"))
@@ -205,7 +205,7 @@ func writeKey(b *strings.Builder, k config.Key, lang string, depth int, active, 
 	S := i18n.S
 	ind := strings.Repeat("  ", depth)
 	name := k.Path[strings.LastIndex(k.Path, ".")+1:]
-	fmt.Fprintf(b, "%s# %s\n", ind, k.Doc.Text(lang))
+	_, _ = fmt.Fprintf(b, "%s# %s\n", ind, k.Doc.Text(lang))
 	var meta []string
 	if len(k.Enum) > 0 {
 		meta = append(meta, S("values: ", "可选值：")+strings.Join(k.Enum, " | "))
@@ -238,14 +238,14 @@ func writeKey(b *strings.Builder, k config.Key, lang string, depth int, active, 
 		meta = append(meta, S("keep it in an environment variable", "请放在环境变量中"))
 	}
 	if len(meta) > 0 {
-		fmt.Fprintf(b, "%s# %s\n", ind, strings.Join(meta, S("; ", "；")))
+		_, _ = fmt.Fprintf(b, "%s# %s\n", ind, strings.Join(meta, S("; ", "；")))
 	}
 	for _, h := range hints[k.Path] {
-		fmt.Fprintf(b, "%s#   %s\n", ind, h)
+		_, _ = fmt.Fprintf(b, "%s#   %s\n", ind, h)
 	}
 	if isActive {
-		fmt.Fprintf(b, "%s%s: %s\n", ind, name, val)
+		_, _ = fmt.Fprintf(b, "%s%s: %s\n", ind, name, val)
 	} else {
-		fmt.Fprintf(b, "%s# %s: %s\n", ind, name, shownVal)
+		_, _ = fmt.Fprintf(b, "%s# %s: %s\n", ind, name, shownVal)
 	}
 }

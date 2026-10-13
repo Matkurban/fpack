@@ -31,4 +31,4 @@ func termWidth(w io.Writer) int {
 	return 100
 }
 
-func enableVT(*os.File) {}
+func enableVT(_ *os.File) {}

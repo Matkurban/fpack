@@ -120,7 +120,7 @@ func NewContext(o Options) (*targets.Context, error) {
 	}
 	if len(cfg.UnsetEnv) > 0 {
 		// Not fatal by itself (the value may be optional) but worth knowing.
-		fmt.Fprintln(os.Stderr, i18n.F("fpack: warning: %s references unset environment variables: %v", "fpack：警告：%s 引用了未设置的环境变量：%v", filepath.Base(cfg.File), cfg.UnsetEnv))
+		_, _ = fmt.Fprintln(os.Stderr, i18n.F("fpack: warning: %s references unset environment variables: %v", "fpack：警告：%s 引用了未设置的环境变量：%v", filepath.Base(cfg.File), cfg.UnsetEnv))
 	}
 	return c, nil
 }

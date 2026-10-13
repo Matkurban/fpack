@@ -11,7 +11,7 @@ func setProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }
 
-func setCmdLine(*exec.Cmd, string) {}
+func setCmdLine(_ *exec.Cmd, _ string) {}
 
 func interruptTree(cmd *exec.Cmd) {
 	if cmd.Process != nil {

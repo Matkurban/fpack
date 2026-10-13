@@ -373,6 +373,8 @@ func (l *List) UnmarshalYAML(n *yaml.Node) error {
 		}
 		*l = out
 		return nil
+	default:
+		// Other kinds need no handling here.
 	}
 	return fmt.Errorf(i18n.S("line %d: expected a list", "第 %d 行：应为列表"), n.Line)
 }
@@ -394,6 +396,8 @@ func (p *Pair) UnmarshalYAML(n *yaml.Node) error {
 			return nil
 		}
 		parts = strings.FieldsFunc(n.Value, func(r rune) bool { return r == ',' || r == 'x' || r == ' ' })
+	default:
+		// Other kinds need no handling here.
 	}
 	if len(parts) != 2 {
 		return fmt.Errorf(i18n.S("line %d: expected two numbers like [600, 400]", "第 %d 行：应为两个数字，如 [600, 400]"), n.Line)
@@ -451,6 +455,8 @@ func (d *Defines) UnmarshalYAML(n *yaml.Node) error {
 		}
 		*d = Defines(l)
 		return nil
+	default:
+		// Other kinds need no handling here.
 	}
 	return fmt.Errorf(i18n.S("line %d: dart_define must be a map or a list of KEY=VALUE", "第 %d 行：dart_define 必须是映射或 KEY=VALUE 列表"), n.Line)
 }
@@ -571,6 +577,8 @@ func expandYAML(data []byte, getenv func(string) string) ([]byte, []string, erro
 				n.Value = expandString(n.Value, getenv, unset)
 				n.Tag, n.Style = "", 0
 			}
+		default:
+			// Other kinds need no handling here.
 		}
 	}
 	walk(&root)
@@ -850,6 +858,8 @@ func interpolate(v reflect.Value, getenv func(string) string) []string {
 				walk(cp)
 				v.Set(cp)
 			}
+		default:
+			// Other kinds need no handling here.
 		}
 	}
 	walk(v)
@@ -994,10 +1004,8 @@ func (c *Config) IOSCodesign() bool { return c.IOS.Codesign == nil || *c.IOS.Cod
 
 // Known value sets.
 var (
-	Modes         = []string{"release", "profile", "debug"}
 	KnownABIs     = []string{"armeabi-v7a", "arm64-v8a", "x86_64"}
 	ExportMethods = []string{"app-store-connect", "app-store", "release-testing", "ad-hoc", "development", "debugging", "enterprise"}
-	DMGTools      = []string{"auto", "hdiutil", "create-dmg"}
 )
 
 // Validate checks value ranges and returns human readable problems.

@@ -221,7 +221,7 @@ func WriteChecksumsAlg(dir, alg string) (string, map[string]string, error) {
 	sort.Strings(names)
 	var b strings.Builder
 	for _, n := range names {
-		fmt.Fprintf(&b, "%s  %s\n", sums[n], n)
+		_, _ = fmt.Fprintf(&b, "%s  %s\n", sums[n], n)
 	}
 	p := filepath.Join(dir, file)
 	return p, sums, os.WriteFile(p, []byte(b.String()), 0o644)

@@ -52,9 +52,6 @@ func New(o Options) *UI {
 	return &UI{w: w, color: color, tty: tty && os.Getenv("TERM") != "dumb", Verbose: o.Verbose}
 }
 
-// Discard returns a UI that prints nothing (tests).
-func Discard() *UI { return &UI{w: io.Discard} }
-
 // Writer is the underlying writer.
 func (u *UI) Writer() io.Writer { return u.w }
 
