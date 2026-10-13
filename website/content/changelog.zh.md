@@ -6,7 +6,7 @@ description: "每个 fpack 版本的变更。"
 更新日志仅提供英文版本。
 
 <!-- BEGIN GENERATED CHANGELOG -->
-## Unreleased
+## 1.1.14
 
 ### Added
 - macOS provisioning profiles for Developer ID apps: `macos.sign.provisioning_profile` (`--provisioning-profile`, `FPACK_MACOS_PROVISIONING_PROFILE`) and `macos.sign.provisioning_profiles` (bundle id → profile, for app extensions, login items and other nested bundles). fpack copies each profile to `Contents/embedded.provisionprofile` (replacing Xcode's development profile) and signs inside-out: nested bundles with their own entitlements, then the app.
