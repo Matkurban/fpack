@@ -695,6 +695,8 @@ jobs:
       # it with sudo -n), then install, start under Xvfb and remove.
       - name: snap (build, install, run, remove)
         working-directory: ${{ runner.temp }}/aurora
+        env:
+          AURORA_KS_PASS: e2e-store-pass
         run: |
           set -eu
           sudo snap install snapcraft --classic
