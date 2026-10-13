@@ -1,5 +1,5 @@
 // Package targets implements one packaging target per output format (apk,
-// aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage, web)
+// aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage, snap, web)
 // behind a common interface.
 //
 // A target is planned in three phases so that --dry-run shows exactly what a
@@ -285,7 +285,7 @@ func (c *Context) SetAndroidEnv(e *AndroidEnv) { c.androidEnv = e }
 
 var registry = []Target{
 	&APK{}, &AAB{}, &IPA{}, &MacApp{}, &DMG{}, &Pkg{}, &WinZip{}, &WinExe{}, &Msix{},
-	&LinuxTar{}, &Deb{}, &Rpm{}, &AppImage{}, &WebZip{},
+	&LinuxTar{}, &Deb{}, &Rpm{}, &AppImage{}, &Snap{}, &WebZip{},
 }
 
 // All returns every target in display order.
@@ -305,7 +305,7 @@ var aliases = map[string]string{
 	"ios": "ipa", "mac": "macos", "app": "macos", "osx": "macos",
 	"win": "windows", "zip": "windows", "portable": "windows", "setup": "exe", "installer": "exe", "inno": "exe",
 	"tar": "linux", "tgz": "linux", "tar.gz": "linux", "debian": "deb", "fedora": "rpm",
-	"image": "appimage", "AppImage": "appimage",
+	"image": "appimage", "AppImage": "appimage", "snapcraft": "snap",
 }
 
 // Get returns a target by name or alias.

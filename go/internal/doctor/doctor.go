@@ -184,7 +184,7 @@ func Run(in Input) *Report {
 						}
 					}
 					// One line per problem: the linux toolchain check is
-					// shared by linux, deb, rpm and appimage.
+					// shared by linux, deb, rpm, appimage and snap.
 					if seen[is.Msg] {
 						continue
 					}
@@ -384,7 +384,7 @@ func platformInfo(pl host.Platform, in Input) []Line {
 			}
 		}
 	case host.Linux:
-		for _, tool := range []string{"clang++", "cmake", "ninja", "pkg-config", "dpkg-deb", "rpmbuild", "appimagetool"} {
+		for _, tool := range []string{"clang++", "cmake", "ninja", "pkg-config", "dpkg-deb", "rpmbuild", "appimagetool", "snapcraft"} {
 			if p := t.Find(tool); p != "" {
 				out = append(out, Line{OK, tool + " · " + p, ""})
 			}

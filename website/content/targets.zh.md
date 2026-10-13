@@ -20,12 +20,13 @@ description: "每个目标产出什么、在哪里构建、需要哪些工具。
 | `deb` | Linux | `-linux-x64.deb` | dpkg-deb |
 | `rpm` | Linux | `-linux-x64.rpm` | rpmbuild |
 | `appimage` | Linux | `-linux-x64.AppImage` | appimagetool（`--all` 时缺失则跳过） |
+| `snap` | Linux | `-linux-x64.snap` | snapcraft（`--all` 时缺失则跳过） |
 | `web` | 任意 | `-web.zip` | flutter |
 
 Flutter 不能跨系统编译 iOS/macOS/Windows/Linux 桌面应用。`fpack build --all` 会跳过本机不能构建的目标并说明原因；显式指定时（如在 Linux 上 `fpack build ipa`）会报错并提示用对应系统的 CI 机器。`--dry-run` 下仍会显示这类目标的参考计划。
 
-同一次运行中共享 flutter 构建：`macos` + `dmg` + `pkg` 只构建一次，`linux` + `deb` + `rpm` + `appimage` 只构建一次，`windows` + `exe` + `msix` 只构建一次。
+同一次运行中共享 flutter 构建：`macos` + `dmg` + `pkg` 只构建一次，`linux` + `deb` + `rpm` + `appimage` + `snap` 只构建一次，`windows` + `exe` + `msix` 只构建一次。
 
-命令行和 `build.targets` 都接受目标别名：`bundle`/`appbundle` → `aab`，`android` → `apk`，`ios` → `ipa`，`mac`/`osx`/`app` → `macos`，`win`/`zip`/`portable` → `windows`，`setup`/`installer`/`inno` → `exe`，`tar`/`tgz`/`tar.gz` → `linux`，`debian` → `deb`，`fedora` → `rpm`，`image`/`AppImage` → `appimage`。
+命令行和 `build.targets` 都接受目标别名：`bundle`/`appbundle` → `aab`，`android` → `apk`，`ios` → `ipa`，`mac`/`osx`/`app` → `macos`，`win`/`zip`/`portable` → `windows`，`setup`/`installer`/`inno` → `exe`，`tar`/`tgz`/`tar.gz` → `linux`，`debian` → `deb`，`fedora` → `rpm`，`image`/`AppImage` → `appimage`，`snapcraft` → `snap`。
 
 `fpack doctor` 只有在所需工具齐全时才把目标列为“当前可构建”；对 `apk`/`aab` 来说包括 Java（JDK 17+）——不过没有检测到 Java 时构建仍会尝试（Gradle 可能找到 fpack 看不到的 JDK）。

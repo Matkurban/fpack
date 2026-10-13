@@ -92,4 +92,5 @@ fpack（Go 核心和 Dart 启动器）在操作系统语言为中文（任何 `z
 | `FPACK_WINDOWS_CERT_SUBJECT` | `windows.sign.subject` | string | 证书存储中证书的主题名称（/n），替代指纹。 |
 | `FPACK_WINDOWS_SIGN_DLIB` | `windows.sign.dlib` | path | 用于云签名的 signtool 插件（/dlib），如 Azure Trusted Signing；需同时设置 dlib_metadata。 |
 | `FPACK_WINDOWS_SIGN_DLIB_METADATA` | `windows.sign.dlib_metadata` | path | dlib 的元数据文件（/dmdf），如 Trusted Signing 的账户和证书配置。 |
+| `FPACK_SNAP_BUILD_MODE` | `linux.snap.build_mode` | `auto` \\| `destructive` \\| `lxd` \\| `multipass` | snapcraft 的构建方式：destructive（用 sudo 在本机构建，最快，适合 CI）、lxd 或 multipass（隔离的构建环境）。 |
 <!-- END GENERATED ENV -->

@@ -20,7 +20,7 @@ When a build fails, fpack prints the key error excerpt (Gradle's "What went wron
 | `already exists (a real run stops unless --force)` | bump the version, use `--build-number N` or pass `--force` |
 | `needs macOS/Windows/Linux` | Flutter cannot cross-compile desktop/iOS apps; build on a runner of that OS |
 | `Inno Setup (ISCC.exe) not found` | install Inno Setup 6 (`winget install --id JRSoftware.InnoSetup -e`) or set `windows.inno_setup.iscc` |
-| `dpkg-deb` / `rpmbuild` / `appimagetool` missing | install them (see [Linux](/platforms/linux)) – fpack lists every missing tool at once |
+| `dpkg-deb` / `rpmbuild` / `appimagetool` / `snapcraft` missing | install them (see [Linux](/platforms/linux)) – fpack lists every missing tool at once |
 | `no Flutter project found in … or its parents` (at a repository root fpack also lists the Flutter apps below it) | `cd` into one, or pick it with `fpack -C <dir>` |
 | `which targets?` | name targets (`fpack build apk`), use `--all`, or set `build.targets` in fpack.yaml |
 

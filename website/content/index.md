@@ -9,7 +9,7 @@ description: "One command turns a Flutter project into release artifacts for eve
 
 </div>
 
-**Android** (APK / per-ABI APKs / AAB) · **iOS** (IPA) · **macOS** (.app zip / DMG / pkg, signed + notarized) · **Windows** (zip / Inno Setup installer / MSIX) · **Linux** (tar.gz / deb / rpm / AppImage) · **Web** (zip)
+**Android** (APK / per-ABI APKs / AAB) · **iOS** (IPA) · **macOS** (.app zip / DMG / pkg, signed + notarized) · **Windows** (zip / Inno Setup installer / MSIX) · **Linux** (tar.gz / deb / rpm / AppImage / Snap) · **Web** (zip)
 
 ```bash
 dart pub global activate fpack
@@ -24,7 +24,7 @@ fpack build --all         # everything this machine can build; the rest is skipp
 - **Zero configuration** – reads `pubspec.yaml`, Gradle and the Xcode projects; `fpack.yaml` is optional.
 - **Never modifies your project** – signing data is injected through environment variables, Gradle and Xcode files are never edited. Artifacts go to `dist/`, temporary files to `build/fpack/`.
 - **Native core** – a Go binary (~10 ms startup, no runtime dependencies) behind a thin Dart launcher that downloads the matching, SHA-256 verified core.
-- **Everything is configurable** – 196 validated `fpack.yaml` keys with a JSON Schema for editor completion, `${VAR}` interpolation and dedicated `FPACK_*` variables.
+- **Everything is configurable** – 211 validated `fpack.yaml` keys with a JSON Schema for editor completion, `${VAR}` interpolation and dedicated `FPACK_*` variables.
 - **Built for humans and CI** – clear errors with the key excerpt and a fix, `--dry-run` shows every command, `--json` for machines, English and Chinese output.
 - **Signing and notarization** – Android keystores, iOS export options, macOS Developer ID + notarization (with resumable waits), Windows Authenticode.
 

@@ -147,6 +147,7 @@ Targets:
   deb       Debian/Ubuntu package (dpkg-deb)
   rpm       Fedora/RHEL/openSUSE package (rpmbuild)
   appimage  Linux AppImage (appimagetool)
+  snap      Snap package (snapcraft)
   web       Web build (zip of build/web, ready to deploy)
 ```
 

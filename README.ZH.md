@@ -7,7 +7,7 @@
 各平台指南（签名、公证、安装包）、全部命令与配置键、CI 示例和问题排查。带完整注释 `fpack.yaml` 的示例应用见 [`example/`](example/)。
 
 **一条命令，把 Flutter 项目打包成所有平台的发布文件。**
-Android（APK / 按 ABI 拆分 APK / AAB）、iOS（IPA）、macOS（.app zip / DMG / pkg 安装包，可签名 + 公证）、Windows（zip / Inno Setup 安装包 / MSIX）、Linux（tar.gz / deb / rpm / AppImage）、Web（zip）。
+Android（APK / 按 ABI 拆分 APK / AAB）、iOS（IPA）、macOS（.app zip / DMG / pkg 安装包，可签名 + 公证）、Windows（zip / Inno Setup 安装包 / MSIX）、Linux（tar.gz / deb / rpm / AppImage / Snap）、Web（zip）。
 
 ```bash
 dart pub global activate fpack    # 安装（也支持 git / 本地路径，见下文）
@@ -20,7 +20,7 @@ fpack build --all                 # 本机能打的全部打出来，打不了�
 - **零配置可用**：直接读取 `pubspec.yaml`、Gradle、Xcode 工程中的信息；`fpack init` 生成的 `fpack.yaml` 完全可选。
 - **绝不修改你的项目文件**：只调用 Flutter 工具链和打包工具。签名信息通过环境变量注入，不改 Gradle。唯一会写入的文件是 `fpack init` 生成的 `fpack.yaml`，产物写到 `dist/`，临时文件写到 `build/fpack/`。
 - **原生核心**：核心用 Go 编写并编译为原生二进制（启动约 10 ms，无运行时依赖）；Dart 包只是一个很薄的启动器，负责找到/准备与之版本完全一致的二进制。
-- **一切可配置**：196 个 fpack.yaml 键（安装包元数据、签名、DMG 布局、Inno Setup 语言/权限、MSIX、deb/rpm 元数据与脚本、钩子、文件名模板……），任何值都可以引用环境变量（`${VAR}` / `${VAR:-默认值}`，布尔值和数字也可以），构建、签名、公证相关设置还有专门的 `FPACK_*` 变量；配置会被严格校验（未知键提示「你是不是想写 …」、类型错误指出行号），并提供 JSON Schema 供编辑器补全。
+- **一切可配置**：211 个 fpack.yaml 键（安装包元数据、签名、DMG 布局、Inno Setup 语言/权限、MSIX、deb/rpm 元数据与脚本、钩子、文件名模板……），任何值都可以引用环境变量（`${VAR}` / `${VAR:-默认值}`，布尔值和数字也可以），构建、签名、公证相关设置还有专门的 `FPACK_*` 变量；配置会被严格校验（未知键提示「你是不是想写 …」、类型错误指出行号），并提供 JSON Schema 供编辑器补全。
 - **为人设计**：彩色输出与进度动画（CI 中自动降级为纯文本）、失败时给出关键错误摘录 + 修复建议 + 完整日志路径、`--dry-run` 精确展示每一条将执行的命令、`--json` 机器可读输出、中英文自动切换。
 
 ---
@@ -203,13 +203,14 @@ fpack -C apps/client build web --base-href /app/
 | `deb` | Linux | `-linux-x64.deb` | dpkg-deb |
 | `rpm` | Linux | `-linux-x64.rpm` | rpmbuild |
 | `appimage` | Linux | `-linux-x64.AppImage` | appimagetool（`--all` 时缺失则跳过） |
+| `snap` | Linux | `-linux-x64.snap` | snapcraft（`--all` 时缺失则跳过） |
 | `web` | 任意 | `-web.zip` | flutter |
 
 Flutter 不能跨系统编译 iOS/macOS/Windows/Linux 桌面应用。`fpack build --all` 会跳过本机不能构建的目标并说明原因；显式指定时（如在 Linux 上 `fpack build ipa`）会报错并提示用对应系统的 CI 机器。`--dry-run` 下仍会显示这类目标的参考计划。
 
-同一次运行中共享 flutter 构建：`macos` + `dmg` + `pkg` 只构建一次，`linux` + `deb` + `rpm` + `appimage` 只构建一次，`windows` + `exe` + `msix` 只构建一次。
+同一次运行中共享 flutter 构建：`macos` + `dmg` + `pkg` 只构建一次，`linux` + `deb` + `rpm` + `appimage` + `snap` 只构建一次，`windows` + `exe` + `msix` 只构建一次。
 
-命令行和 `build.targets` 都接受目标别名：`bundle`/`appbundle` → `aab`，`android` → `apk`，`ios` → `ipa`，`mac`/`osx`/`app` → `macos`，`win`/`zip`/`portable` → `windows`，`setup`/`installer`/`inno` → `exe`，`tar`/`tgz`/`tar.gz` → `linux`，`debian` → `deb`，`fedora` → `rpm`，`image`/`AppImage` → `appimage`。
+命令行和 `build.targets` 都接受目标别名：`bundle`/`appbundle` → `aab`，`android` → `apk`，`ios` → `ipa`，`mac`/`osx`/`app` → `macos`，`win`/`zip`/`portable` → `windows`，`setup`/`installer`/`inno` → `exe`，`tar`/`tgz`/`tar.gz` → `linux`，`debian` → `deb`，`fedora` → `rpm`，`image`/`AppImage` → `appimage`，`snapcraft` → `snap`。
 
 `fpack doctor` 只有在所需工具齐全时才把目标列为“当前可构建”；对 `apk`/`aab` 来说包括 Java（JDK 17+）——不过没有检测到 Java 时构建仍会尝试（Gradle 可能找到 fpack 看不到的 JDK）。
 
@@ -487,6 +488,8 @@ Inno Setup 安装包可配置发布者/网址、版权、安装目录、开始�
 
 deb/rpm/AppImage 安装到 `linux.prefix`（默认 `/opt/<包名>`，并在 `/usr/bin` 放符号链接），`.desktop` 文件包含 `Name`/`GenericName`/`Comment`/`Categories`/`Keywords`/`MimeType`/`StartupWMClass`，图标按 `icon_sizes` 缩放到 hicolor 主题，可附带 AppStream `metainfo` 和 `copyright`。deb 支持 Depends/Recommends/Suggests/Conflicts/Section/Priority 与维护脚本，rpm 支持 Requires/Group/License/URL 与 `%pre/%post/%preun/%postun`，AppImage 支持内嵌更新信息（`update_information`，同时在输出目录生成 `.zsync` 文件）。
 
+`snap` 目标用 snapcraft 打包已经构建好的 bundle。fpack 生成 `snap/snapcraft.yaml`（base `core24`、`strict` 沙箱、提供 GTK 的 `gnome` 扩展、plugs `desktop`、`desktop-legacy`、`wayland`、`x11`、`opengl`、`audio-playback`、`network`、`home`，以及基于 bundle 的 `dump` part，snapcraft 内不会重新构建 Flutter），并在 `snap/gui/` 中放入 `.desktop` 文件和图标。名称、简介、描述、base、grade、confinement、许可证、plugs、扩展、stage packages、额外命令和 `.desktop` 文件都可在 `linux.snap` 中设置；`linux.snap.template` 可改用你自己的 snapcraft.yaml。`linux.snap.build_mode`（或 `FPACK_SNAP_BUILD_MODE`）决定 snapcraft 的构建方式：`destructive`（直接在本机构建，本机必须是该 base 对应的 Ubuntu 版本，core24 即 24.04；最快，适合 CI；snapcraft 会在本机安装构建依赖，因此非 root 时 fpack 用 `sudo -n` 运行它：像 CI 一样配置免密码 sudo，或先运行 `sudo -v`）、`lxd` 或 `multipass`（隔离的构建环境）。默认的 `auto` 在匹配的 Ubuntu 上使用 destructive，否则使用 lxd。用 `sudo snap install snapcraft --classic` 安装 snapcraft，然后用 `sudo snap install --dangerous <文件>.snap` 测试安装。
+
 ---
 
 ## CI 示例
@@ -498,7 +501,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.11 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.12 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build apk aab --split-per-abi=both
         env:
           FPACK_ANDROID_KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -511,14 +514,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.11 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.12 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build ipa dmg --json > result.json
   windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.11
+      - run: dart pub global activate fpack 1.1.12
       - run: fpack build windows exe
   linux:
     runs-on: ubuntu-latest
@@ -526,7 +529,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
       - run: sudo apt-get install -y ninja-build libgtk-3-dev rpm
-      - run: dart pub global activate fpack 1.1.11 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.12 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build linux deb rpm web
 ```
 

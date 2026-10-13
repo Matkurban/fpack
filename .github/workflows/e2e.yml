@@ -691,6 +691,32 @@ jobs:
           web="$d/aurora_notes-web-1.0.0.zip"
           unzip -p "$web" index.html | grep -q '<base href="/aurora/">'
           unzip -l "$web" | grep -q "main.dart.js.map"
+      # Snap: snapcraft in destructive mode (auto on Ubuntu 24.04; fpack runs
+      # it with sudo -n), then install, start under Xvfb and remove.
+      - name: snap (build, install, run, remove)
+        working-directory: ${{ runner.temp }}/aurora
+        run: |
+          set -eu
+          sudo snap install snapcraft --classic
+          command -v xvfb-run >/dev/null || sudo apt-get install -y xvfb
+          set +e
+          fpack build snap --json > snap.json
+          code=$?
+          python3 "$GITHUB_WORKSPACE/scripts/e2e_check.py" snap.json snap || code=1
+          [ $code -eq 0 ] || { cat snap.json; exit 1; }
+          set -e
+          s=$(ls dist/*/*.snap)
+          unsquashfs -l "$s" | grep -E "meta/snap.yaml|meta/gui/aurora-notes.desktop|aurora_notes$"
+          sudo snap install --dangerous "$s"
+          snap list aurora-notes
+          set +e
+          xvfb-run -a timeout 25 aurora-notes > "$RUNNER_TEMP/snap-run.log" 2>&1
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/snap-run.log"
+          [ $code -eq 124 ] || { echo "app exited with $code instead of running"; exit 1; }
+          sudo snap remove --purge aurora-notes
+          ! snap list aurora-notes 2>/dev/null
       - uses: actions/upload-artifact@v7
         if: always()
         with:

@@ -192,6 +192,8 @@ func knownLocations(name string) []string {
 		return out
 	case "appimagetool":
 		return []string{filepath.Join(home, ".local", "bin", "appimagetool"), filepath.Join(home, "Applications", "appimagetool-x86_64.AppImage"), "/usr/local/bin/appimagetool-x86_64.AppImage", filepath.Join(home, ".local", "bin", "appimagetool-x86_64.AppImage")}
+	case "snapcraft", "lxd", "multipass":
+		return []string{"/snap/bin/" + name}
 	case "create-dmg":
 		return []string{"/opt/homebrew/bin/create-dmg", "/usr/local/bin/create-dmg"}
 	case "pod":

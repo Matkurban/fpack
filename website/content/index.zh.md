@@ -9,7 +9,7 @@ description: "一条命令，把 Flutter 项目打包成所有平台的发布文
 
 </div>
 
-**Android**（APK / 按 ABI 拆分 APK / AAB）· **iOS**（IPA）· **macOS**（.app zip / DMG / pkg，可签名 + 公证）· **Windows**（zip / Inno Setup 安装包 / MSIX）· **Linux**（tar.gz / deb / rpm / AppImage）· **Web**（zip）
+**Android**（APK / 按 ABI 拆分 APK / AAB）· **iOS**（IPA）· **macOS**（.app zip / DMG / pkg，可签名 + 公证）· **Windows**（zip / Inno Setup 安装包 / MSIX）· **Linux**（tar.gz / deb / rpm / AppImage / Snap）· **Web**（zip）
 
 ```bash
 dart pub global activate fpack
@@ -24,7 +24,7 @@ fpack build --all         # 本机能打的全部打出来，打不了的说明�
 - **零配置可用**——直接读取 `pubspec.yaml`、Gradle 和 Xcode 工程；`fpack.yaml` 完全可选。
 - **绝不修改你的项目**——签名信息通过环境变量注入，不修改 Gradle 和 Xcode 文件。产物写到 `dist/`，临时文件写到 `build/fpack/`。
 - **原生核心**——Go 编写的二进制（启动约 10 ms，无运行时依赖），由轻量的 Dart 启动器下载版本一致、经 SHA-256 校验的核心。
-- **一切可配置**——196 个经过校验的 `fpack.yaml` 键，提供 JSON Schema 供编辑器补全，支持 `${VAR}` 插值和专门的 `FPACK_*` 变量。
+- **一切可配置**——211 个经过校验的 `fpack.yaml` 键，提供 JSON Schema 供编辑器补全，支持 `${VAR}` 插值和专门的 `FPACK_*` 变量。
 - **为人和 CI 设计**——清晰的错误摘录与修复建议、`--dry-run` 展示每条命令、`--json` 机器可读输出、中英文输出。
 - **签名与公证**——Android 密钥库、iOS 导出选项、macOS Developer ID + 公证（可稍后继续等待）、Windows Authenticode。
 

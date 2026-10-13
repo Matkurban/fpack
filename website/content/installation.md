@@ -60,7 +60,7 @@ fpack itself only needs Dart. The targets need their usual toolchains – run `f
 | `apk`, `aab` | Flutter, Android SDK, Java 17+ (Android Studio bundles one) |
 | `ipa`, `macos`, `dmg`, `pkg` | macOS with Xcode (+ CocoaPods when the project has a Podfile) |
 | `windows`, `exe`, `msix` | Windows with Visual Studio (C++ desktop workload); Inno Setup 6 for `exe`; the `msix` dev dependency for `msix` |
-| `linux`, `deb`, `rpm`, `appimage` | Linux with clang, cmake, ninja, pkg-config, GTK 3 headers; `dpkg-deb`, `rpmbuild`, `appimagetool` |
+| `linux`, `deb`, `rpm`, `appimage`, `snap` | Linux with clang, cmake, ninja, pkg-config, GTK 3 headers; `dpkg-deb`, `rpmbuild`, `appimagetool`, `snapcraft` (plus LXD or Multipass unless you build on Ubuntu 24.04) |
 | `web` | Flutter only |
 
 ## Upgrading

@@ -1,0 +1,398 @@
+package targets
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/Matkurban/fpack/go/internal/host"
+	"github.com/Matkurban/fpack/go/internal/i18n"
+	"github.com/Matkurban/fpack/go/internal/pack"
+	"github.com/Matkurban/fpack/go/internal/runner"
+)
+
+// Snap builds a snap with snapcraft. fpack stages the already built Flutter
+// bundle next to a generated snap/snapcraft.yaml that uses the dump plugin,
+// so snapcraft only packs files and never runs Flutter.
+type Snap struct{}
+
+// Name implements [Target].
+func (*Snap) Name() string { return "snap" }
+
+// Platform implements [Target].
+func (*Snap) Platform() host.Platform { return host.Linux }
+
+// Formats implements [Target].
+func (*Snap) Formats() []string { return []string{".snap"} }
+
+// Optional implements [Target].
+func (*Snap) Optional() bool { return true }
+
+// Description implements [Target].
+func (*Snap) Description() string {
+	return i18n.S("Snap package (snapcraft)", "Snap 包（snapcraft）")
+}
+
+// Snap build modes.
+const (
+	SnapAuto        = "auto"
+	SnapDestructive = "destructive"
+	SnapLXD         = "lxd"
+	SnapMultipass   = "multipass"
+)
+
+// isRoot reports whether fpack runs as root (a variable for tests).
+var isRoot = func() bool { return os.Geteuid() == 0 }
+
+// snapSudo reports whether snapcraft must run through sudo: destructive
+// mode installs build packages and build snaps (e.g. the gnome SDK) on the
+// machine, which needs root.
+func (c *Context) snapSudo(mode string) bool { return mode == SnapDestructive && !isRoot() }
+
+// osReleasePath is read to pick the build mode (a variable for tests).
+var osReleasePath = "/etc/os-release"
+
+// SnapName is linux.snap.name, else the package name.
+func (c *Context) SnapName() string {
+	return orDefault(c.Config.Linux.Snap.Name, c.PackageName())
+}
+
+func (c *Context) snapBase() string { return orDefault(c.Config.Linux.Snap.Base, "core24") }
+
+func (c *Context) snapConfinement() string {
+	return orDefault(c.Config.Linux.Snap.Confinement, "strict")
+}
+
+func (c *Context) snapGrade() string {
+	if g := c.Config.Linux.Snap.Grade; g != "" {
+		return g
+	}
+	if c.snapConfinement() == "devmode" {
+		return "devel"
+	}
+	return "stable"
+}
+
+// snapUbuntu is the Ubuntu release a base is built from.
+func snapUbuntu(base string) string {
+	if base == "core22" {
+		return "22.04"
+	}
+	return "24.04"
+}
+
+// hostUbuntu returns this machine's Ubuntu VERSION_ID ("" if not Ubuntu).
+func hostUbuntu() string {
+	b, err := os.ReadFile(osReleasePath)
+	if err != nil {
+		return ""
+	}
+	vals := map[string]string{}
+	for l := range strings.SplitSeq(string(b), "\n") {
+		if k, v, ok := strings.Cut(strings.TrimSpace(l), "="); ok {
+			vals[k] = strings.Trim(v, `"'`)
+		}
+	}
+	if vals["ID"] != "ubuntu" {
+		return ""
+	}
+	return vals["VERSION_ID"]
+}
+
+// SnapBuildMode resolves linux.snap.build_mode (auto: destructive on the
+// Ubuntu release matching the base, else lxd).
+func (c *Context) SnapBuildMode() string {
+	m := c.Config.Linux.Snap.BuildMode
+	if m != "" && m != SnapAuto {
+		return m
+	}
+	if hostUbuntu() == snapUbuntu(c.snapBase()) {
+		return SnapDestructive
+	}
+	return SnapLXD
+}
+
+// snapVersion makes a valid snap version (max 32 of [A-Za-z0-9.+~-],
+// starting and ending with a letter or digit).
+func snapVersion(c *Context) string {
+	v := strings.Map(func(r rune) rune {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune(".+~-", r) {
+			return r
+		}
+		return '-'
+	}, debVersion(c))
+	if len(v) > 32 {
+		v = v[:32]
+	}
+	v = strings.Trim(v, ".+~-")
+	if v == "" {
+		return "0"
+	}
+	return v
+}
+
+func (c *Context) snapSummary() string {
+	if s := c.Config.Linux.Snap.Summary; s != "" {
+		return s
+	}
+	r := []rune(c.Description())
+	if len(r) > 78 {
+		return strings.TrimSpace(string(r[:77])) + "…"
+	}
+	return string(r)
+}
+
+func (c *Context) snapDescription() string {
+	return orDefault(c.Config.Linux.Snap.Description, c.Description())
+}
+
+func (c *Context) snapPlugs() []string {
+	s := c.Config.Linux.Snap
+	if s.Plugs != nil {
+		return *s.Plugs
+	}
+	if c.snapConfinement() == "classic" {
+		return nil
+	}
+	return []string{"desktop", "desktop-legacy", "wayland", "x11", "opengl", "audio-playback", "network", "home"}
+}
+
+func (c *Context) snapExtensions() []string {
+	s := c.Config.Linux.Snap
+	if s.Extensions != nil {
+		return *s.Extensions
+	}
+	if c.snapConfinement() == "classic" {
+		return nil
+	}
+	return []string{"gnome"}
+}
+
+// q quotes a YAML scalar (JSON strings are valid YAML).
+func q(s string) string {
+	b, err := json.Marshal(s)
+	if err != nil {
+		return `""`
+	}
+	return string(b)
+}
+
+func yamlList(v []string) string {
+	out := make([]string, len(v))
+	for i, s := range v {
+		out[i] = q(s)
+	}
+	return "[" + strings.Join(out, ", ") + "]"
+}
+
+// SnapcraftYAML renders the generated snap/snapcraft.yaml.
+func SnapcraftYAML(c *Context) string {
+	s := c.Config.Linux.Snap
+	name := c.SnapName()
+	var b strings.Builder
+	b.WriteString("# Generated by fpack. Set linux.snap.template to use your own file.\n")
+	b.WriteString("name: " + q(name) + "\nbase: " + c.snapBase() + "\nversion: " + q(snapVersion(c)) + "\n")
+	b.WriteString("summary: " + q(c.snapSummary()) + "\ndescription: " + q(c.snapDescription()) + "\n")
+	b.WriteString("grade: " + c.snapGrade() + "\nconfinement: " + c.snapConfinement() + "\nlicense: " + q(orDefault(s.License, c.License())) + "\n")
+	if h := c.Config.App.Homepage; h != "" {
+		b.WriteString("website: " + q(h) + "\n")
+	}
+	b.WriteString("\napps:\n")
+	app := func(appName, command string) {
+		b.WriteString("  " + appName + ":\n    command: " + q(command) + "\n")
+		if e := c.snapExtensions(); len(e) > 0 {
+			b.WriteString("    extensions: " + yamlList(e) + "\n")
+		}
+		if p := c.snapPlugs(); len(p) > 0 {
+			b.WriteString("    plugs: " + yamlList(p) + "\n")
+		}
+	}
+	app(name, c.linuxBinary())
+	extra := make([]string, 0, len(s.Apps))
+	for n := range s.Apps {
+		extra = append(extra, n)
+	}
+	sort.Strings(extra)
+	for _, n := range extra {
+		app(n, s.Apps[n])
+	}
+	b.WriteString("\nparts:\n  " + name + ":\n    plugin: dump\n    source: bundle\n")
+	if len(s.StagePackages) > 0 {
+		b.WriteString("    stage-packages: " + yamlList(s.StagePackages) + "\n")
+	}
+	return b.String()
+}
+
+// snapTemplate fills the placeholders of linux.snap.template.
+func snapTemplate(c *Context, tmpl string) string {
+	s := c.Config.Linux.Snap
+	return strings.NewReplacer(
+		"{name}", q(c.SnapName()), "{version}", q(snapVersion(c)), "{summary}", q(c.snapSummary()),
+		"{description}", q(c.snapDescription()), "{base}", q(c.snapBase()), "{grade}", q(c.snapGrade()),
+		"{confinement}", q(c.snapConfinement()), "{license}", q(orDefault(s.License, c.License())),
+		"{command}", q(c.linuxBinary()),
+	).Replace(tmpl)
+}
+
+// Preflight implements [Target].
+func (*Snap) Preflight(c *Context) []Issue {
+	out := linuxPreflight(c)
+	if c.Tools.Find("snapcraft") == "" {
+		out = append(out, fatal(i18n.S("snapcraft not found", "找不到 snapcraft"), "sudo snap install snapcraft --classic"))
+	}
+	mode := c.SnapBuildMode()
+	switch mode {
+	case SnapDestructive:
+		if got, want := hostUbuntu(), snapUbuntu(c.snapBase()); got != want {
+			host := "Ubuntu " + got
+			if got == "" {
+				host = i18n.S("not Ubuntu", "不是 Ubuntu")
+			}
+			out = append(out, fatal(i18n.F("snap build_mode destructive needs Ubuntu %s for base %s (this machine: %s)", "snap 的 destructive 构建方式需要 Ubuntu %s 才能构建 base %s（本机：%s）", want, c.snapBase(), host),
+				i18n.S("set linux.snap.build_mode: lxd (or multipass), or FPACK_SNAP_BUILD_MODE=lxd", "设置 linux.snap.build_mode: lxd（或 multipass），或 FPACK_SNAP_BUILD_MODE=lxd")))
+		} else if c.snapSudo(mode) && !c.DryRun {
+			if _, ok := c.Tools.Probe("sudo", "-n", "true"); !ok {
+				out = append(out, fatal(i18n.S("snap build_mode destructive runs snapcraft with sudo, which needs a password here", "snap 的 destructive 构建方式需要用 sudo 运行 snapcraft，而这里的 sudo 需要密码"),
+					i18n.S("run sudo -v first (or allow passwordless sudo, as on CI), or set linux.snap.build_mode: lxd", "先运行 sudo -v（或像 CI 一样配置免密码 sudo），或设置 linux.snap.build_mode: lxd")))
+			}
+		}
+	case SnapLXD, SnapMultipass:
+		if c.Tools.Find(mode) == "" {
+			fix := "sudo snap install lxd && sudo lxd init --auto && sudo usermod -aG lxd $USER"
+			if mode == SnapMultipass {
+				fix = "sudo snap install multipass"
+			}
+			out = append(out, fatal(i18n.F("%s not found (linux.snap.build_mode: %s)", "找不到 %s（linux.snap.build_mode: %s）", mode, mode), fix))
+		}
+	}
+	return out
+}
+
+// Steps implements [Target].
+func (*Snap) Steps(c *Context) ([]FlutterStep, error) { return linuxStep(c), nil }
+
+// Locate implements [Target].
+func (*Snap) Locate(c *Context, p bool, _ time.Time) (Inputs, error) { return locateLinuxBundle(c, p) }
+
+// SnapArgs are the snapcraft arguments for a build mode.
+func SnapArgs(c *Context, mode, output string) ([]string, []string) {
+	args := []string{"pack"}
+	var env []string
+	switch mode {
+	case SnapDestructive:
+		args = append(args, "--destructive-mode")
+	case SnapLXD:
+		args = append(args, "--use-lxd")
+	case SnapMultipass:
+		env = append(env, "SNAPCRAFT_BUILD_ENVIRONMENT=multipass")
+	}
+	args = append(append(args, "--output", output), c.Config.Linux.Snap.ExtraArgs...)
+	return args, env
+}
+
+// Package implements [Target].
+func (*Snap) Package(c *Context, in Inputs) (*Plan, error) {
+	dst, err := c.ArtifactPath(host.Linux, linuxArch(c), "", ".snap")
+	if err != nil {
+		return nil, err
+	}
+	s := c.Config.Linux.Snap
+	stage := c.Stage("snap")
+	tmp := filepath.Join(stage, filepath.Base(dst))
+	name := c.SnapName()
+	bundle := in["bundle"]
+	gui := filepath.Join(stage, "snap", "gui")
+	mode := c.SnapBuildMode()
+	args, env := SnapArgs(c, mode, tmp)
+	build := &runner.Cmd{Name: "snapcraft", Args: args, Dir: stage, Env: env}
+	ops := []Op{
+		resetSnapStageOp(c, stage, c.snapSudo(mode)),
+		{Desc: i18n.S("stage bundle, snapcraft.yaml, .desktop and icon", "准备 bundle、snapcraft.yaml、.desktop 与图标"), Fn: func() error {
+			return stageSnap(c, bundle, stage, gui, name)
+		}},
+	}
+	if c.snapSudo(mode) {
+		build = &runner.Cmd{Name: "sudo", Args: append([]string{"-n", "snapcraft"}, args...), Dir: stage}
+	}
+	ops = append(ops, Op{Desc: i18n.F("build .snap (snapcraft, %s)", "构建 .snap（snapcraft，%s）", mode), Cmd: build, Hint: snapHint(mode, s.BuildMode)})
+	if c.snapSudo(mode) {
+		ops = append(ops, Op{Desc: i18n.S("give the snapcraft files back to this user", "把 snapcraft 生成的文件归还给当前用户"),
+			Cmd: &runner.Cmd{Name: "sudo", Args: []string{"-n", "chown", "-R", fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()), stage}}})
+	}
+	ops = append(ops, moveOp(c, tmp, dst))
+	return &Plan{Ops: ops, Artifacts: []Artifact{{Path: dst, Kind: "Snap package", Arch: linuxArch(c)}}}, nil
+}
+
+// resetSnapStageOp empties the staging directory. A destructive build that
+// was interrupted before the chown can leave root-owned files behind; they
+// are removed with sudo.
+func resetSnapStageOp(c *Context, stage string, sudo bool) Op {
+	op := resetDirOp(c, stage)
+	if !sudo {
+		return op
+	}
+	plain := op.Fn
+	op.Fn = func() error {
+		if err := plain(); err == nil {
+			return nil
+		}
+		if _, ok := runner.Output(time.Minute, "sudo", "-n", "rm", "-rf", stage); !ok {
+			return fmt.Errorf("%s", i18n.F("cannot remove %s (root-owned files from an earlier snapcraft run): sudo rm -rf %s", "无法删除 %s（之前的 snapcraft 留下了 root 拥有的文件）：sudo rm -rf %s", c.Rel(stage), stage))
+		}
+		return os.MkdirAll(stage, 0o755)
+	}
+	return op
+}
+
+func snapHint(mode, configured string) string {
+	switch mode {
+	case SnapLXD:
+		return i18n.S("LXD must be initialised (sudo lxd init --auto) and your user in the lxd group; or build on Ubuntu with linux.snap.build_mode: destructive", "LXD 需要已初始化（sudo lxd init --auto）且当前用户在 lxd 组中；也可以在 Ubuntu 上使用 linux.snap.build_mode: destructive")
+	case SnapDestructive:
+		if configured == "" || configured == SnapAuto {
+			return i18n.S("destructive mode installs build dependencies on this machine with sudo; set linux.snap.build_mode: lxd to build in a container", "destructive 模式会用 sudo 在本机安装构建依赖；设置 linux.snap.build_mode: lxd 可在容器中构建")
+		}
+	}
+	return ""
+}
+
+func stageSnap(c *Context, bundle, stage, gui, name string) error {
+	s := c.Config.Linux.Snap
+	if err := pack.CopyDir(bundle, filepath.Join(stage, "bundle")); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(gui, 0o755); err != nil {
+		return err
+	}
+	icon := ""
+	if src := c.linuxIcon(); src != "" {
+		if err := pack.CopyFile(src, filepath.Join(gui, name+".png")); err != nil {
+			return err
+		}
+		icon = "${SNAP}/meta/gui/" + name + ".png"
+	}
+	desktop := []byte(c.desktopEntry(name, icon))
+	if s.Desktop != "" {
+		b, err := os.ReadFile(c.Project.Abs(s.Desktop))
+		if err != nil {
+			return err
+		}
+		desktop = b
+	}
+	if err := os.WriteFile(filepath.Join(gui, name+".desktop"), desktop, 0o644); err != nil {
+		return err
+	}
+	yml := SnapcraftYAML(c)
+	if s.Template != "" {
+		b, err := os.ReadFile(c.Project.Abs(s.Template))
+		if err != nil {
+			return err
+		}
+		yml = snapTemplate(c, string(b))
+	}
+	return os.WriteFile(filepath.Join(stage, "snap", "snapcraft.yaml"), []byte(yml), 0o644)
+}

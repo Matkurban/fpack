@@ -20,12 +20,13 @@ The default file name template is `{app}{-flavor}-{version}{+build}-{platform}{-
 | `deb` | Linux | `-linux-x64.deb` | dpkg-deb |
 | `rpm` | Linux | `-linux-x64.rpm` | rpmbuild |
 | `appimage` | Linux | `-linux-x64.AppImage` | appimagetool (skipped by `--all` when missing) |
+| `snap` | Linux | `-linux-x64.snap` | snapcraft (skipped by `--all` when missing) |
 | `web` | any | `-web.zip` | flutter |
 
 Flutter cannot cross-compile iOS/macOS/Windows/Linux desktop apps. `fpack build --all` skips targets this machine cannot build and says why; naming one explicitly (e.g. `fpack build ipa` on Linux) is an error that points you to a CI runner of that OS. `--dry-run` still shows a reference plan for such targets.
 
-One flutter build is shared per run: `macos` + `dmg` + `pkg` build once, `linux` + `deb` + `rpm` + `appimage` build once, `windows` + `exe` + `msix` build once.
+One flutter build is shared per run: `macos` + `dmg` + `pkg` build once, `linux` + `deb` + `rpm` + `appimage` + `snap` build once, `windows` + `exe` + `msix` build once.
 
-Target aliases work on the command line and in `build.targets`: `bundle`/`appbundle` → `aab`, `android` → `apk`, `ios` → `ipa`, `mac`/`osx`/`app` → `macos`, `win`/`zip`/`portable` → `windows`, `setup`/`installer`/`inno` → `exe`, `tar`/`tgz`/`tar.gz` → `linux`, `debian` → `deb`, `fedora` → `rpm`, `image`/`AppImage` → `appimage`.
+Target aliases work on the command line and in `build.targets`: `bundle`/`appbundle` → `aab`, `android` → `apk`, `ios` → `ipa`, `mac`/`osx`/`app` → `macos`, `win`/`zip`/`portable` → `windows`, `setup`/`installer`/`inno` → `exe`, `tar`/`tgz`/`tar.gz` → `linux`, `debian` → `deb`, `fedora` → `rpm`, `image`/`AppImage` → `appimage`, `snapcraft` → `snap`.
 
 `fpack doctor` lists a target as "ready to build" only when nothing it needs is missing; for `apk`/`aab` that includes Java (JDK 17+), even though a build still tries without it (Gradle may find a JDK fpack cannot see).

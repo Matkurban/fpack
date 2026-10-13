@@ -20,7 +20,7 @@ description: "如何阅读失败信息、常见问题与退出码。"
 | `已存在（实际运行会停止，除非 --force）` | 提升版本号、使用 `--build-number N` 或加 `--force` |
 | `需要 macOS/Windows/Linux` | Flutter 无法交叉编译桌面/iOS 应用；请在对应系统的机器上构建 |
 | `找不到 Inno Setup（ISCC.exe）` | 安装 Inno Setup 6（`winget install --id JRSoftware.InnoSetup -e`），或设置 `windows.inno_setup.iscc` |
-| 缺少 `dpkg-deb` / `rpmbuild` / `appimagetool` | 安装它们（见 [Linux](/platforms/linux)）——fpack 会一次列出所有缺少的工具 |
+| 缺少 `dpkg-deb` / `rpmbuild` / `appimagetool` / `snapcraft` | 安装它们（见 [Linux](/platforms/linux)）——fpack 会一次列出所有缺少的工具 |
 | `在 … 及其上级目录中找不到 Flutter 项目`（在仓库根目录时还会列出下层的 Flutter 应用） | 进入其中一个目录，或用 `fpack -C <目录>` 指定 |
 | `要构建哪些目标？` | 指定目标（`fpack build apk`）、使用 `--all`，或在 fpack.yaml 中设置 `build.targets` |
 

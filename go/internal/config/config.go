@@ -301,6 +301,7 @@ type Linux struct {
 	Rpm            LinuxRpm      `yaml:"rpm"`
 	AppImage       LinuxAppImage `yaml:"appimage"`
 	AppImageTool   string        `yaml:"appimagetool"`
+	Snap           LinuxSnap     `yaml:"snap"`
 	ExtraArgs      List          `yaml:"extra_args"`
 }
 
@@ -333,6 +334,25 @@ type LinuxRpm struct {
 type LinuxAppImage struct {
 	UpdateInformation string `yaml:"update_information"`
 	ExtraArgs         List   `yaml:"extra_args"` // appended to appimagetool
+}
+
+// LinuxSnap options (snapcraft).
+type LinuxSnap struct {
+	Name          string            `yaml:"name"`
+	Summary       string            `yaml:"summary"`
+	Description   string            `yaml:"description"`
+	Base          string            `yaml:"base"`
+	Grade         string            `yaml:"grade"`
+	Confinement   string            `yaml:"confinement"`
+	License       string            `yaml:"license"`
+	Plugs         *List             `yaml:"plugs"`      // nil: defaults, []: none
+	Extensions    *List             `yaml:"extensions"` // nil: [gnome]
+	StagePackages List              `yaml:"stage_packages"`
+	Apps          map[string]string `yaml:"apps"` // extra app name → command
+	Desktop       string            `yaml:"desktop"`
+	Template      string            `yaml:"template"`
+	BuildMode     string            `yaml:"build_mode"`
+	ExtraArgs     List              `yaml:"extra_args"`
 }
 
 // Web options.
@@ -1061,6 +1081,7 @@ func (c *Config) Validate() []string {
 	if n := c.MacOS.DMG.IconSize; n != 0 && (n < 16 || n > 512) {
 		p = append(p, fmt.Sprintf(i18n.S("macos.dmg.icon_size must be 16-512 (got %d)", "macos.dmg.icon_size 必须在 16-512 之间（实际为 %d）"), n))
 	}
+	p = append(p, c.Linux.Snap.problems()...)
 	for _, sz := range c.Linux.IconSizes {
 		if sz < 16 || sz > 1024 {
 			p = append(p, fmt.Sprintf(i18n.S("linux.icon_sizes: %d is out of range 16-1024", "linux.icon_sizes：%d 超出范围 16-1024"), sz))
@@ -1142,12 +1163,12 @@ var guidRe = regexp.MustCompile(`^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[
 
 // TargetNames are the target keys accepted in per-target maps (kept in sync
 // with the targets registry by a test there).
-var TargetNames = []string{"apk", "aab", "ipa", "macos", "dmg", "pkg", "windows", "exe", "msix", "linux", "deb", "rpm", "appimage", "web"}
+var TargetNames = []string{"apk", "aab", "ipa", "macos", "dmg", "pkg", "windows", "exe", "msix", "linux", "deb", "rpm", "appimage", "snap", "web"}
 
 // TargetAliases are the alternative names accepted for targets on the
 // command line and in build.targets (kept in sync with targets.aliases by a
 // test in the targets package).
-var TargetAliases = []string{"AppImage", "android", "app", "appbundle", "bundle", "debian", "fedora", "image", "inno", "installer", "ios", "mac", "osx", "portable", "setup", "tar", "tar.gz", "tgz", "win", "zip"}
+var TargetAliases = []string{"AppImage", "android", "app", "appbundle", "bundle", "debian", "fedora", "image", "inno", "installer", "ios", "mac", "osx", "portable", "setup", "snapcraft", "tar", "tar.gz", "tgz", "win", "zip"}
 
 func didYouMean(v string, c []string) string {
 	if s := suggest(v, c); s != "" {
@@ -1185,4 +1206,29 @@ func contains(list []string, v string) bool {
 		}
 	}
 	return false
+}
+
+var snapNameRe = regexp.MustCompile(`^[a-z0-9](?:-?[a-z0-9])*$`)
+
+// problems validates linux.snap values that snapcraft would reject late.
+func (s LinuxSnap) problems() []string {
+	var p []string
+	if n := s.Name; n != "" && (len(n) > 40 || !snapNameRe.MatchString(n) || strings.Trim(n, "0123456789-") == "") {
+		p = append(p, fmt.Sprintf(i18n.S("linux.snap.name must be up to 40 lowercase letters, digits and single dashes, with at least one letter (got %q)", "linux.snap.name 最多 40 个字符，只能包含小写字母、数字和单个 -，且至少有一个字母（实际为 %q）"), n))
+	}
+	if len([]rune(s.Summary)) > 78 {
+		p = append(p, fmt.Sprintf(i18n.S("linux.snap.summary must be at most 78 characters (got %d)", "linux.snap.summary 最多 78 个字符（实际为 %d）"), len([]rune(s.Summary))))
+	}
+	if s.Confinement == "devmode" && s.Grade == "stable" {
+		p = append(p, i18n.S("linux.snap: confinement devmode requires grade devel", "linux.snap：confinement 为 devmode 时 grade 必须是 devel"))
+	}
+	if s.Template != "" && (s.Desktop != "" || len(s.Apps) > 0) {
+		p = append(p, i18n.S("linux.snap.template replaces the generated snapcraft.yaml: desktop and apps are not used with it", "linux.snap.template 会替换生成的 snapcraft.yaml：此时不能再设置 desktop 和 apps"))
+	}
+	for name := range s.Apps {
+		if !snapNameRe.MatchString(name) {
+			p = append(p, fmt.Sprintf(i18n.S("linux.snap.apps: invalid app name %q (lowercase letters, digits and dashes)", "linux.snap.apps：无效的应用名 %q（只能用小写字母、数字和 -）"), name))
+		}
+	}
+	return p
 }

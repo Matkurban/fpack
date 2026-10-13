@@ -3,7 +3,7 @@ name: fpack-cli
 description: >-
   Use when the user wants to build, package, sign, notarize or release a
   Flutter app (APK, AAB, IPA, macOS zip/DMG/pkg, Windows zip/Inno Setup
-  exe/MSIX, Linux tar.gz/deb/rpm/AppImage, web zip) with the fpack CLI, edit
+  exe/MSIX, Linux tar.gz/deb/rpm/AppImage/Snap, web zip) with the fpack CLI, edit
   fpack.yaml, set FPACK_* environment variables, or run fpack in CI.
 ---
 
@@ -53,7 +53,7 @@ files to `dist/<version>+<build>/`. Full docs: https://matkurban.github.io/fpack
 | iOS | `ipa` (`--export-method app-store-connect\|release-testing\|ad-hoc\|enterprise\|debugging` or the older `app-store`/`development`, `--no-codesign`) |
 | macOS | `macos` (zipped .app), `dmg`, `pkg` |
 | Windows | `windows` (portable zip), `exe` (Inno Setup 6), `msix` (needs the `msix` dev_dependency) |
-| Linux | `linux` (tar.gz), `deb`, `rpm`, `appimage` |
+| Linux | `linux` (tar.gz), `deb`, `rpm`, `appimage`, `snap` |
 | Web | `web` (`--base-href /app/`, `--wasm`) |
 
 Targets of one platform share a single `flutter build`. `fpack build` with no
@@ -112,6 +112,24 @@ Instead of a keychain profile, CI can use an App Store Connect API key:
 summarizes it (usually unsigned nested code or a missing hardened runtime).
 Certificates and credentials: https://matkurban.github.io/fpack/platforms/macos/
 
+### Snap (Linux)
+
+```yaml
+# fpack.yaml – defaults: base core24, strict confinement, gnome extension,
+# desktop/wayland/x11/opengl/audio-playback/network/home plugs
+linux:
+  snap:
+    summary: My app            # max 78 characters
+    plugs: [network, home]     # [] for none
+    build_mode: destructive    # auto | destructive | lxd | multipass
+```
+
+`fpack build snap` packs the already built bundle (dump plugin; Flutter is
+not rebuilt). Install snapcraft with `sudo snap install snapcraft --classic`.
+`auto` builds destructively on Ubuntu 24.04 (snapcraft runs with `sudo -n`,
+so sudo must not ask for a password) and with LXD elsewhere. Test with
+`sudo snap install --dangerous dist/*/*.snap`.
+
 ### Windows signing
 
 Optional. Set `FPACK_WINDOWS_CERTIFICATE` (.pfx) + `FPACK_WINDOWS_CERTIFICATE_PASSWORD`,
@@ -130,7 +148,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.11 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.12 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build apk aab --json > result.json
         env:
           FPACK_ANDROID_KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -152,7 +170,7 @@ More recipes (macOS, Windows, Linux): https://matkurban.github.io/fpack/ci/
 | `signing identity … not found in the keychain` | use a listed Developer ID identity or `--no-sign` |
 | `already exists` | bump the version, `--build-number N` or `--force` |
 | `needs macOS/Windows/Linux` | build on that OS |
-| `Inno Setup (ISCC.exe) not found` / `dpkg-deb`, `rpmbuild`, `appimagetool` missing | install the tool (`fpack doctor` lists all) |
+| `Inno Setup (ISCC.exe) not found` / `dpkg-deb`, `rpmbuild`, `appimagetool`, `snapcraft` missing | install the tool (`fpack doctor` lists all) |
 | `no Flutter project found in … or its parents` (lists the apps below a repo root) | `cd` into one or pass `fpack -C <dir>` |
 | `which targets?` | name targets, use `--all`, or set `build.targets` |
 

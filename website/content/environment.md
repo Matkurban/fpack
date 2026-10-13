@@ -92,4 +92,5 @@ Generated from the key registry. They override `fpack.yaml` and are overridden b
 | `FPACK_WINDOWS_CERT_SUBJECT` | `windows.sign.subject` | string | Subject name of a certificate in the store (/n), instead of a thumbprint. |
 | `FPACK_WINDOWS_SIGN_DLIB` | `windows.sign.dlib` | path | signtool plugin (/dlib) for cloud signing, e.g. Azure Trusted Signing; needs dlib_metadata. |
 | `FPACK_WINDOWS_SIGN_DLIB_METADATA` | `windows.sign.dlib_metadata` | path | Metadata file for the dlib (/dmdf), e.g. the Trusted Signing account and profile. |
+| `FPACK_SNAP_BUILD_MODE` | `linux.snap.build_mode` | `auto` \\| `destructive` \\| `lxd` \\| `multipass` | How snapcraft builds: destructive (on this machine with sudo, fastest, for CI), lxd or multipass (isolated build environment). |
 <!-- END GENERATED ENV -->

@@ -105,16 +105,17 @@ var Sections = []Section{
 	{"windows.inno_setup", d("Inno Setup installer (.exe).", "Inno Setup 安装程序（.exe）。")},
 	{"windows.sign", d("Optional Authenticode signing with signtool: the app's .exe/.dll files (before zipping and packaging), the installer and the MSIX. Pick one certificate source: a .pfx file, the certificate store (thumbprint or subject) or a signtool plugin (dlib, e.g. Azure Trusted Signing).", "可选的 Authenticode 签名（signtool）：应用的 .exe/.dll（在压缩和打包之前）、安装程序和 MSIX。选择一种证书来源：.pfx 文件、证书存储（指纹或主题名称）或 signtool 插件（dlib，如 Azure Trusted Signing）。")},
 	{"windows.msix", d("MSIX package (needs the msix dev_dependency). These keys override pubspec msix_config.", "MSIX 包（需要 msix 开发依赖）。这些键会覆盖 pubspec 中的 msix_config。")},
-	{"linux", d("Linux: linux (tar.gz), deb, rpm, appimage.", "Linux：linux（tar.gz）、deb、rpm、appimage。")},
+	{"linux", d("Linux: linux (tar.gz), deb, rpm, appimage, snap.", "Linux：linux（tar.gz）、deb、rpm、appimage、snap。")},
 	{"linux.deb", d("Debian/Ubuntu package.", "Debian/Ubuntu 软件包。")},
 	{"linux.rpm", d("Fedora/RHEL/openSUSE package.", "Fedora/RHEL/openSUSE 软件包。")},
 	{"linux.appimage", d("AppImage.", "AppImage。")},
+	{"linux.snap", d("Snap package (snapcraft). fpack generates snapcraft.yaml around the already built bundle (dump plugin), so Flutter is not rebuilt inside snapcraft.", "Snap 包（snapcraft）。fpack 围绕已构建好的 bundle 生成 snapcraft.yaml（dump 插件），snapcraft 内不会再次构建 Flutter。")},
 	{"web", d("Web: web (zip).", "Web：web（zip）。")},
 }
 
 const (
-	native  = "apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage"
-	linuxP  = "deb, rpm, appimage"
+	native  = "apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage, snap"
+	linuxP  = "deb, rpm, appimage, snap"
 	macAll  = "macos, dmg, pkg"
 	winAll  = "windows, exe, msix"
 	signApp = "macos, dmg, pkg"
@@ -525,7 +526,37 @@ var Keys = []Key{
 		d("Extra arguments for appimagetool.", "追加到 appimagetool 的参数。")),
 	k("linux.appimagetool", KPath, d("appimagetool on PATH", "PATH 中的 appimagetool"), "appimage", "~/.local/bin/appimagetool",
 		d("Path to appimagetool.", "appimagetool 路径。")),
-	k("linux.extra_args", KList, none, "linux, deb, rpm, appimage", "[--no-tree-shake-icons]",
+	k("linux.snap.name", KString, d("linux.package_name", "linux.package_name"), "snap", "xuehua-im",
+		d("Snap name (lowercase letters, digits and dashes, at most 40 characters); also the command name.", "Snap 名称（小写字母、数字和 -，最多 40 个字符），也是命令名。")),
+	k("linux.snap.summary", KString, d("app.description (shortened to 78 characters)", "app.description（截断到 78 个字符）"), "snap", "Fast and secure messenger",
+		d("One-line summary, at most 78 characters.", "一行简介，最多 78 个字符。"), exZH("快速、安全的即时通讯")),
+	k("linux.snap.description", KString, d("app.description", "app.description"), "snap", "XueHua IM keeps your conversations private.",
+		d("Long description shown in the Snap Store.", "在 Snap Store 中显示的详细描述。"), exZH("雪花 IM 保护你的聊天隐私。")),
+	k("linux.snap.base", KEnum, d("core24", "core24"), "snap", "core24",
+		d("Base snap (runtime). core24 is Ubuntu 24.04.", "基础 snap（运行时）。core24 即 Ubuntu 24.04。"), enum("core24", "core22")),
+	k("linux.snap.grade", KEnum, d("stable (devel with devmode)", "stable（devmode 时为 devel）"), "snap", "stable",
+		d("stable can be released to the stable/candidate channels; devel only to beta/edge.", "stable 可发布到 stable/candidate 通道；devel 只能发布到 beta/edge。"), enum("stable", "devel")),
+	k("linux.snap.confinement", KEnum, d("strict", "strict"), "snap", "strict",
+		d("strict (sandboxed, interfaces through plugs), classic (no sandbox, needs Store approval) or devmode (testing only).", "strict（沙箱，通过 plugs 访问系统）、classic（无沙箱，上架需审批）或 devmode（仅用于测试）。"), enum("strict", "classic", "devmode")),
+	k("linux.snap.license", KString, d("app.license", "app.license"), "snap", "MIT",
+		d("SPDX license expression.", "SPDX 许可证表达式。")),
+	k("linux.snap.plugs", KList, d("[desktop, desktop-legacy, wayland, x11, opengl, audio-playback, network, home] (none with classic)", "[desktop, desktop-legacy, wayland, x11, opengl, audio-playback, network, home]（classic 时无）"), "snap", "[network, home, removable-media]",
+		d("Interfaces the app plugs; [] for none.", "应用连接的接口；[] 表示不需要。")),
+	k("linux.snap.extensions", KList, d("[gnome] (none with classic)", "[gnome]（classic 时无）"), "snap", "[gnome]",
+		d("Snapcraft extensions: gnome provides GTK 3, fonts, themes and the desktop launcher.", "Snapcraft 扩展：gnome 提供 GTK 3、字体、主题与桌面启动器。")),
+	k("linux.snap.stage_packages", KList, none, "snap", "[libsecret-1-0]",
+		d("Extra Ubuntu packages bundled into the snap (libraries your plugins need).", "额外打包进 snap 的 Ubuntu 软件包（插件需要的库）。")),
+	k("linux.snap.apps", KMap, none, "snap", "{helper: helper-tool}",
+		d("Extra commands: app name → executable in the bundle. They get the same plugs and extensions.", "额外命令：应用名 → bundle 中的可执行文件。使用相同的 plugs 和扩展。")),
+	k("linux.snap.desktop", KPath, d("generated from app and linux keys", "根据 app 与 linux 键生成"), "snap", "linux/packaging/xuehua-im.desktop",
+		d("Your own .desktop file (Icon=${SNAP}/meta/gui/<name>.png).", "自己的 .desktop 文件（Icon=${SNAP}/meta/gui/<name>.png）。")),
+	k("linux.snap.template", KPath, d("generated", "自动生成"), "snap", "snap/snapcraft.yaml",
+		d("Your own snapcraft.yaml. fpack replaces {name} {version} {summary} {description} {base} {grade} {confinement} {license} {command} and stages the bundle at bundle/ and the icon/.desktop at snap/gui/.", "自己的 snapcraft.yaml。fpack 替换 {name} {version} {summary} {description} {base} {grade} {confinement} {license} {command}，并把 bundle 放在 bundle/、图标与 .desktop 放在 snap/gui/。")),
+	k("linux.snap.build_mode", KEnum, d("auto: destructive on a matching Ubuntu (24.04 for core24), else lxd", "auto：在匹配的 Ubuntu（core24 对应 24.04）上用 destructive，否则用 lxd"), "snap", "destructive",
+		d("How snapcraft builds: destructive (on this machine with sudo, fastest, for CI), lxd or multipass (isolated build environment).", "snapcraft 的构建方式：destructive（用 sudo 在本机构建，最快，适合 CI）、lxd 或 multipass（隔离的构建环境）。"), enum("auto", "destructive", "lxd", "multipass"), env("FPACK_SNAP_BUILD_MODE")),
+	k("linux.snap.extra_args", KList, none, "snap", "[--verbosity, verbose]",
+		d("Extra arguments for snapcraft pack.", "追加到 snapcraft pack 的参数。")),
+	k("linux.extra_args", KList, none, "linux, deb, rpm, appimage, snap", "[--no-tree-shake-icons]",
 		d("Extra arguments for flutter build linux.", "追加到 flutter build linux 的参数。")),
 
 	// ---- web ----

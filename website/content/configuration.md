@@ -131,8 +131,8 @@ Options for every flutter build.
 | `build.dart_define_from_file` | list (or one string) | — | all | `--dart-define-from-file` | --dart-define-from-file files (.json or .env). Example: `[config/prod.json]` |
 | `build.build_name` | string/number | `pubspec version before +` | all | `FPACK_BUILD_NAME`<br>`--build-name` | Version name ({version}). Example: `1.2.0` |
 | `build.build_number` | string/number | `pubspec version after +` | all | `FPACK_BUILD_NUMBER`<br>`--build-number` | Build number ({build}). Example: `42` |
-| `build.obfuscate` | bool | `false` | apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage | `FPACK_OBFUSCATE`<br>`--obfuscate` | Obfuscate Dart code; symbols go to split_debug_info (default <output>/debug-info/<platform>). Example: `true` |
-| `build.split_debug_info` | string | `<output>/debug-info/<platform> when obfuscating` | apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage | `--split-debug-info` | Directory for Dart debug symbols (--split-debug-info). Example: `build/symbols` |
+| `build.obfuscate` | bool | `false` | apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage, snap | `FPACK_OBFUSCATE`<br>`--obfuscate` | Obfuscate Dart code; symbols go to split_debug_info (default <output>/debug-info/<platform>). Example: `true` |
+| `build.split_debug_info` | string | `<output>/debug-info/<platform> when obfuscating` | apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage, snap | `--split-debug-info` | Directory for Dart debug symbols (--split-debug-info). Example: `build/symbols` |
 | `build.tree_shake_icons` | bool | `true` | all |  | false = --no-tree-shake-icons (keep all icon font glyphs). Example: `false` |
 | `build.extra_args` | list (or one string) | — | all |  | Extra arguments for every flutter build (also: everything after -- on the command line). Example: `[--no-pub]` |
 
@@ -369,22 +369,22 @@ MSIX package (needs the msix dev_dependency). These keys override pubspec msix_c
 
 ### `linux`
 
-Linux: linux (tar.gz), deb, rpm, appimage.
+Linux: linux (tar.gz), deb, rpm, appimage, snap.
 
 | Key | Type | Default | Targets | Env / flag | Description |
 | --- | --- | --- | --- | --- | --- |
-| `linux.package_name` | string | `app name, lowercase with dashes` | deb, rpm, appimage |  | deb/rpm package name and command name in /usr/bin. Example: `xuehua-im` |
+| `linux.package_name` | string | `app name, lowercase with dashes` | deb, rpm, appimage, snap |  | deb/rpm package name and command name in /usr/bin. Example: `xuehua-im` |
 | `linux.prefix` | string | `/opt/<package_name>` | deb, rpm |  | Directory the app bundle is installed into. Example: `/usr/lib/xuehua-im` |
-| `linux.icon` | path | `flutter_launcher_icons image, else web/icons/Icon-512.png` | deb, rpm, appimage |  | PNG icon for menus and the AppImage. Example: `assets/icon/icon.png` |
+| `linux.icon` | path | `flutter_launcher_icons image, else web/icons/Icon-512.png` | deb, rpm, appimage, snap |  | PNG icon for menus and the AppImage. Example: `assets/icon/icon.png` |
 | `linux.icon_sizes` | list of int | `[16, 32, 48, 64, 128, 256, 512]` | deb, rpm |  | hicolor icon sizes installed (resized from linux.icon; never upscaled). Example: `[48, 128, 256]` |
-| `linux.categories` | list (or one string) | `[Utility]` | deb, rpm, appimage |  | freedesktop.org menu categories (.desktop Categories=). Example: `[Network, InstantMessaging]` |
-| `linux.generic_name` | string | — | deb, rpm, appimage |  | .desktop GenericName=. Example: `Instant Messenger` |
-| `linux.keywords` | list (or one string) | — | deb, rpm, appimage |  | .desktop Keywords= (search terms). Example: `[chat, im, message]` |
-| `linux.mime_types` | list (or one string) | — | deb, rpm, appimage |  | .desktop MimeType= (files / URL schemes the app opens). Example: `[x-scheme-handler/xuehua]` |
-| `linux.startup_wm_class` | string | `binary name (APPLICATION_ID on GTK)` | deb, rpm, appimage |  | .desktop StartupWMClass= (groups windows with the launcher). Example: `xue_hua_im` |
-| `linux.metainfo` | path | — | deb, rpm, appimage |  | AppStream metainfo installed to /usr/share/metainfo (software centers). Example: `linux/packaging/com.xuehua.im.metainfo.xml` |
+| `linux.categories` | list (or one string) | `[Utility]` | deb, rpm, appimage, snap |  | freedesktop.org menu categories (.desktop Categories=). Example: `[Network, InstantMessaging]` |
+| `linux.generic_name` | string | — | deb, rpm, appimage, snap |  | .desktop GenericName=. Example: `Instant Messenger` |
+| `linux.keywords` | list (or one string) | — | deb, rpm, appimage, snap |  | .desktop Keywords= (search terms). Example: `[chat, im, message]` |
+| `linux.mime_types` | list (or one string) | — | deb, rpm, appimage, snap |  | .desktop MimeType= (files / URL schemes the app opens). Example: `[x-scheme-handler/xuehua]` |
+| `linux.startup_wm_class` | string | `binary name (APPLICATION_ID on GTK)` | deb, rpm, appimage, snap |  | .desktop StartupWMClass= (groups windows with the launcher). Example: `xue_hua_im` |
+| `linux.metainfo` | path | — | deb, rpm, appimage, snap |  | AppStream metainfo installed to /usr/share/metainfo (software centers). Example: `linux/packaging/com.xuehua.im.metainfo.xml` |
 | `linux.appimagetool` | path | `appimagetool on PATH` | appimage |  | Path to appimagetool. Example: `~/.local/bin/appimagetool` |
-| `linux.extra_args` | list (or one string) | — | linux, deb, rpm, appimage |  | Extra arguments for flutter build linux. Example: `[--no-tree-shake-icons]` |
+| `linux.extra_args` | list (or one string) | — | linux, deb, rpm, appimage, snap |  | Extra arguments for flutter build linux. Example: `[--no-tree-shake-icons]` |
 
 #### `linux.deb`
 
@@ -425,6 +425,28 @@ AppImage.
 | --- | --- | --- | --- | --- | --- |
 | `linux.appimage.update_information` | string | — | appimage |  | Embedded update information (AppImageUpdate). Example: `gh-releases-zsync\|xuehua\|im\|latest\|*x86_64.AppImage.zsync` |
 | `linux.appimage.extra_args` | list (or one string) | — | appimage |  | Extra arguments for appimagetool. Example: `[--comp, zstd]` |
+
+#### `linux.snap`
+
+Snap package (snapcraft). fpack generates snapcraft.yaml around the already built bundle (dump plugin), so Flutter is not rebuilt inside snapcraft.
+
+| Key | Type | Default | Targets | Env / flag | Description |
+| --- | --- | --- | --- | --- | --- |
+| `linux.snap.name` | string | `linux.package_name` | snap |  | Snap name (lowercase letters, digits and dashes, at most 40 characters); also the command name. Example: `xuehua-im` |
+| `linux.snap.summary` | string | `app.description (shortened to 78 characters)` | snap |  | One-line summary, at most 78 characters. Example: `Fast and secure messenger` |
+| `linux.snap.description` | string | `app.description` | snap |  | Long description shown in the Snap Store. Example: `XueHua IM keeps your conversations private.` |
+| `linux.snap.base` | `core24` \\| `core22` | `core24` | snap |  | Base snap (runtime). core24 is Ubuntu 24.04. Example: `core24` |
+| `linux.snap.grade` | `stable` \\| `devel` | `stable (devel with devmode)` | snap |  | stable can be released to the stable/candidate channels; devel only to beta/edge. Example: `stable` |
+| `linux.snap.confinement` | `strict` \\| `classic` \\| `devmode` | `strict` | snap |  | strict (sandboxed, interfaces through plugs), classic (no sandbox, needs Store approval) or devmode (testing only). Example: `strict` |
+| `linux.snap.license` | string | `app.license` | snap |  | SPDX license expression. Example: `MIT` |
+| `linux.snap.plugs` | list (or one string) | `[desktop, desktop-legacy, wayland, x11, opengl, audio-playback, network, home] (none with classic)` | snap |  | Interfaces the app plugs; [] for none. Example: `[network, home, removable-media]` |
+| `linux.snap.extensions` | list (or one string) | `[gnome] (none with classic)` | snap |  | Snapcraft extensions: gnome provides GTK 3, fonts, themes and the desktop launcher. Example: `[gnome]` |
+| `linux.snap.stage_packages` | list (or one string) | — | snap |  | Extra Ubuntu packages bundled into the snap (libraries your plugins need). Example: `[libsecret-1-0]` |
+| `linux.snap.apps` | map | — | snap |  | Extra commands: app name → executable in the bundle. They get the same plugs and extensions. Example: `{helper: helper-tool}` |
+| `linux.snap.desktop` | path | `generated from app and linux keys` | snap |  | Your own .desktop file (Icon=${SNAP}/meta/gui/<name>.png). Example: `linux/packaging/xuehua-im.desktop` |
+| `linux.snap.template` | path | `generated` | snap |  | Your own snapcraft.yaml. fpack replaces {name} {version} {summary} {description} {base} {grade} {confinement} {license} {command} and stages the bundle at bundle/ and the icon/.desktop at snap/gui/. Example: `snap/snapcraft.yaml` |
+| `linux.snap.build_mode` | `auto` \\| `destructive` \\| `lxd` \\| `multipass` | `auto: destructive on a matching Ubuntu (24.04 for core24), else lxd` | snap | `FPACK_SNAP_BUILD_MODE` | How snapcraft builds: destructive (on this machine with sudo, fastest, for CI), lxd or multipass (isolated build environment). Example: `destructive` |
+| `linux.snap.extra_args` | list (or one string) | — | snap |  | Extra arguments for snapcraft pack. Example: `[--verbosity, verbose]` |
 
 ### `web`
 

@@ -447,18 +447,18 @@
               "type": "string"
             }
           ],
-          "description": "Obfuscate Dart code; symbols go to split_debug_info (default \u003coutput\u003e/debug-info/\u003cplatform\u003e). Default: false. Env: FPACK_OBFUSCATE. Targets: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage.",
+          "description": "Obfuscate Dart code; symbols go to split_debug_info (default \u003coutput\u003e/debug-info/\u003cplatform\u003e). Default: false. Env: FPACK_OBFUSCATE. Targets: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage, snap.",
           "examples": [
             true
           ],
-          "markdownDescription": "**Obfuscate Dart code; symbols go to split_debug_info (default \u003coutput\u003e/debug-info/\u003cplatform\u003e).**  \n混淆 Dart 代码；符号文件保存到 split_debug_info（默认 \u003c输出目录\u003e/debug-info/\u003c平台\u003e）。\n\nDefault / 默认: `false`\n\nTargets / 目标: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage · Env: `FPACK_OBFUSCATE` · Flag: `--obfuscate`"
+          "markdownDescription": "**Obfuscate Dart code; symbols go to split_debug_info (default \u003coutput\u003e/debug-info/\u003cplatform\u003e).**  \n混淆 Dart 代码；符号文件保存到 split_debug_info（默认 \u003c输出目录\u003e/debug-info/\u003c平台\u003e）。\n\nDefault / 默认: `false`\n\nTargets / 目标: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage, snap · Env: `FPACK_OBFUSCATE` · Flag: `--obfuscate`"
         },
         "split_debug_info": {
-          "description": "Directory for Dart debug symbols (--split-debug-info). Default: \u003coutput\u003e/debug-info/\u003cplatform\u003e when obfuscating. Targets: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage.",
+          "description": "Directory for Dart debug symbols (--split-debug-info). Default: \u003coutput\u003e/debug-info/\u003cplatform\u003e when obfuscating. Targets: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage, snap.",
           "examples": [
             "build/symbols"
           ],
-          "markdownDescription": "**Directory for Dart debug symbols (--split-debug-info).**  \nDart 调试符号目录（--split-debug-info）。\n\nDefault / 默认: `混淆时为 \u003c输出目录\u003e/debug-info/\u003c平台\u003e`\n\nTargets / 目标: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage · Flag: `--split-debug-info`",
+          "markdownDescription": "**Directory for Dart debug symbols (--split-debug-info).**  \nDart 调试符号目录（--split-debug-info）。\n\nDefault / 默认: `混淆时为 \u003c输出目录\u003e/debug-info/\u003c平台\u003e`\n\nTargets / 目标: apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage, snap · Flag: `--split-debug-info`",
           "type": "string"
         },
         "target": {
@@ -487,6 +487,7 @@
                   "deb",
                   "rpm",
                   "appimage",
+                  "snap",
                   "web",
                   "AppImage",
                   "android",
@@ -503,6 +504,7 @@
                   "osx",
                   "portable",
                   "setup",
+                  "snapcraft",
                   "tar",
                   "tar.gz",
                   "tgz",
@@ -528,6 +530,7 @@
                 "deb",
                 "rpm",
                 "appimage",
+                "snap",
                 "web",
                 "AppImage",
                 "android",
@@ -544,6 +547,7 @@
                 "osx",
                 "portable",
                 "setup",
+                "snapcraft",
                 "tar",
                 "tar.gz",
                 "tgz",
@@ -798,6 +802,19 @@
                 }
               ]
             },
+            "snap": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
             "web": {
               "anyOf": [
                 {
@@ -1003,6 +1020,19 @@
               ]
             },
             "rpm": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "snap": {
               "anyOf": [
                 {
                   "items": {
@@ -1271,8 +1301,8 @@
     },
     "linux": {
       "additionalProperties": false,
-      "description": "Linux: linux (tar.gz), deb, rpm, appimage.",
-      "markdownDescription": "Linux: linux (tar.gz), deb, rpm, appimage.  \nLinux：linux（tar.gz）、deb、rpm、appimage。",
+      "description": "Linux: linux (tar.gz), deb, rpm, appimage, snap.",
+      "markdownDescription": "Linux: linux (tar.gz), deb, rpm, appimage, snap.  \nLinux：linux（tar.gz）、deb、rpm、appimage、snap。",
       "properties": {
         "appimage": {
           "additionalProperties": false,
@@ -1334,14 +1364,14 @@
               "type": "string"
             }
           ],
-          "description": "freedesktop.org menu categories (.desktop Categories=). Default: [Utility]. Targets: deb, rpm, appimage.",
+          "description": "freedesktop.org menu categories (.desktop Categories=). Default: [Utility]. Targets: deb, rpm, appimage, snap.",
           "examples": [
             [
               "Network",
               "InstantMessaging"
             ]
           ],
-          "markdownDescription": "**freedesktop.org menu categories (.desktop Categories=).**  \nfreedesktop.org 菜单分类（.desktop 的 Categories=）。\n\nDefault / 默认: `[Utility]`\n\nTargets / 目标: deb, rpm, appimage"
+          "markdownDescription": "**freedesktop.org menu categories (.desktop Categories=).**  \nfreedesktop.org 菜单分类（.desktop 的 Categories=）。\n\nDefault / 默认: `[Utility]`\n\nTargets / 目标: deb, rpm, appimage, snap"
         },
         "deb": {
           "additionalProperties": false,
@@ -1510,28 +1540,28 @@
               "type": "string"
             }
           ],
-          "description": "Extra arguments for flutter build linux. Targets: linux, deb, rpm, appimage.",
+          "description": "Extra arguments for flutter build linux. Targets: linux, deb, rpm, appimage, snap.",
           "examples": [
             [
               "--no-tree-shake-icons"
             ]
           ],
-          "markdownDescription": "**Extra arguments for flutter build linux.**  \n追加到 flutter build linux 的参数。\n\nTargets / 目标: linux, deb, rpm, appimage"
+          "markdownDescription": "**Extra arguments for flutter build linux.**  \n追加到 flutter build linux 的参数。\n\nTargets / 目标: linux, deb, rpm, appimage, snap"
         },
         "generic_name": {
-          "description": ".desktop GenericName=. Targets: deb, rpm, appimage.",
+          "description": ".desktop GenericName=. Targets: deb, rpm, appimage, snap.",
           "examples": [
             "Instant Messenger"
           ],
-          "markdownDescription": "**.desktop GenericName=.**  \n.desktop 的 GenericName=。\n\nTargets / 目标: deb, rpm, appimage",
+          "markdownDescription": "**.desktop GenericName=.**  \n.desktop 的 GenericName=。\n\nTargets / 目标: deb, rpm, appimage, snap",
           "type": "string"
         },
         "icon": {
-          "description": "PNG icon for menus and the AppImage. Default: flutter_launcher_icons image, else web/icons/Icon-512.png. Targets: deb, rpm, appimage.",
+          "description": "PNG icon for menus and the AppImage. Default: flutter_launcher_icons image, else web/icons/Icon-512.png. Targets: deb, rpm, appimage, snap.",
           "examples": [
             "assets/icon/icon.png"
           ],
-          "markdownDescription": "**PNG icon for menus and the AppImage.**  \n菜单与 AppImage 使用的 PNG 图标。\n\nDefault / 默认: `flutter_launcher_icons 的图片，否则 web/icons/Icon-512.png`\n\nTargets / 目标: deb, rpm, appimage",
+          "markdownDescription": "**PNG icon for menus and the AppImage.**  \n菜单与 AppImage 使用的 PNG 图标。\n\nDefault / 默认: `flutter_launcher_icons 的图片，否则 web/icons/Icon-512.png`\n\nTargets / 目标: deb, rpm, appimage, snap",
           "type": "string"
         },
         "icon_sizes": {
@@ -1571,7 +1601,7 @@
               "type": "string"
             }
           ],
-          "description": ".desktop Keywords= (search terms). Targets: deb, rpm, appimage.",
+          "description": ".desktop Keywords= (search terms). Targets: deb, rpm, appimage, snap.",
           "examples": [
             [
               "chat",
@@ -1579,14 +1609,14 @@
               "message"
             ]
           ],
-          "markdownDescription": "**.desktop Keywords= (search terms).**  \n.desktop 的 Keywords=（搜索关键词）。\n\nTargets / 目标: deb, rpm, appimage"
+          "markdownDescription": "**.desktop Keywords= (search terms).**  \n.desktop 的 Keywords=（搜索关键词）。\n\nTargets / 目标: deb, rpm, appimage, snap"
         },
         "metainfo": {
-          "description": "AppStream metainfo installed to /usr/share/metainfo (software centers). Targets: deb, rpm, appimage.",
+          "description": "AppStream metainfo installed to /usr/share/metainfo (software centers). Targets: deb, rpm, appimage, snap.",
           "examples": [
             "linux/packaging/com.xuehua.im.metainfo.xml"
           ],
-          "markdownDescription": "**AppStream metainfo installed to /usr/share/metainfo (software centers).**  \nAppStream metainfo，安装到 /usr/share/metainfo（软件中心展示）。\n\nTargets / 目标: deb, rpm, appimage",
+          "markdownDescription": "**AppStream metainfo installed to /usr/share/metainfo (software centers).**  \nAppStream metainfo，安装到 /usr/share/metainfo（软件中心展示）。\n\nTargets / 目标: deb, rpm, appimage, snap",
           "type": "string"
         },
         "mime_types": {
@@ -1601,20 +1631,20 @@
               "type": "string"
             }
           ],
-          "description": ".desktop MimeType= (files / URL schemes the app opens). Targets: deb, rpm, appimage.",
+          "description": ".desktop MimeType= (files / URL schemes the app opens). Targets: deb, rpm, appimage, snap.",
           "examples": [
             [
               "x-scheme-handler/xuehua"
             ]
           ],
-          "markdownDescription": "**.desktop MimeType= (files / URL schemes the app opens).**  \n.desktop 的 MimeType=（可打开的文件类型 / URL 协议）。\n\nTargets / 目标: deb, rpm, appimage"
+          "markdownDescription": "**.desktop MimeType= (files / URL schemes the app opens).**  \n.desktop 的 MimeType=（可打开的文件类型 / URL 协议）。\n\nTargets / 目标: deb, rpm, appimage, snap"
         },
         "package_name": {
-          "description": "deb/rpm package name and command name in /usr/bin. Default: app name, lowercase with dashes. Targets: deb, rpm, appimage.",
+          "description": "deb/rpm package name and command name in /usr/bin. Default: app name, lowercase with dashes. Targets: deb, rpm, appimage, snap.",
           "examples": [
             "xuehua-im"
           ],
-          "markdownDescription": "**deb/rpm package name and command name in /usr/bin.**  \ndeb/rpm 包名，以及 /usr/bin 中的命令名。\n\nDefault / 默认: `应用名转小写并用 - 连接`\n\nTargets / 目标: deb, rpm, appimage",
+          "markdownDescription": "**deb/rpm package name and command name in /usr/bin.**  \ndeb/rpm 包名，以及 /usr/bin 中的命令名。\n\nDefault / 默认: `应用名转小写并用 - 连接`\n\nTargets / 目标: deb, rpm, appimage, snap",
           "type": "string"
         },
         "prefix": {
@@ -1705,12 +1735,254 @@
             "null"
           ]
         },
+        "snap": {
+          "additionalProperties": false,
+          "description": "Snap package (snapcraft). fpack generates snapcraft.yaml around the already built bundle (dump plugin), so Flutter is not rebuilt inside snapcraft.",
+          "markdownDescription": "Snap package (snapcraft). fpack generates snapcraft.yaml around the already built bundle (dump plugin), so Flutter is not rebuilt inside snapcraft.  \nSnap 包（snapcraft）。fpack 围绕已构建好的 bundle 生成 snapcraft.yaml（dump 插件），snapcraft 内不会再次构建 Flutter。",
+          "properties": {
+            "apps": {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "description": "Extra commands: app name → executable in the bundle. They get the same plugs and extensions. Targets: snap.",
+              "examples": [
+                {
+                  "helper": "helper-tool"
+                }
+              ],
+              "markdownDescription": "**Extra commands: app name → executable in the bundle. They get the same plugs and extensions.**  \n额外命令：应用名 → bundle 中的可执行文件。使用相同的 plugs 和扩展。\n\nTargets / 目标: snap",
+              "type": "object"
+            },
+            "base": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "core24",
+                    "core22"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
+              "description": "Base snap (runtime). core24 is Ubuntu 24.04. Default: core24. Targets: snap.",
+              "examples": [
+                "core24"
+              ],
+              "markdownDescription": "**Base snap (runtime). core24 is Ubuntu 24.04.**  \n基础 snap（运行时）。core24 即 Ubuntu 24.04。\n\nDefault / 默认: `core24`\n\nTargets / 目标: snap"
+            },
+            "build_mode": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "auto",
+                    "destructive",
+                    "lxd",
+                    "multipass"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
+              "description": "How snapcraft builds: destructive (on this machine with sudo, fastest, for CI), lxd or multipass (isolated build environment). Default: auto: destructive on a matching Ubuntu (24.04 for core24), else lxd. Env: FPACK_SNAP_BUILD_MODE. Targets: snap.",
+              "examples": [
+                "destructive"
+              ],
+              "markdownDescription": "**How snapcraft builds: destructive (on this machine with sudo, fastest, for CI), lxd or multipass (isolated build environment).**  \nsnapcraft 的构建方式：destructive（用 sudo 在本机构建，最快，适合 CI）、lxd 或 multipass（隔离的构建环境）。\n\nDefault / 默认: `auto：在匹配的 Ubuntu（core24 对应 24.04）上用 destructive，否则用 lxd`\n\nTargets / 目标: snap · Env: `FPACK_SNAP_BUILD_MODE`"
+            },
+            "confinement": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "strict",
+                    "classic",
+                    "devmode"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
+              "description": "strict (sandboxed, interfaces through plugs), classic (no sandbox, needs Store approval) or devmode (testing only). Default: strict. Targets: snap.",
+              "examples": [
+                "strict"
+              ],
+              "markdownDescription": "**strict (sandboxed, interfaces through plugs), classic (no sandbox, needs Store approval) or devmode (testing only).**  \nstrict（沙箱，通过 plugs 访问系统）、classic（无沙箱，上架需审批）或 devmode（仅用于测试）。\n\nDefault / 默认: `strict`\n\nTargets / 目标: snap"
+            },
+            "description": {
+              "description": "Long description shown in the Snap Store. Default: app.description. Targets: snap.",
+              "examples": [
+                "XueHua IM keeps your conversations private."
+              ],
+              "markdownDescription": "**Long description shown in the Snap Store.**  \n在 Snap Store 中显示的详细描述。\n\nDefault / 默认: `app.description`\n\nTargets / 目标: snap",
+              "type": "string"
+            },
+            "desktop": {
+              "description": "Your own .desktop file (Icon=${SNAP}/meta/gui/\u003cname\u003e.png). Default: generated from app and linux keys. Targets: snap.",
+              "examples": [
+                "linux/packaging/xuehua-im.desktop"
+              ],
+              "markdownDescription": "**Your own .desktop file (Icon=${SNAP}/meta/gui/\u003cname\u003e.png).**  \n自己的 .desktop 文件（Icon=${SNAP}/meta/gui/\u003cname\u003e.png）。\n\nDefault / 默认: `根据 app 与 linux 键生成`\n\nTargets / 目标: snap",
+              "type": "string"
+            },
+            "extensions": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Snapcraft extensions: gnome provides GTK 3, fonts, themes and the desktop launcher. Default: [gnome] (none with classic). Targets: snap.",
+              "examples": [
+                [
+                  "gnome"
+                ]
+              ],
+              "markdownDescription": "**Snapcraft extensions: gnome provides GTK 3, fonts, themes and the desktop launcher.**  \nSnapcraft 扩展：gnome 提供 GTK 3、字体、主题与桌面启动器。\n\nDefault / 默认: `[gnome]（classic 时无）`\n\nTargets / 目标: snap"
+            },
+            "extra_args": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Extra arguments for snapcraft pack. Targets: snap.",
+              "examples": [
+                [
+                  "--verbosity",
+                  "verbose"
+                ]
+              ],
+              "markdownDescription": "**Extra arguments for snapcraft pack.**  \n追加到 snapcraft pack 的参数。\n\nTargets / 目标: snap"
+            },
+            "grade": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "stable",
+                    "devel"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "pattern": "\\$\\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\\}",
+                  "type": "string"
+                }
+              ],
+              "description": "stable can be released to the stable/candidate channels; devel only to beta/edge. Default: stable (devel with devmode). Targets: snap.",
+              "examples": [
+                "stable"
+              ],
+              "markdownDescription": "**stable can be released to the stable/candidate channels; devel only to beta/edge.**  \nstable 可发布到 stable/candidate 通道；devel 只能发布到 beta/edge。\n\nDefault / 默认: `stable（devmode 时为 devel）`\n\nTargets / 目标: snap"
+            },
+            "license": {
+              "description": "SPDX license expression. Default: app.license. Targets: snap.",
+              "examples": [
+                "MIT"
+              ],
+              "markdownDescription": "**SPDX license expression.**  \nSPDX 许可证表达式。\n\nDefault / 默认: `app.license`\n\nTargets / 目标: snap",
+              "type": "string"
+            },
+            "name": {
+              "description": "Snap name (lowercase letters, digits and dashes, at most 40 characters); also the command name. Default: linux.package_name. Targets: snap.",
+              "examples": [
+                "xuehua-im"
+              ],
+              "markdownDescription": "**Snap name (lowercase letters, digits and dashes, at most 40 characters); also the command name.**  \nSnap 名称（小写字母、数字和 -，最多 40 个字符），也是命令名。\n\nDefault / 默认: `linux.package_name`\n\nTargets / 目标: snap",
+              "type": "string"
+            },
+            "plugs": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Interfaces the app plugs; [] for none. Default: [desktop, desktop-legacy, wayland, x11, opengl, audio-playback, network, home] (none with classic). Targets: snap.",
+              "examples": [
+                [
+                  "network",
+                  "home",
+                  "removable-media"
+                ]
+              ],
+              "markdownDescription": "**Interfaces the app plugs; [] for none.**  \n应用连接的接口；[] 表示不需要。\n\nDefault / 默认: `[desktop, desktop-legacy, wayland, x11, opengl, audio-playback, network, home]（classic 时无）`\n\nTargets / 目标: snap"
+            },
+            "stage_packages": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Extra Ubuntu packages bundled into the snap (libraries your plugins need). Targets: snap.",
+              "examples": [
+                [
+                  "libsecret-1-0"
+                ]
+              ],
+              "markdownDescription": "**Extra Ubuntu packages bundled into the snap (libraries your plugins need).**  \n额外打包进 snap 的 Ubuntu 软件包（插件需要的库）。\n\nTargets / 目标: snap"
+            },
+            "summary": {
+              "description": "One-line summary, at most 78 characters. Default: app.description (shortened to 78 characters). Targets: snap.",
+              "examples": [
+                "Fast and secure messenger"
+              ],
+              "markdownDescription": "**One-line summary, at most 78 characters.**  \n一行简介，最多 78 个字符。\n\nDefault / 默认: `app.description（截断到 78 个字符）`\n\nTargets / 目标: snap",
+              "type": "string"
+            },
+            "template": {
+              "description": "Your own snapcraft.yaml. fpack replaces {name} {version} {summary} {description} {base} {grade} {confinement} {license} {command} and stages the bundle at bundle/ and the icon/.desktop at snap/gui/. Default: generated. Targets: snap.",
+              "examples": [
+                "snap/snapcraft.yaml"
+              ],
+              "markdownDescription": "**Your own snapcraft.yaml. fpack replaces {name} {version} {summary} {description} {base} {grade} {confinement} {license} {command} and stages the bundle at bundle/ and the icon/.desktop at snap/gui/.**  \n自己的 snapcraft.yaml。fpack 替换 {name} {version} {summary} {description} {base} {grade} {confinement} {license} {command}，并把 bundle 放在 bundle/、图标与 .desktop 放在 snap/gui/。\n\nDefault / 默认: `自动生成`\n\nTargets / 目标: snap",
+              "type": "string"
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
+        },
         "startup_wm_class": {
-          "description": ".desktop StartupWMClass= (groups windows with the launcher). Default: binary name (APPLICATION_ID on GTK). Targets: deb, rpm, appimage.",
+          "description": ".desktop StartupWMClass= (groups windows with the launcher). Default: binary name (APPLICATION_ID on GTK). Targets: deb, rpm, appimage, snap.",
           "examples": [
             "xue_hua_im"
           ],
-          "markdownDescription": "**.desktop StartupWMClass= (groups windows with the launcher).**  \n.desktop 的 StartupWMClass=（让窗口与启动器图标归为一组）。\n\nDefault / 默认: `可执行文件名`\n\nTargets / 目标: deb, rpm, appimage",
+          "markdownDescription": "**.desktop StartupWMClass= (groups windows with the launcher).**  \n.desktop 的 StartupWMClass=（让窗口与启动器图标归为一组）。\n\nDefault / 默认: `可执行文件名`\n\nTargets / 目标: deb, rpm, appimage, snap",
           "type": "string"
         }
       },
@@ -2396,6 +2668,7 @@
               "deb",
               "rpm",
               "appimage",
+              "snap",
               "web"
             ]
           },

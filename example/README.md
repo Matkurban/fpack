@@ -11,7 +11,7 @@ fully commented [`fpack.yaml`](fpack.yaml) that shows the common setups:
 | iOS ad-hoc export | `ios.export_method` |
 | macOS DMG layout, pkg installer, Developer ID signing + notarization | `macos.dmg`, `macos.pkg`, `macos.sign` |
 | Windows Inno Setup installer (multi-language) and MSIX | `windows.inno_setup`, `windows.msix` |
-| Linux deb / rpm / AppImage with .desktop metadata, AppStream and maintainer scripts | `linux` |
+| Linux deb / rpm / AppImage / Snap with .desktop metadata, AppStream and maintainer scripts | `linux` |
 | Web build with base href | `web` |
 | File names, output folder, checksums, hooks | `output`, `hooks` |
 
@@ -34,7 +34,7 @@ More targets (each host builds its own platforms, Android and Web build anywhere
 ```bash
 fpack build apk aab                  # Android (flavor prod by default)
 FPACK_FLAVOR=dev fpack build apk     # dev flavor + config/dev.json
-fpack build linux deb rpm appimage   # on Linux – one flutter build, four packages
+fpack build linux deb rpm appimage snap   # on Linux – one flutter build, five packages
 fpack build macos dmg pkg            # on macOS – zip, DMG and pkg installer
 fpack build ipa --no-codesign        # on macOS without an Apple account
 fpack build windows exe msix         # on Windows – zip, Inno Setup installer, MSIX

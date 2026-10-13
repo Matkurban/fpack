@@ -60,7 +60,7 @@ fpack 本身只需要 Dart。各目标需要各自的工具链——运行 `fpac
 | `apk`、`aab` | Flutter、Android SDK、Java 17+（Android Studio 自带） |
 | `ipa`、`macos`、`dmg`、`pkg` | 装有 Xcode 的 macOS（项目有 Podfile 时还需 CocoaPods） |
 | `windows`、`exe`、`msix` | 装有 Visual Studio（C++ 桌面开发）的 Windows；`exe` 需要 Inno Setup 6；`msix` 需要 `msix` dev 依赖 |
-| `linux`、`deb`、`rpm`、`appimage` | 装有 clang、cmake、ninja、pkg-config、GTK 3 开发包的 Linux；以及 `dpkg-deb`、`rpmbuild`、`appimagetool` |
+| `linux`、`deb`、`rpm`、`appimage`、`snap` | 装有 clang、cmake、ninja、pkg-config、GTK 3 开发包的 Linux；以及 `dpkg-deb`、`rpmbuild`、`appimagetool`、`snapcraft`（不在 Ubuntu 24.04 上构建时还需要 LXD 或 Multipass） |
 | `web` | 只需要 Flutter |
 
 ## 升级

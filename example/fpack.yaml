@@ -131,7 +131,7 @@ windows:
 
 # ---------------------------------------------------------------- Linux
 linux:
-  package_name: aurora-notes     # deb/rpm/AppImage name; installs to /opt/aurora-notes
+  package_name: aurora-notes     # deb/rpm/AppImage/snap name; installs to /opt/aurora-notes
   icon: packaging/icon.png
   categories: [Office, Utility]
   generic_name: Notes
@@ -144,6 +144,11 @@ linux:
     requires: [gtk3]
     license: MIT
     post: packaging/linux/rpm-post.sh
+  snap:                          # snap target: snapcraft packs the built bundle (no Flutter rebuild)
+    summary: Notes for your desktop, packaged with fpack
+    plugs: [desktop, desktop-legacy, wayland, x11, opengl, network, home]
+    # base: core24               # default; strict confinement + gnome extension
+    # build_mode: destructive    # auto (default): destructive on Ubuntu 24.04, else lxd; or multipass
 
 # ---------------------------------------------------------------- Web
 web:

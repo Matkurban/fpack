@@ -131,8 +131,8 @@ Flutter SDK 选择。
 | `build.dart_define_from_file` | list（或单个字符串） | — | 全部 | `--dart-define-from-file` | --dart-define-from-file 文件（.json 或 .env）。 示例：`[config/prod.json]` |
 | `build.build_name` | string/number | `pubspec 版本号 + 之前的部分` | 全部 | `FPACK_BUILD_NAME`<br>`--build-name` | 版本名（{version}）。 示例：`1.2.0` |
 | `build.build_number` | string/number | `pubspec 版本号 + 之后的部分` | 全部 | `FPACK_BUILD_NUMBER`<br>`--build-number` | 构建号（{build}）。 示例：`42` |
-| `build.obfuscate` | bool | `false` | apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage | `FPACK_OBFUSCATE`<br>`--obfuscate` | 混淆 Dart 代码；符号文件保存到 split_debug_info（默认 <输出目录>/debug-info/<平台>）。 示例：`true` |
-| `build.split_debug_info` | string | `混淆时为 <输出目录>/debug-info/<平台>` | apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage | `--split-debug-info` | Dart 调试符号目录（--split-debug-info）。 示例：`build/symbols` |
+| `build.obfuscate` | bool | `false` | apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage, snap | `FPACK_OBFUSCATE`<br>`--obfuscate` | 混淆 Dart 代码；符号文件保存到 split_debug_info（默认 <输出目录>/debug-info/<平台>）。 示例：`true` |
+| `build.split_debug_info` | string | `混淆时为 <输出目录>/debug-info/<平台>` | apk, aab, ipa, macos, dmg, pkg, windows, exe, msix, linux, deb, rpm, appimage, snap | `--split-debug-info` | Dart 调试符号目录（--split-debug-info）。 示例：`build/symbols` |
 | `build.tree_shake_icons` | bool | `true` | 全部 |  | false 时传 --no-tree-shake-icons（保留全部图标字体字形）。 示例：`false` |
 | `build.extra_args` | list（或单个字符串） | — | 全部 |  | 追加到每个 flutter build 的参数（命令行 -- 之后的参数同理）。 示例：`[--no-pub]` |
 
@@ -369,22 +369,22 @@ MSIX 包（需要 msix 开发依赖）。这些键会覆盖 pubspec 中的 msix_
 
 ### `linux`
 
-Linux：linux（tar.gz）、deb、rpm、appimage。
+Linux：linux（tar.gz）、deb、rpm、appimage、snap。
 
 | 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
 | --- | --- | --- | --- | --- | --- |
-| `linux.package_name` | string | `应用名转小写并用 - 连接` | deb, rpm, appimage |  | deb/rpm 包名，以及 /usr/bin 中的命令名。 示例：`xuehua-im` |
+| `linux.package_name` | string | `应用名转小写并用 - 连接` | deb, rpm, appimage, snap |  | deb/rpm 包名，以及 /usr/bin 中的命令名。 示例：`xuehua-im` |
 | `linux.prefix` | string | `/opt/<package_name>` | deb, rpm |  | 应用文件的安装目录。 示例：`/usr/lib/xuehua-im` |
-| `linux.icon` | path | `flutter_launcher_icons 的图片，否则 web/icons/Icon-512.png` | deb, rpm, appimage |  | 菜单与 AppImage 使用的 PNG 图标。 示例：`assets/icon/icon.png` |
+| `linux.icon` | path | `flutter_launcher_icons 的图片，否则 web/icons/Icon-512.png` | deb, rpm, appimage, snap |  | 菜单与 AppImage 使用的 PNG 图标。 示例：`assets/icon/icon.png` |
 | `linux.icon_sizes` | 整数列表 | `[16, 32, 48, 64, 128, 256, 512]` | deb, rpm |  | 安装到 hicolor 主题的图标尺寸（由 linux.icon 缩放，不放大）。 示例：`[48, 128, 256]` |
-| `linux.categories` | list（或单个字符串） | `[Utility]` | deb, rpm, appimage |  | freedesktop.org 菜单分类（.desktop 的 Categories=）。 示例：`[Network, InstantMessaging]` |
-| `linux.generic_name` | string | — | deb, rpm, appimage |  | .desktop 的 GenericName=。 示例：`Instant Messenger` |
-| `linux.keywords` | list（或单个字符串） | — | deb, rpm, appimage |  | .desktop 的 Keywords=（搜索关键词）。 示例：`[chat, im, message]` |
-| `linux.mime_types` | list（或单个字符串） | — | deb, rpm, appimage |  | .desktop 的 MimeType=（可打开的文件类型 / URL 协议）。 示例：`[x-scheme-handler/xuehua]` |
-| `linux.startup_wm_class` | string | `可执行文件名` | deb, rpm, appimage |  | .desktop 的 StartupWMClass=（让窗口与启动器图标归为一组）。 示例：`xue_hua_im` |
-| `linux.metainfo` | path | — | deb, rpm, appimage |  | AppStream metainfo，安装到 /usr/share/metainfo（软件中心展示）。 示例：`linux/packaging/com.xuehua.im.metainfo.xml` |
+| `linux.categories` | list（或单个字符串） | `[Utility]` | deb, rpm, appimage, snap |  | freedesktop.org 菜单分类（.desktop 的 Categories=）。 示例：`[Network, InstantMessaging]` |
+| `linux.generic_name` | string | — | deb, rpm, appimage, snap |  | .desktop 的 GenericName=。 示例：`Instant Messenger` |
+| `linux.keywords` | list（或单个字符串） | — | deb, rpm, appimage, snap |  | .desktop 的 Keywords=（搜索关键词）。 示例：`[chat, im, message]` |
+| `linux.mime_types` | list（或单个字符串） | — | deb, rpm, appimage, snap |  | .desktop 的 MimeType=（可打开的文件类型 / URL 协议）。 示例：`[x-scheme-handler/xuehua]` |
+| `linux.startup_wm_class` | string | `可执行文件名` | deb, rpm, appimage, snap |  | .desktop 的 StartupWMClass=（让窗口与启动器图标归为一组）。 示例：`xue_hua_im` |
+| `linux.metainfo` | path | — | deb, rpm, appimage, snap |  | AppStream metainfo，安装到 /usr/share/metainfo（软件中心展示）。 示例：`linux/packaging/com.xuehua.im.metainfo.xml` |
 | `linux.appimagetool` | path | `PATH 中的 appimagetool` | appimage |  | appimagetool 路径。 示例：`~/.local/bin/appimagetool` |
-| `linux.extra_args` | list（或单个字符串） | — | linux, deb, rpm, appimage |  | 追加到 flutter build linux 的参数。 示例：`[--no-tree-shake-icons]` |
+| `linux.extra_args` | list（或单个字符串） | — | linux, deb, rpm, appimage, snap |  | 追加到 flutter build linux 的参数。 示例：`[--no-tree-shake-icons]` |
 
 #### `linux.deb`
 
@@ -425,6 +425,28 @@ AppImage。
 | --- | --- | --- | --- | --- | --- |
 | `linux.appimage.update_information` | string | — | appimage |  | 内嵌更新信息（供 AppImageUpdate 使用）。 示例：`gh-releases-zsync\|xuehua\|im\|latest\|*x86_64.AppImage.zsync` |
 | `linux.appimage.extra_args` | list（或单个字符串） | — | appimage |  | 追加到 appimagetool 的参数。 示例：`[--comp, zstd]` |
+
+#### `linux.snap`
+
+Snap 包（snapcraft）。fpack 围绕已构建好的 bundle 生成 snapcraft.yaml（dump 插件），snapcraft 内不会再次构建 Flutter。
+
+| 键 | 类型 | 默认值 | 目标 | 环境变量 / 参数 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `linux.snap.name` | string | `linux.package_name` | snap |  | Snap 名称（小写字母、数字和 -，最多 40 个字符），也是命令名。 示例：`xuehua-im` |
+| `linux.snap.summary` | string | `app.description（截断到 78 个字符）` | snap |  | 一行简介，最多 78 个字符。 示例：`快速、安全的即时通讯` |
+| `linux.snap.description` | string | `app.description` | snap |  | 在 Snap Store 中显示的详细描述。 示例：`雪花 IM 保护你的聊天隐私。` |
+| `linux.snap.base` | `core24` \\| `core22` | `core24` | snap |  | 基础 snap（运行时）。core24 即 Ubuntu 24.04。 示例：`core24` |
+| `linux.snap.grade` | `stable` \\| `devel` | `stable（devmode 时为 devel）` | snap |  | stable 可发布到 stable/candidate 通道；devel 只能发布到 beta/edge。 示例：`stable` |
+| `linux.snap.confinement` | `strict` \\| `classic` \\| `devmode` | `strict` | snap |  | strict（沙箱，通过 plugs 访问系统）、classic（无沙箱，上架需审批）或 devmode（仅用于测试）。 示例：`strict` |
+| `linux.snap.license` | string | `app.license` | snap |  | SPDX 许可证表达式。 示例：`MIT` |
+| `linux.snap.plugs` | list（或单个字符串） | `[desktop, desktop-legacy, wayland, x11, opengl, audio-playback, network, home]（classic 时无）` | snap |  | 应用连接的接口；[] 表示不需要。 示例：`[network, home, removable-media]` |
+| `linux.snap.extensions` | list（或单个字符串） | `[gnome]（classic 时无）` | snap |  | Snapcraft 扩展：gnome 提供 GTK 3、字体、主题与桌面启动器。 示例：`[gnome]` |
+| `linux.snap.stage_packages` | list（或单个字符串） | — | snap |  | 额外打包进 snap 的 Ubuntu 软件包（插件需要的库）。 示例：`[libsecret-1-0]` |
+| `linux.snap.apps` | map | — | snap |  | 额外命令：应用名 → bundle 中的可执行文件。使用相同的 plugs 和扩展。 示例：`{helper: helper-tool}` |
+| `linux.snap.desktop` | path | `根据 app 与 linux 键生成` | snap |  | 自己的 .desktop 文件（Icon=${SNAP}/meta/gui/<name>.png）。 示例：`linux/packaging/xuehua-im.desktop` |
+| `linux.snap.template` | path | `自动生成` | snap |  | 自己的 snapcraft.yaml。fpack 替换 {name} {version} {summary} {description} {base} {grade} {confinement} {license} {command}，并把 bundle 放在 bundle/、图标与 .desktop 放在 snap/gui/。 示例：`snap/snapcraft.yaml` |
+| `linux.snap.build_mode` | `auto` \\| `destructive` \\| `lxd` \\| `multipass` | `auto：在匹配的 Ubuntu（core24 对应 24.04）上用 destructive，否则用 lxd` | snap | `FPACK_SNAP_BUILD_MODE` | snapcraft 的构建方式：destructive（用 sudo 在本机构建，最快，适合 CI）、lxd 或 multipass（隔离的构建环境）。 示例：`destructive` |
+| `linux.snap.extra_args` | list（或单个字符串） | — | snap |  | 追加到 snapcraft pack 的参数。 示例：`[--verbosity, verbose]` |
 
 ### `web`
 

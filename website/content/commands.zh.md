@@ -147,6 +147,7 @@ fpack -C apps/client build web --base-href /app/
   deb       Debian/Ubuntu 安装包（dpkg-deb）
   rpm       Fedora/RHEL/openSUSE 安装包（rpmbuild）
   appimage  Linux AppImage（appimagetool）
+  snap      Snap 包（snapcraft）
   web       Web 构建（build/web 的 zip，可直接部署）
 ```
 
