@@ -483,6 +483,9 @@ func NotaryWait(ctx context.Context, env OpEnv, s *NotarySubmission, auth, secre
 	if errors.Is(err, runner.ErrInterrupted) || ctx.Err() != nil {
 		return runner.ErrInterrupted
 	}
+	// notarytool prints JSON even when it exits non-zero, and Run returns that
+	// output together with the error, so res is read before err is checked.
+	//goland:noinspection GoDfaErrorMayBeNotNil
 	r, ok := parseNotaryJSON(res.Output)
 	if !ok || r.Status == "" {
 		if err != nil {
@@ -515,8 +518,10 @@ func NotaryFetchLog(env OpEnv, s *NotarySubmission, auth, secrets []string, dir 
 // NotaryInfo asks Apple for the current status.
 func NotaryInfo(env OpEnv, s *NotarySubmission, auth, secrets []string) error {
 	res, err := env.Run(notaryCmd("info", s.ID, auth, secrets, "--output-format", "json"))
+	// notarytool prints JSON even when it exits non-zero, and Run returns that
+	// output together with the error, so res is read before err is checked.
+	//goland:noinspection GoDfaErrorMayBeNotNil
 	r, ok := parseNotaryJSON(res.Output)
-	//goland:noinspection GoDfaErrorMayBeNotNil // notarytool prints JSON even when it exits non-zero; Run returns that output with the error.
 	if !ok || r.Status == "" {
 		if err != nil {
 			return err
