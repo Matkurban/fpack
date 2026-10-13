@@ -6,6 +6,17 @@ description: "每个 fpack 版本的变更。"
 更新日志仅提供英文版本。
 
 <!-- BEGIN GENERATED CHANGELOG -->
+## 1.1.11
+
+### Fixed (documentation)
+- Hooks on Windows run through `cmd /S /C` (docs said `cmd /C`); `--obfuscate` help and examples give the real split-debug-info default `<output>/debug-info/<platform>`.
+- Corrected messages quoted in troubleshooting and the skill (Inno Setup not found, no Flutter project in a monorepo) and added the "which targets?" case; `fpack build` without targets uses `build.targets`, otherwise exits 2 (the skill said it built defaults for this OS).
+- Key count is 196; `output.dir` only renders `{app} {version} {build} {flavor} {mode}`; `--notarize` without credentials uses the keychain profile `NotaryProfile`; the mirror download asset ends in `.exe` on Windows; corrected the skill's export-method list, exit-code sentence and `init --yes` wording, and the language-detection order.
+
+### Added
+- Documented the Windows signing env vars in every summary table and a new "Other variables fpack reads" section (Flutter/Android/Java lookup, config/cache dirs, locale, color, `COLUMNS`).
+- Exit-code tables are generated from one source in the code; new tests check that every `FPACK_*` variable, config key, YAML example, `fpack …` command line, flag and target in the docs matches the code, and that every public variable is documented in English and Chinese.
+
 ## 1.1.10
 
 ### Changed
