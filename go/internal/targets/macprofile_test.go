@@ -136,7 +136,7 @@ type fakeEnv struct{ cmds []string }
 
 func (f *fakeEnv) env() OpEnv {
 	return OpEnv{Run: func(c runner.Cmd) (runner.Result, error) {
-		f.cmds = append(f.cmds, c.String())
+		f.cmds = append(f.cmds, strings.Join(append([]string{c.Name}, c.Args...), " "))
 		return runner.Result{}, nil
 	}, Print: func(string, string) {}, Status: func(string) {}}
 }
@@ -210,15 +210,15 @@ func TestEmbedProfilesRefusesDevelopmentProfile(t *testing.T) {
 
 func TestSmokeTest(t *testing.T) {
 	c := macSignedCtx(t, "")
-	app := "/tmp/X.app"
+	app := filepath.Join(t.TempDir(), "X.app")
 	ft := c.Tools.(*fakeTools)
-	ft.probes["plutil -extract CFBundleExecutable raw -o - /tmp/X.app/Contents/Info.plist"] = "xue_hua"
+	ft.probes["plutil -extract CFBundleExecutable raw -o - "+filepath.Join(app, "Contents", "Info.plist")] = "xue_hua"
 	fe := &fakeEnv{}
 	note, err := runSmokeTest(context.Background(), c, fe.env(), app, time.Millisecond)
-	if err != nil || !strings.Contains(note, "passed") || len(fe.cmds) != 1 || fe.cmds[0] != "open -n /tmp/X.app" {
+	if err != nil || !strings.Contains(note, "passed") || len(fe.cmds) != 1 || fe.cmds[0] != "open -n "+app {
 		t.Fatalf("passing smoke test: %q %v %v", note, err, fe.cmds)
 	}
-	ft.fail["pgrep -f /tmp/X.app/Contents/MacOS/xue_hua"] = true
+	ft.fail["pgrep -f "+filepath.Join(app, "Contents", "MacOS", "xue_hua")] = true
 	if _, err := runSmokeTest(context.Background(), c, fe.env(), app, time.Millisecond); err == nil || !strings.Contains(err.Error(), "not running") {
 		t.Errorf("dead app: %v", err)
 	}
