@@ -358,6 +358,57 @@ func TestIPANoTeamWarning(t *testing.T) {
 	}
 }
 
+func hasTeamWarning(issues []Issue) bool {
+	for _, i := range issues {
+		if strings.Contains(i.Msg, "DEVELOPMENT_TEAM") {
+			return true
+		}
+	}
+	return false
+}
+
+// ios.team_id in fpack.yaml counts as a configured team even when the Xcode
+// project has no DEVELOPMENT_TEAM, so the warning must not appear.
+func TestIPATeamFromConfigSilencesWarning(t *testing.T) {
+	c := newCtx(t, "darwin", "ios:\n  team_id: FGHIJ67890\n", "")
+	c.Project.IOSTeam = ""
+	if got := IOSTeam(c); got != "FGHIJ67890" {
+		t.Fatalf("team = %q", got)
+	}
+	if issues := (&IPA{}).Preflight(c); hasTeamWarning(issues) {
+		t.Fatalf("unexpected warning: %+v", issues)
+	}
+	if m := IOSExportOptions(c); m["teamID"] != "FGHIJ67890" {
+		t.Fatalf("%v", m)
+	}
+}
+
+func TestIPATeamPrecedence(t *testing.T) {
+	c := newCtx(t, "darwin", "", "")
+	c.Project.IOSTeam = "ABCDE12345"
+	if got := IOSTeam(c); got != "ABCDE12345" {
+		t.Fatalf("project fallback: %q", got)
+	}
+	c = newCtx(t, "darwin", "ios:\n  team_id: FGHIJ67890\n", "")
+	c.Project.IOSTeam = "ABCDE12345"
+	if got := IOSTeam(c); got != "FGHIJ67890" {
+		t.Fatalf("config must win: %q", got)
+	}
+	c.Config.IOS.TeamID, c.Project.IOSTeam = "", ""
+	if got := IOSTeam(c); got != "" {
+		t.Fatalf("no team: %q", got)
+	}
+}
+
+// A team from the config also drives the distribution-certificate check.
+func TestIPADistributionCertChecksConfiguredTeam(t *testing.T) {
+	c := newCtx(t, "darwin", "ios:\n  team_id: FGHIJ67890\n  export_method: ad-hoc\n", "")
+	c.Project.IOSTeam = ""
+	if hasTeamWarning((&IPA{}).Preflight(c)) {
+		t.Fatal("no DEVELOPMENT_TEAM warning expected")
+	}
+}
+
 // -------------------------------------------------------------------- macOS
 
 func TestMacAppUnsigned(t *testing.T) {

@@ -401,7 +401,7 @@ func (*IPA) Preflight(c *Context) []Issue {
 	if ios.ExportOptionsPlist != "" && ios.ExportMethod != "" {
 		out = append(out, warn(i18n.S("both ios.export_options_plist and ios.export_method are set; the plist wins", "同时设置了 ios.export_options_plist 和 ios.export_method，以 plist 为准"), ""))
 	}
-	if c.Project.IOSTeam == "" && ios.ExportOptionsPlist == "" {
+	if IOSTeam(c) == "" && ios.ExportOptionsPlist == "" {
 		out = append(out, warn(i18n.S("no DEVELOPMENT_TEAM set in ios/Runner.xcodeproj – signing will probably fail", "ios/Runner.xcodeproj 中没有设置 DEVELOPMENT_TEAM —— 签名很可能失败"),
 			i18n.S("open ios/Runner.xcworkspace → Runner → Signing & Capabilities → Team, or build unsigned: fpack build ipa --no-codesign", "打开 ios/Runner.xcworkspace → Runner → Signing & Capabilities → 选择 Team；或构建未签名包：fpack build ipa --no-codesign")))
 	}
@@ -424,10 +424,10 @@ func (*IPA) Preflight(c *Context) []Issue {
 		case needsDist && !dist:
 			out = append(out, warnIfFails(i18n.F("export method %q needs an \"Apple Distribution\" certificate, only development certificates found", "导出方式 %q 需要 “Apple Distribution” 证书，但只找到开发证书", exportMethodLabel(m)),
 				i18n.S("create one in Xcode → Settings → Accounts → Manage Certificates, or use: --export-method development", "在 Xcode → 设置 → Accounts → Manage Certificates 中创建，或使用：--export-method development")))
-		case needsDist && c.Project.IOSTeam != "":
+		case needsDist && IOSTeam(c) != "":
 			// The (XXXXXXXXXX) suffix of a distribution certificate is its team.
-			if teams := distributionTeams(ids); !contains(teams, c.Project.IOSTeam) {
-				out = append(out, warnIfFails(i18n.F("export method %q needs an \"Apple Distribution\" certificate for team %s, but the keychain only has distribution certificates for: %s (Xcode may still use cloud-managed signing if your account has Admin/Account Holder access)", "导出方式 %q 需要团队 %s 的 “Apple Distribution” 证书，但钥匙串中只有以下团队的发布证书：%s（如果账号有 Admin/账户持有人权限，Xcode 可能仍会使用云端管理的签名）", exportMethodLabel(m), c.Project.IOSTeam, strings.Join(teams, ", ")),
+			if teams := distributionTeams(ids); !contains(teams, IOSTeam(c)) {
+				out = append(out, warnIfFails(i18n.F("export method %q needs an \"Apple Distribution\" certificate for team %s, but the keychain only has distribution certificates for: %s (Xcode may still use cloud-managed signing if your account has Admin/Account Holder access)", "导出方式 %q 需要团队 %s 的 “Apple Distribution” 证书，但钥匙串中只有以下团队的发布证书：%s（如果账号有 Admin/账户持有人权限，Xcode 可能仍会使用云端管理的签名）", exportMethodLabel(m), IOSTeam(c), strings.Join(teams, ", ")),
 					i18n.F("install the team's distribution certificate (.p12) or create one in Xcode → Settings → Accounts → %s → Manage Certificates; or use --export-method development / --no-codesign", "安装该团队的发布证书（.p12），或在 Xcode → 设置 → Accounts → %s → Manage Certificates 中创建；也可以使用 --export-method development / --no-codesign", c.Project.IOSTeam)))
 			}
 		}
@@ -477,11 +477,18 @@ func iosExportOptionsSet(c *Context) bool {
 		i.StripSwiftSymbols != nil || len(i.ExportOptions) > 0
 }
 
+// IOSTeam is the Apple team ID used for iOS signing: ios.team_id from the
+// configuration (fpack.yaml; it has no flag or environment variable) and,
+// when that is empty, the DEVELOPMENT_TEAM of the Xcode project.
+func IOSTeam(c *Context) string {
+	return orDefault(c.Config.IOS.TeamID, c.Project.IOSTeam)
+}
+
 // IOSExportOptions builds the ExportOptions.plist dictionary.
 func IOSExportOptions(c *Context) map[string]any {
 	i := c.Config.IOS
 	m := map[string]any{"method": orDefault(i.ExportMethod, "app-store-connect")}
-	if t := orDefault(i.TeamID, c.Project.IOSTeam); t != "" {
+	if t := IOSTeam(c); t != "" {
 		m["teamID"] = t
 	}
 	if i.SigningStyle != "" {

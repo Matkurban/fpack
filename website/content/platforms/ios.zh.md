@@ -10,7 +10,7 @@ fpack build ipa --export-options-plist ios/ExportOptions.plist
 fpack build ipa --no-codesign                     # 未签名 IPA，用于后续重签名
 ```
 
-`doctor` 会检查 Xcode、CocoaPods（存在 Podfile 时）、工程中的 `DEVELOPMENT_TEAM`、签名证书，并在失败时把 Xcode 的关键错误（证书、描述文件、团队、Pod 等）翻译成具体的修复建议。
+`doctor` 会检查 Xcode、CocoaPods（存在 Podfile 时）、团队（`ios.team_id`，或工程中的 `DEVELOPMENT_TEAM`）、签名证书，并在失败时把 Xcode 的关键错误（证书、描述文件、团队、Pod 等）翻译成具体的修复建议。
 
 ## 导出选项
 

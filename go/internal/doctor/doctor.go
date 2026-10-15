@@ -310,8 +310,12 @@ func platformInfo(pl host.Platform, in Input) []Line {
 			}
 			if in.Ctx != nil {
 				ios := in.Ctx.Config.IOS
-				if in.Ctx.Project.IOSTeam != "" {
-					out = append(out, Line{OK, "DEVELOPMENT_TEAM " + in.Ctx.Project.IOSTeam, ""})
+				if team := targets.IOSTeam(in.Ctx); team != "" {
+					label := "DEVELOPMENT_TEAM "
+					if ios.TeamID != "" {
+						label = "ios.team_id "
+					}
+					out = append(out, Line{OK, label + team, ""})
 				}
 				switch {
 				case !in.Ctx.Config.IOSCodesign():

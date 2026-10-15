@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.15
+
+### Fixed
+- `fpack doctor` and `fpack build ipa` warned "no DEVELOPMENT_TEAM set in ios/Runner.xcodeproj – signing will probably fail" even when the team was configured with `ios.team_id` in fpack.yaml: only the Xcode project was checked. A team from `ios.team_id` now counts (it wins over the project's `DEVELOPMENT_TEAM`, which stays the fallback), also for the "Apple Distribution certificate for team …" check, the doctor line and the generated ExportOptions.plist. `ios.team_id` has no flag or environment variable, and the macOS targets have no equivalent check.
+
 ## 1.1.14
 
 ### Added

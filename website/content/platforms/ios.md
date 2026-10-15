@@ -10,7 +10,7 @@ fpack build ipa --export-options-plist ios/ExportOptions.plist
 fpack build ipa --no-codesign                     # unsigned IPA for re-signing later
 ```
 
-`doctor` checks Xcode, CocoaPods (when there is a Podfile), the project's `DEVELOPMENT_TEAM` and signing certificates; on failure the key Xcode errors (certificates, provisioning profiles, team, pods…) are translated into concrete fixes.
+`doctor` checks Xcode, CocoaPods (when there is a Podfile), the team (`ios.team_id`, or the project's `DEVELOPMENT_TEAM`) and signing certificates; on failure the key Xcode errors (certificates, provisioning profiles, team, pods…) are translated into concrete fixes.
 
 ## Export options
 
