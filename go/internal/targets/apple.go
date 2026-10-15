@@ -428,7 +428,7 @@ func (*IPA) Preflight(c *Context) []Issue {
 			// The (XXXXXXXXXX) suffix of a distribution certificate is its team.
 			if teams := distributionTeams(ids); !contains(teams, IOSTeam(c)) {
 				out = append(out, warnIfFails(i18n.F("export method %q needs an \"Apple Distribution\" certificate for team %s, but the keychain only has distribution certificates for: %s (Xcode may still use cloud-managed signing if your account has Admin/Account Holder access)", "导出方式 %q 需要团队 %s 的 “Apple Distribution” 证书，但钥匙串中只有以下团队的发布证书：%s（如果账号有 Admin/账户持有人权限，Xcode 可能仍会使用云端管理的签名）", exportMethodLabel(m), IOSTeam(c), strings.Join(teams, ", ")),
-					i18n.F("install the team's distribution certificate (.p12) or create one in Xcode → Settings → Accounts → %s → Manage Certificates; or use --export-method development / --no-codesign", "安装该团队的发布证书（.p12），或在 Xcode → 设置 → Accounts → %s → Manage Certificates 中创建；也可以使用 --export-method development / --no-codesign", c.Project.IOSTeam)))
+					i18n.F("install the team's distribution certificate (.p12) or create one in Xcode → Settings → Accounts → %s → Manage Certificates; or use --export-method development / --no-codesign", "安装该团队的发布证书（.p12），或在 Xcode → 设置 → Accounts → %s → Manage Certificates 中创建；也可以使用 --export-method development / --no-codesign", IOSTeam(c))))
 			}
 		}
 	}

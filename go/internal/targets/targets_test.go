@@ -400,12 +400,24 @@ func TestIPATeamPrecedence(t *testing.T) {
 	}
 }
 
-// A team from the config also drives the distribution-certificate check.
+// A team from the config also drives the distribution-certificate check, and
+// both the message and the fix name that team (not the empty project team).
 func TestIPADistributionCertChecksConfiguredTeam(t *testing.T) {
-	c := newCtx(t, "darwin", "ios:\n  team_id: FGHIJ67890\n  export_method: ad-hoc\n", "")
+	c := newCtx(t, "darwin", "ios:\n  team_id: FGHIJ67890\n", "")
 	c.Project.IOSTeam = ""
-	if hasTeamWarning((&IPA{}).Preflight(c)) {
-		t.Fatal("no DEVELOPMENT_TEAM warning expected")
+	c.Tools.(*fakeTools).probes["security find-identity -v -p codesigning"] = macIdentitiesNoDevID
+	var w *Issue
+	for _, is := range (&IPA{}).Preflight(c) {
+		if strings.Contains(is.Msg, "DEVELOPMENT_TEAM") {
+			t.Fatalf("unexpected warning: %+v", is)
+		}
+		if strings.Contains(is.Msg, "for team") {
+			is := is
+			w = &is
+		}
+	}
+	if w == nil || !strings.Contains(w.Msg, "team FGHIJ67890") || !strings.Contains(w.Fix, "Accounts → FGHIJ67890 → Manage") {
+		t.Fatalf("%+v", w)
 	}
 }
 
