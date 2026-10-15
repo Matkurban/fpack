@@ -4,6 +4,11 @@ description: "Changes in every fpack release."
 ---
 
 <!-- BEGIN GENERATED CHANGELOG -->
+## 1.1.16
+
+### Fixed
+- The iOS hint "install the team's distribution certificate … Accounts → <team> → Manage Certificates" printed an empty team name when the team came from `ios.team_id` and the Xcode project had no `DEVELOPMENT_TEAM`. It now names the configured team.
+
 ## 1.1.15
 
 ### Fixed
