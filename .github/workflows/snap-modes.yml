@@ -5,11 +5,11 @@ name: Snap build modes
 # by e2e.yml. Each job builds the snap, installs it, starts it under Xvfb and
 # removes it.
 on:
-  # Runs only when the version changes (both files hold nothing but the
-  # version) or by hand: gh workflow run snap-modes.yml
+  # Runs only when pubspec.yaml's version changes (see the check job) or by
+  # hand: gh workflow run snap-modes.yml
   push:
     branches: [main]
-    paths: [go/internal/version/version.go, lib/src/version.dart]
+    paths: [pubspec.yaml]
   workflow_dispatch:
 
 env:
@@ -20,7 +20,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Cheap gate: proceed only when pubspec.yaml's `version:` line changed
+  # (dependency edits in pubspec.yaml do not count) or when run by hand.
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.version.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - id: version
+        run: |
+          old=$(git show HEAD~1:pubspec.yaml 2>/dev/null | grep -m1 '^version:' || true)
+          new=$(grep -m1 '^version:' pubspec.yaml)
+          if [ "$old" != "$new" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; else echo "changed=false" >> "$GITHUB_OUTPUT"; fi
+          echo "previous: ${old:-none}  current: $new"
+
   snap:
+    needs: check
+    if: github.event_name == 'workflow_dispatch' || needs.check.outputs.changed == 'true'
     name: snap-${{ matrix.mode }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60

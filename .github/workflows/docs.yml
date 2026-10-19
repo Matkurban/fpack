@@ -3,11 +3,11 @@ name: Docs
 # Builds the Jaspr documentation site in website/ and deploys it to GitHub
 # Pages (https://matkurban.github.io/fpack/).
 on:
-  # Runs only when the version changes (both files hold nothing but the
-  # version) or by hand: gh workflow run docs.yml
+  # Runs only when pubspec.yaml's version changes (see the check job) or by
+  # hand: gh workflow run docs.yml
   push:
     branches: [main]
-    paths: [go/internal/version/version.go, lib/src/version.dart]
+    paths: [pubspec.yaml]
   workflow_dispatch:
 
 permissions:
@@ -18,7 +18,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Cheap gate: proceed only when pubspec.yaml's `version:` line changed
+  # (dependency edits in pubspec.yaml do not count) or when run by hand.
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.version.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - id: version
+        run: |
+          old=$(git show HEAD~1:pubspec.yaml 2>/dev/null | grep -m1 '^version:' || true)
+          new=$(grep -m1 '^version:' pubspec.yaml)
+          if [ "$old" != "$new" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; else echo "changed=false" >> "$GITHUB_OUTPUT"; fi
+          echo "previous: ${old:-none}  current: $new"
+
   build:
+    needs: check
+    if: github.event_name == 'workflow_dispatch' || needs.check.outputs.changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

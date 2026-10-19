@@ -3,11 +3,11 @@ name: E2E
 # Installs fpack from this checkout on every host OS and packages a freshly
 # created Flutter app for real.
 on:
-  # Runs only when the version changes (both files hold nothing but the
-  # version) or by hand: gh workflow run e2e.yml
+  # Runs only when pubspec.yaml's version changes (see the check job) or by
+  # hand: gh workflow run e2e.yml
   push:
     branches: [main]
-    paths: [go/internal/version/version.go, lib/src/version.dart]
+    paths: [pubspec.yaml]
   workflow_dispatch:
 
 # One pinned Flutter version for every job (the action's "latest stable"
@@ -20,7 +20,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Cheap gate: proceed only when pubspec.yaml's `version:` line changed
+  # (dependency edits in pubspec.yaml do not count) or when run by hand.
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.version.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - id: version
+        run: |
+          old=$(git show HEAD~1:pubspec.yaml 2>/dev/null | grep -m1 '^version:' || true)
+          new=$(grep -m1 '^version:' pubspec.yaml)
+          if [ "$old" != "$new" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; else echo "changed=false" >> "$GITHUB_OUTPUT"; fi
+          echo "previous: ${old:-none}  current: $new"
+
   windows:
+    needs: check
+    if: github.event_name == 'workflow_dispatch' || needs.check.outputs.changed == 'true'
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -234,6 +253,8 @@ jobs:
             ${{ runner.temp }}/inno-install.log
 
   macos:
+    needs: check
+    if: github.event_name == 'workflow_dispatch' || needs.check.outputs.changed == 'true'
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
@@ -464,6 +485,8 @@ jobs:
             ${{ runner.temp }}/notary*.log
 
   linux:
+    needs: check
+    if: github.event_name == 'workflow_dispatch' || needs.check.outputs.changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -741,6 +764,8 @@ jobs:
 
   # The example/ app from this repository, packaged exactly as its README says.
   example:
+    needs: check
+    if: github.event_name == 'workflow_dispatch' || needs.check.outputs.changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
