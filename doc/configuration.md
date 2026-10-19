@@ -5,7 +5,7 @@
 - 所有配置都是可选的：不写 `fpack.yaml` 也能直接 `fpack build apk`。
 - `fpack init` 会在项目根目录生成一份带注释的 `fpack.yaml`（这是 fpack 唯一会写入项目的文件）。
 - fpack **不会修改**项目里的任何其他文件（`pubspec.yaml`、`key.properties`、Gradle、Xcode 工程等都只读）。
-- 概览文档：[README.md](../README.md)（English）· [README.ZH.md](../README.ZH.md)（中文）。macOS 证书与公证凭证的获取方法见 [2.13](#213-获取-macos-签名证书与公证凭证)。
+- 概览文档：[README.md](../README.md)（English）· [README.ZH.md](../README.ZH.md)（中文，快速开始）；完整文档见 [文档网站](https://matkurban.github.io/fpack/?lang=zh)。macOS 证书与公证凭证的获取方法见 [2.13](#213-获取-macos-签名证书与公证凭证)。
 
 目录：
 

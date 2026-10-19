@@ -1,7 +1,7 @@
 package build
 
-// ExitCodeDoc documents one exit code. The tables in README.md,
-// README.ZH.md, doc/configuration.md and the website's troubleshooting page
+// ExitCodeDoc documents one exit code. The tables in doc/configuration.md
+// and the website's troubleshooting page
 // are generated from ExitCodeDocs (FPACK_UPDATE=1 go test ./internal/cli).
 type ExitCodeDoc struct {
 	Code   int

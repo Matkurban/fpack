@@ -4,6 +4,12 @@ description: "Changes in every fpack release."
 ---
 
 <!-- BEGIN GENERATED CHANGELOG -->
+## Unreleased
+
+### Changed
+- README.md and README.ZH.md (the pub.dev page) now only cover the quick start (install, `init`, `doctor`, first build, a minimal `fpack.yaml`, the target list) and link to the documentation site for everything else; the Chinese README links to the Chinese pages (`?lang=zh`). The full reference, signing and notarization guides, CI examples and troubleshooting live on the site and in `doc/configuration.md`.
+- The Android debug-signing hint and the "run fpack on another OS" hint point to the documentation site instead of README sections.
+
 ## 1.1.16
 
 ### Fixed

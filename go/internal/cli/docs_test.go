@@ -72,7 +72,7 @@ func exitCodesMarkdown(lang string) string {
 // TestDocsExitCodes regenerates the exit-code tables (FPACK_UPDATE=1).
 func TestDocsExitCodes(t *testing.T) {
 	pages := map[string]string{
-		"README.md": "en", "README.ZH.md": "zh", "doc/configuration.md": "zh",
+		"doc/configuration.md":               "zh",
 		"website/content/troubleshooting.md": "en", "website/content/troubleshooting.zh.md": "zh",
 	}
 	for rel, lang := range pages {
@@ -164,8 +164,6 @@ func TestDocsEnvironmentVariables(t *testing.T) {
 	}
 	// Every public variable is documented in each language's reference.
 	refs := map[string][]string{
-		"README.md":            {"README.md"},
-		"README.ZH.md":         {"README.ZH.md"},
 		"doc/configuration.md": {"doc/configuration.md"},
 		"website (en)":         {"website/content/environment.md", "website/content/configuration.md"},
 		"website (zh)":         {"website/content/environment.zh.md", "website/content/configuration.zh.md"},
