@@ -10,7 +10,7 @@
     "type": "text",
     "placeholders": {}
   },
-  "navGettingStarted": "Getting started",
+  "navGettingStarted": "Your first build",
   "@navGettingStarted": {
     "type": "text",
     "placeholders": {}
@@ -36,7 +36,7 @@
     "type": "text",
     "placeholders": {}
   },
-  "navConfiguration": "Configuration",
+  "navConfiguration": "fpack.yaml reference",
   "@navConfiguration": {
     "type": "text",
     "placeholders": {}
@@ -46,18 +46,18 @@
     "type": "text",
     "placeholders": {}
   },
-  "navPlatforms": "Platform guides",
+  "navPlatforms": "Platform tutorials",
   "@navPlatforms": {
     "description": "Sidebar group title",
     "type": "text",
     "placeholders": {}
   },
-  "navMacos": "macOS (signing, notarization)",
+  "navMacos": "macOS",
   "@navMacos": {
     "type": "text",
     "placeholders": {}
   },
-  "navMore": "More",
+  "navMore": "Help and project",
   "@navMore": {
     "description": "Sidebar group title",
     "type": "text",
@@ -146,6 +146,103 @@
   },
   "notFoundHome": "Go to the documentation home",
   "@notFoundHome": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "navStart": "Start here",
+  "@navStart": {
+    "description": "Sidebar group title",
+    "type": "text",
+    "placeholders": {}
+  },
+  "navConcepts": "How fpack works",
+  "@navConcepts": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "navMacosCredentials": "macOS: certificates and credentials",
+  "@navMacosCredentials": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "navMacosProfiles": "macOS: provisioning profiles",
+  "@navMacosProfiles": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "navGuides": "Configuration guides",
+  "@navGuides": {
+    "description": "Sidebar group title",
+    "type": "text",
+    "placeholders": {}
+  },
+  "navGuideProject": "Names, versions and output",
+  "@navGuideProject": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "navGuideVariants": "Flavors, entry points and defines",
+  "@navGuideVariants": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "navGuideSecrets": "Secrets and variables",
+  "@navGuideSecrets": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "navGuideHooks": "Hooks",
+  "@navGuideHooks": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "navGuideMulti": "Many targets, one command",
+  "@navGuideMulti": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "navExitCodes": "Exit codes and JSON output",
+  "@navExitCodes": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "navSchema": "JSON Schema",
+  "@navSchema": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "previousPage": "Previous",
+  "@previousPage": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "nextPage": "Next",
+  "@nextPage": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "admonitionTip": "Tip",
+  "@admonitionTip": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "admonitionNote": "Note",
+  "@admonitionNote": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "admonitionWarning": "Warning",
+  "@admonitionWarning": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "admonitionDanger": "Danger",
+  "@admonitionDanger": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "pagesInSection": "Where to go next",
+  "@pagesInSection": {
     "type": "text",
     "placeholders": {}
   }

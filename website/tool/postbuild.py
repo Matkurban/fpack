@@ -141,6 +141,11 @@ for path in pages:
             index.append({'lang': loc, 'url': url + (f'#{anchor}' if anchor else ''),
                           'title': parser.titles.get(loc, 'fpack'), 'section': section, 'text': body[:2000]})
 
+    # <base href> makes a bare "#id" resolve against the site root (it would open
+    # the home page): point in-page links at the page itself.
+    # site-absolute here; the base is prepended below
+    page = '/' + (url.strip('/') + '/' if url != '/' else '')
+    h = re.sub(r'(\shref)="#', lambda m: f'{m.group(1)}="{page}#', h)
     if base != '/':
         h = re.sub(r'(\s(?:href|src))="/(?!/)', lambda m: f'{m.group(1)}="{base}', h)
     open(path, 'w', encoding='utf-8').write(h)

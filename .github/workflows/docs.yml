@@ -46,6 +46,7 @@ jobs:
           dart pub global activate jaspr_cli 0.23.5
           "$HOME/.pub-cache/bin/jaspr" build
           python3 tool/postbuild.py --dir build/jaspr --base /fpack/ --site-url https://matkurban.github.io/fpack/
+          python3 tool/check_links.py --dir build/jaspr --base /fpack/
       - uses: actions/upload-pages-artifact@v5
         with:
           path: website/build/jaspr

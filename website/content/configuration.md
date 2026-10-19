@@ -1,20 +1,31 @@
 ---
-title: "Configuration"
-description: "fpack.yaml: validation, environment interpolation, hooks and every key."
+title: "fpack.yaml reference"
+description: "Every key of fpack.yaml with type, default, targets and matching variable or flag."
 ---
 
-Every key is optional. `fpack init` writes a file that **lists every key**, each with an English (`--lang zh`: Chinese) comment describing what it does, its allowed values, default, an example and the matching environment variable / flag, pre-filled with values detected in the project (application ID, flavors, version, team ID, Inno AppId…); leave the keys you do not need commented out.
+This page is the complete reference. If you are looking for *how to do something*, start with the guides: [names, versions and output](/guides/project-and-output), [flavors and defines](/guides/build-variants), [secrets](/guides/secrets), [hooks](/guides/hooks), or the [platform tutorials](/platforms/android).
 
-- **Validation**: unknown keys (with "did you mean …"), type errors (`line 12: android.signing.v1: expected true or false, got "maybe"`), allowed values and ranges, conflicting combinations; files used by the selected targets are checked before building.
-- **Editor completion**: the first line of the generated file is `# yaml-language-server: $schema=…/schema/fpack.schema.json`, so VS Code (YAML extension) / JetBrains give completion, hover docs (English/Chinese) and validation. `fpack schema -o fpack.schema.json` exports a local copy.
-- **Environment variables**: `${VAR}` / `${VAR:-default}` are expanded on load in any value (`obfuscate: ${OBF:-false}` works too); build, signing and notarization settings also have dedicated `FPACK_*` variables (see the [full list](/environment)).
+Every key is optional. fpack looks for `fpack.yaml` in the project root (or `--config FILE` / `FPACK_CONFIG`). The file is read, validated and merged with `FPACK_*` variables and flags; see [which setting wins](/guides/secrets#which-setting-wins).
+
+## Creating the file
+
+`fpack init` writes a file that **lists every key**, each with an English (`--lang zh`: Chinese) comment describing what it does, its allowed values, default, an example and the matching environment variable or flag, pre-filled with values detected in the project (application ID, flavors, version, team ID, Inno AppId…). Leave the keys you do not need commented out. Run it again later and it writes `fpack.yaml.new` and shows a diff; `--force` overwrites.
+
+## Validation
+
+- Unknown keys (with "did you mean …"), type errors (`line 12: android.signing.v1: expected true or false, got "maybe"`), allowed values and ranges, conflicting combinations.
+- Files used by the selected targets are checked before building.
+- `${VAR}` and `${VAR:-default}` are expanded on load in any value.
+- **Editor completion**: the first line of the generated file is `# yaml-language-server: $schema=…`, so VS Code (YAML extension) and JetBrains give completion, hover docs (English and Chinese) and validation. See [JSON Schema](/schema).
+
+## A complete example
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Matkurban/fpack/main/schema/fpack.schema.json
 app:
-  display_name: XueHua IM
-  publisher: XueHua Tech             # default: CompanyName in windows/runner/Runner.rc
-  homepage: https://xuehua.example.com
+  display_name: My App
+  publisher: Example Inc             # default: CompanyName in windows/runner/Runner.rc
+  homepage: https://example.com
   license: MIT
 
 build:
@@ -42,12 +53,12 @@ android:
 ios:
   export_method: ad-hoc
   team_id: ABCDE12345                # fpack then generates ExportOptions.plist
-  provisioning_profiles: { com.xuehua.im: XueHua AdHoc }
+  provisioning_profiles: { com.example.app: My App AdHoc }
 
 macos:
   sign:
-    identity: "Developer ID Application: XueHua Tech (ABCDE12345)"
-    notary_profile: XueHua           # or notary_api_key/_id/_issuer, or notary_apple_id/_team_id/_password
+    identity: "Developer ID Application: Example Inc (ABCDE12345)"
+    notary_profile: fpack-notary           # or notary_api_key/_id/_issuer, or notary_apple_id/_team_id/_password
   notarize:
     wait: true                       # false: submit without waiting (staple later with fpack notarize finish)
   dmg: { background: macos/dmg/bg.png, window_size: [660, 400], format: ULFO }
@@ -56,11 +67,11 @@ macos:
 windows:
   inno_setup: { languages: [zh-CN, en], privileges: ask, desktop_icon: checked }
   sign: { certificate: C:/certs/codesign.pfx, password: ${WINDOWS_CERT_PASSWORD} }
-  msix: { publisher: "CN=XueHua Tech", capabilities: [internetClient] }
+  msix: { publisher: "CN=Example Inc", capabilities: [internetClient] }
 
 linux:
   categories: [Network, InstantMessaging]
-  metainfo: linux/com.xuehua.im.metainfo.xml
+  metainfo: linux/com.example.app.metainfo.xml
   deb: { depends: ["libgtk-3-0 | libgtk-3-0t64"], postinst: linux/postinst }
   rpm: { requires: [gtk3], license: MIT }
 
@@ -69,7 +80,7 @@ web:
   source_maps: true
 ```
 
-**Hooks** (`hooks`): `pre_build` (once before the first flutter build; a failure stops the run), `pre_package.<target>` / `post_package.<target>` (around packaging, with `FPACK_TARGET`, `FPACK_ARTIFACT`, `FPACK_ARTIFACTS`), `post_build` (once at the end, with `FPACK_ARTIFACTS`, `FPACK_SUCCESS` = `1`/`0`; it also runs after build failures, but is skipped when every target already failed its checks, e.g. a missing tool or unknown flavor). All hooks run in the project root through `sh -c` (Windows: `cmd /S /C`, so quoted paths work as typed) with `FPACK_PROJECT_ROOT`, `FPACK_OUTPUT_DIR`, `FPACK_VERSION`, `FPACK_BUILD_NUMBER`, `FPACK_MODE`, `FPACK_FLAVOR`; write `$VAR` (Windows `cmd`: `%VAR%`) for variables that only exist while the hook runs (`${VAR}` is expanded when the configuration is loaded). A failing hook means exit code 1.
+Hooks: see the [hooks guide](/guides/hooks).
 
 ## File name templates
 

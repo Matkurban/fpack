@@ -1,44 +1,106 @@
 ---
 title: "Commands"
-description: "Every fpack command and option."
+description: "Every fpack command and option, with examples."
 ---
 
-```
+```text
 fpack build [targets…] [options] [-- args passed to flutter]
-fpack doctor          check the prerequisites of every target, with fixes
-fpack list            list all targets, their artifact formats and whether this machine can build them
-fpack init            write an fpack.yaml listing every key with English/Chinese comments (-y/--yes uses the
-                      detected defaults; if it exists, writes fpack.yaml.new and shows a diff, --force overwrites)
-fpack schema          print the JSON Schema of fpack.yaml (-o FILE writes a file)
-fpack notarize status [dir|ID]   query the state of macOS notary submissions (reads dist/…/notarization.json)
-fpack notarize finish [dir]      wait for the notary result, staple the ticket, update SHA256SUMS
-fpack clean           remove build/fpack; --dist also removes dist/; --flutter-clean runs flutter clean; --all everything
-fpack version         version information (same as --version / -V)
-fpack help <command>  help for a command
+fpack doctor [targets…]      check the prerequisites of every target, with fixes
+fpack list                   list all targets, their artifact formats and whether this machine can build them
+fpack init                   write an fpack.yaml listing every key with English/Chinese comments
+fpack schema                 print the JSON Schema of fpack.yaml
+fpack notarize status|finish check or finish macOS notarization submissions
+fpack clean                  remove fpack's temporary files (and optionally dist/ or flutter build output)
+fpack version                version information (same as --version / -V)
+fpack help <command>         help for a command
 ```
 
-Global options: `-C, --project DIR`, `--config FILE`, `--flutter SDK`, `--lang zh|en`, `-v, --verbose`, `--json`, `--no-color`, `-y, --yes`.
+Aliases: `build` = `b`, `doctor` = `check`, `list` = `ls` / `targets`.
 
-## build options
+## Global options
+
+These work with every command and go before or after it.
 
 | Option | Description |
 | --- | --- |
-| `-a, --all` | build every target this machine can build; skip the rest with a reason |
-| `-n, --dry-run` | print the full plan and exact commands, run nothing |
-| `-m, --mode` / `--release` `--profile` `--debug` | build mode (default release) |
-| `--flavor NAME` | Android productFlavor / Xcode scheme. A name that is not among the detected flavors is an error (exit 3, with a suggestion); if no flavors are detected it is only a warning |
-| `-t, --target FILE` | entry point, e.g. `lib/main_prod.dart` |
-| `--dart-define K=V` (repeatable) / `--dart-define-from-file FILE` | compile-time variables |
-| `--build-name X.Y.Z` / `--build-number N` | override the pubspec version |
-| `--split-per-abi[=true\|both]` / `--abis LIST` | per-ABI APKs; `both` also keeps the universal APK |
-| `--obfuscate` / `--split-debug-info DIR` | obfuscation; symbols default to `<output>/debug-info/<platform>` |
-| `-o, --output DIR` / `-f, --force` | output directory / allow overwriting |
-| `--export-method M` / `--export-options-plist FILE` / `--no-codesign` | iOS export |
-| `--sign` `--no-sign` `--sign-identity ID` `--installer-identity ID` `--notarize` `--no-notarize` `--notarize-no-wait` `--notary-profile NAME` `--dmg-tool T` | macOS signing (app / pkg), notarization (`--notarize-no-wait`: submit without waiting), DMG tool |
-| `--base-href PATH` / `--wasm` | Web |
-| `-- …` | everything after is passed to `flutter build`, e.g. `-- --no-tree-shake-icons` |
+| `-C`, `--project DIR` | Flutter project directory (default: the current directory or a parent that has `pubspec.yaml`) |
+| `--config FILE` | config file (default: `fpack.yaml` in the project; `FPACK_CONFIG`) |
+| `--flutter SDK` | Flutter SDK root (default: FVM, `PATH`, `FLUTTER_ROOT` …; see [Which Flutter?](/guides/build-variants#which-flutter)) |
+| `--lang zh\|en` | output language (default: from your OS language) |
+| `-v`, `--verbose` | stream full tool output |
+| `--json` | print a machine-readable JSON result to stdout ([format](/exit-codes#json)) |
+| `--no-color` | disable colors |
+| `-y`, `--yes` | assume yes / use defaults for questions |
+| `-h`, `--help` | show help |
+| `-V`, `--version` | print the version |
+| `--wrapper-info` | launcher diagnostics: which native core is used and where it comes from ([Installation](/installation#launcher)) |
 
-Examples:
+**Precedence**: command-line flags > `FPACK_*` environment variables > `fpack.yaml` > defaults.
+
+## `fpack build`
+
+Builds and packages targets into `dist/`. `fpack build apk aab`, `fpack build --all`, or without targets the list in `build.targets`.
+
+### What to build and how
+
+| Option | Description | Guide |
+| --- | --- | --- |
+| `-a`, `--all` | build every target this machine can build; skip the rest with a reason | [Many targets](/guides/many-targets) |
+| `-n`, `--dry-run` | print the full plan and exact commands, run nothing | [Many targets](/guides/many-targets#rehearse-and-inspect) |
+| `-m`, `--mode MODE`, `--release`, `--profile`, `--debug` | build mode (default `release`) | [Build variants](/guides/build-variants#build-mode) |
+| `--flavor NAME` | Android productFlavor / Xcode scheme. An unknown name is an error (exit 3, with a suggestion); if no flavors are detected it is only a warning | [Flavors](/guides/build-variants#flavors) |
+| `-t`, `--target FILE` | entry point, e.g. `lib/main_prod.dart` | [Entry point](/guides/build-variants#entry-point) |
+| `--dart-define K=V` (repeatable), `--dart-define-from-file FILE` (repeatable) | compile-time variables | [Defines](/guides/build-variants#compile-time-variables) |
+| `--build-name X.Y.Z`, `--build-number N` | override the pubspec version | [Versions](/guides/project-and-output#versions) |
+| `--obfuscate`, `--split-debug-info DIR` | obfuscation; symbols default to `<output>/debug-info/<platform>` | [Obfuscation](/guides/build-variants#obfuscation-and-debug-symbols) |
+| `-o`, `--output DIR`, `-f`, `--force` | output directory; allow overwriting | [Output](/guides/project-and-output#where-artifacts-go) |
+| `-- …` | everything after `--` is passed to `flutter build`, e.g. `-- --no-tree-shake-icons` | [Flutter options](/guides/build-variants#icons-and-other-flutter-options) |
+
+### Android
+
+| Option | Description |
+| --- | --- |
+| `--split-per-abi[=true\|both]` | one APK per ABI; `both` also keeps the universal APK |
+| `--abis LIST` | ABIs to build, e.g. `arm64-v8a,armeabi-v7a` |
+
+See [Android](/platforms/android#apk-variants).
+
+### iOS
+
+| Option | Description |
+| --- | --- |
+| `--export-method M` | `app-store-connect`, `app-store`, `release-testing`, `ad-hoc`, `development`, `debugging`, `enterprise` |
+| `--export-options-plist FILE` | use your own `ExportOptions.plist` |
+| `--no-codesign` | build an unsigned IPA |
+
+See [iOS](/platforms/ios#other-ways-to-distribute).
+
+### macOS
+
+| Option | Description |
+| --- | --- |
+| `--sign`, `--no-sign` | Developer ID sign the app / DMG; `--no-sign` also disables notarization |
+| `--sign-identity ID` | codesign identity (Developer ID Application) |
+| `--installer-identity ID` | `.pkg` signing identity (Developer ID Installer) |
+| `--notarize`, `--no-notarize` | notarize and staple the zip / DMG / pkg, or skip it (faster local builds) |
+| `--notarize-no-wait` | submit and finish without waiting (later: `fpack notarize finish`) |
+| `--notary-profile NAME` | `notarytool` keychain profile |
+| `--provisioning-profile FILE` | Developer ID provisioning profile to embed |
+| `--smoke-test` | launch the signed app and check that it keeps running |
+| `--dmg-tool T` | `auto`, `hdiutil` or `create-dmg` |
+
+See [macOS](/platforms/macos#3-configure-signing-and-notarization) and [provisioning profiles](/platforms/macos-profiles).
+
+### Web
+
+| Option | Description |
+| --- | --- |
+| `--base-href PATH` | `<base href>`, e.g. `/app/` |
+| `--wasm` | build with WebAssembly |
+
+See [Web](/platforms/web).
+
+### Examples
 
 ```bash
 fpack build apk aab --flavor prod --dart-define-from-file env/prod.json
@@ -53,15 +115,74 @@ fpack build --all --json > result.json
 fpack -C apps/client build web --base-href /app/
 ```
 
-**Precedence**: command-line flags > `FPACK_*` environment variables > `fpack.yaml` > defaults.
+## `fpack doctor`
 
-**No targets**: `fpack build` without targets builds `build.targets` from `fpack.yaml`; without that key it stops with exit code 2 and asks which targets to build.
+```bash
+fpack doctor                  # every target
+fpack doctor apk ipa dmg      # only these
+fpack doctor --json
+```
 
-**Interrupting**: one Ctrl-C stops the running flutter/gradle/xcodebuild gracefully (the whole process group), a second one kills it; exit code 130.
+Checks the prerequisites per target and shows how to fix what is missing: Flutter, Dart, the project, Android SDK, licenses and Java, signing setup and keystore, Xcode and CocoaPods, the iOS team and certificates, Developer ID identities, provisioning profiles and entitlements, Visual Studio, Inno Setup, `signtool`, Linux toolchain and packaging tools, snapcraft with LXD or Multipass. Exit code 1 when problems were found.
 
-**Monorepos**: in a project subdirectory fpack walks up to `pubspec.yaml`; at the repository root it lists the Flutter projects it found — pick one with `-C <dir>`.
+## `fpack list`
 
-**Flutter SDK lookup**: `--flutter` → `FPACK_FLUTTER` → `flutter.sdk` in `fpack.yaml` → FVM (`.fvm/flutter_sdk`, `.fvmrc`) → `FLUTTER_ROOT` → `PATH` → common install locations (`~/develop/flutter`, `~/flutter`, …).
+```bash
+fpack list                    # also: fpack ls, fpack targets
+fpack list --json
+```
+
+A table of every target with its platform, output extension and whether this machine can build it (and why not).
+
+## `fpack init`
+
+```bash
+fpack init                    # interactive
+fpack init --yes              # accept the detected defaults
+fpack init --force            # overwrite an existing fpack.yaml
+```
+
+Writes a commented `fpack.yaml` that lists every key, pre-filled with detected values. If `fpack.yaml` exists, it writes `fpack.yaml.new` and shows a diff; `--force` overwrites. `-y` / `--yes` accepts defaults without asking.
+
+## `fpack schema`
+
+```bash
+fpack schema                              # print to stdout
+fpack schema -o .vscode/fpack.schema.json # write a file
+```
+
+Prints the JSON Schema of `fpack.yaml` ([JSON Schema](/schema)).
+
+## `fpack notarize`
+
+```bash
+fpack notarize status                  # every submission in the newest notarization.json
+fpack notarize status dist/1.2.0+5     # a specific output directory
+fpack notarize status 2efe2717-52ef-…  # one submission id
+fpack notarize finish                  # wait, staple accepted files, update SHA256SUMS
+```
+
+`status` asks Apple for the state of each submission recorded in `<output>/notarization.json` (written right after the upload). `finish` waits for pending submissions, staples accepted DMG/pkg/app zips, rewrites the checksum file and, for rejected ones, downloads and summarizes Apple's log. Credentials come from `macos.sign` (or the recorded keychain profile or API key; Apple ID submissions need `FPACK_NOTARY_PASSWORD`). See [macOS: waiting for notarization](/platforms/macos#5-waiting-for-notarization).
+
+## `fpack clean`
+
+```bash
+fpack clean                   # remove build/fpack
+fpack clean --dist --yes      # also delete dist/ without asking
+fpack clean --all             # --dist + --flutter-clean
+fpack clean --dry-run         # show what would be deleted
+```
+
+| Option | Description |
+| --- | --- |
+| `--dist` | also delete the output directory (asks first) |
+| `--flutter-clean` | also run `flutter clean` |
+| `--all` | `--dist` + `--flutter-clean` |
+| `-n`, `--dry-run` | show what would be deleted |
+
+## `fpack version` and `fpack help`
+
+`fpack version` (or `fpack --version`) prints the fpack version and the core's platform and Go version (for example `… (core linux/amd64, go1.27.2)`). `fpack help <command>` prints the help below.
 
 ## Full help of every command
 

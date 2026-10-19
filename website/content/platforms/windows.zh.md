@@ -1,15 +1,82 @@
 ---
 title: "Windows"
-description: "便携 zip、Inno Setup 安装包、MSIX 与代码签名。"
+description: "构建便携 zip、Inno Setup 安装程序或 MSIX 包，并进行签名。"
 ---
 
-代码签名是可选的。在 `windows.sign` 中选择一种证书来源：
+本教程构建 Windows 应用：便携 zip（`windows`）、安装程序（`exe`，使用 Inno Setup）和 `.msix` 包（`msix`），可选代码签名。只能在 Windows 上构建；三个目标共用一次 `flutter build windows`。
 
-- `.pfx` 文件：`certificate` + `password`（`FPACK_WINDOWS_CERTIFICATE` / `FPACK_WINDOWS_CERTIFICATE_PASSWORD`；密码不会被打印），
-- 证书存储：`thumbprint`（`/sha1`）或 `subject`（`/n`），可配合 `store`（`/s`，默认 `My`）和 `machine_store: true`（`/sm`），
-- 云签名的 signtool 插件，例如 Azure Trusted Signing：`dlib` + `dlib_metadata`（`/dlib` / `/dmdf`）。
+## 你需要什么
 
-`flutter build windows` 完成后，fpack 立即签名 Release 文件夹中的 `files`（默认 `*.exe` 和 `*.dll`），因此绿色版 zip、安装程序和 MSIX 中都是已签名的文件。Inno Setup 安装程序和卸载程序通过 `SignTool=` 签名；MSIX 由 `msix:create` 用同一证书签名（使用 `dlib` 时由 fpack 对生成的 MSIX 签名）。所有签名都使用 SHA-256 和 RFC 3161 时间戳（`timestamp_url`，默认 `http://timestamp.digicert.com`），并带有 `description`（`/d`）和 `url`（`/du`）；签名后用 `signtool verify /pa` 校验（`verify: false` 可关闭；失败时——例如自签名测试证书——只给出警告）。signtool 会在 PATH 或最新的 Windows SDK 中自动查找（也可设置 `signtool`）；`fpack doctor` 会报告它以及安装 SDK 的方法（`winget install Microsoft.WindowsSDK.10.0.26100`，需要管理员权限；没有管理员权限时，可从 NuGet 包 `Microsoft.Windows.SDK.BuildTools` 中解压出 signtool 并设置 `signtool`）。
+- 装有 *使用 C++ 的桌面开发* 工作负载的 **Visual Studio**。
+- `exe`：[Inno Setup 6](https://jrsoftware.org/isinfo.php)（`winget install --id JRSoftware.InnoSetup -e`）。fpack 会在默认安装目录找 `ISCC.exe`，也可用 `windows.inno_setup.iscc` 指定。
+- `msix`：把 `msix` 包作为开发依赖：`dart pub add --dev msix`。
+- 签名：`signtool`（Windows SDK）和代码签名证书。
+- 项目路径**只能包含 ASCII 字符**。`flutter build windows` 在带有中文等字符的路径下会失败（`Unable to read file … app.dill`），doctor 会提示。也可以在 Windows 区域设置里启用“Beta: 使用 Unicode UTF-8 提供全球语言支持”。
+
+## 1. 检查机器
+
+```powershell
+fpack doctor windows exe msix
+```
+
+## 2. 构建便携 zip
+
+```powershell
+fpack build windows
+```
+
+结果是 `dist\1.0.0+1\my_app-1.0.0+1-windows-x64-portable.zip`：压缩后的 Release 目录。用户解压后运行 `.exe` 即可。
+
+## 3. 构建安装程序
+
+```powershell
+fpack build exe
+```
+
+fpack 根据项目元数据生成 Inno Setup 脚本，编译成 `my_app-1.0.0+1-windows-x64-setup.exe`。`fpack init` 只生成一次 `windows.inno_setup.app_id`，请**保持它不变**，这样升级才会替换已安装的版本。
+
+```yaml
+windows:
+  inno_setup:
+    languages: [en, zh-CN]      # 第一个是默认语言；fpack 自带旧版 Inno 缺少的中文语言文件
+    privileges: user            # user（无需管理员）| admin | ask
+    desktop_icon: checked       # checked | unchecked | none
+    license_file: LICENSE.txt
+```
+
+Inno Setup 还支持发布者和网址、版权、安装目录、开始菜单组、信息页、安装图标、向导图片、最低 Windows 版本和压缩方式（见[参考](/configuration#windowsinno_setup)）。要用自己的脚本，设置 `windows.inno_setup.script`。公司和产品信息来自 `app.*`（[名称、版本与输出](/guides/project-and-output)）。
+
+## 4. 构建 MSIX
+
+```powershell
+fpack build msix
+```
+
+fpack 用 `windows.msix` 的设置运行 `dart run msix:create`，这些设置优先于 `pubspec.yaml` 里的 `msix_config`：
+
+```yaml
+windows:
+  msix:
+    publisher: "CN=Your Company"
+    capabilities: [internetClient]
+    protocol_activation: [myapp]
+```
+
+显示名称、发布者显示名称、标识名称、版本、徽标、语言、文件扩展名、执行别名、开机启动、最低系统版本和 Store 模式都可以设置。
+
+::: note
+`msix` 包只从 `pubspec.yaml` 读取描述（`msix_config.description`，否则是 `description`）。当 `windows.msix.description` 或 `app.description` 与之不同时，fpack 会打印需要添加的条目。
+:::
+
+## 5. 代码签名
+
+代码签名是可选的，但能避免 SmartScreen 警告。在 `windows.sign` 里**选择一种**证书来源：
+
+| 来源 | 键 | 变量 |
+| --- | --- | --- |
+| `.pfx` 文件 | `certificate` + `password` | `FPACK_WINDOWS_CERTIFICATE`、`FPACK_WINDOWS_CERTIFICATE_PASSWORD` |
+| 证书库 | `thumbprint`（`/sha1`）或 `subject`（`/n`），配合 `store`（默认 `My`）和 `machine_store: true` | `FPACK_WINDOWS_CERT_THUMBPRINT`、`FPACK_WINDOWS_CERT_SUBJECT` |
+| signtool 插件（云签名，如 Azure Trusted Signing） | `dlib` + `dlib_metadata` | `FPACK_WINDOWS_SIGN_DLIB`、`FPACK_WINDOWS_SIGN_DLIB_METADATA` |
 
 ```yaml
 windows:
@@ -19,39 +86,29 @@ windows:
     url: https://example.com
 ```
 
-Inno Setup 安装包可配置发布者/网址、版权、安装目录、开始菜单、桌面快捷方式、许可/信息页、图标与向导图片、最低 Windows 版本、`privileges`（`user` 免管理员 / `admin` / `ask`）以及多语言（`languages: [zh-CN, en]`，第一个为默认；旧版 Inno Setup 缺少的中文语言文件由 fpack 自带）。MSIX 的显示名、发布者、能力、文件关联、协议、版本等可直接在 `windows.msix` 中设置，优先于 pubspec 的 `msix_config`。
+`flutter build windows` 一结束，fpack 就对 Release 目录里的 `files`（默认 `*.exe` 和 `*.dll`）签名，所以便携 zip、安装程序和 MSIX 里的二进制都是已签名的。Inno Setup 的安装程序和卸载程序通过 `SignTool=` 签名；MSIX 由 `msix:create` 用同一张证书签名（使用 `dlib` 时，fpack 对生成好的 MSIX 签名）。每个签名都使用 SHA-256 和 RFC 3161 时间戳（`timestamp_url`，默认 `http://timestamp.digicert.com`），并带上 `description`（`/d`）和 `url`（`/du`）。之后 `signtool verify /pa` 会检查签名；失败（例如自签名的测试证书）只是警告，`verify: false` 可以关闭检查。
 
-## 目标
+signtool 从 `PATH` 或最新的 Windows SDK 中查找，也可以设置 `signtool`。`fpack doctor` 会报告它以及安装方法：`winget install Microsoft.WindowsSDK.10.0.26100`（需要管理员；没有管理员权限时，从 NuGet 包 `Microsoft.Windows.SDK.BuildTools` 里提取 signtool 并设置 `signtool`）。
 
-| 目标 | 产物 | 需要 |
-| --- | --- | --- |
-| `windows` | `-windows-x64-portable.zip` | 装有「使用 C++ 的桌面开发」工作负载的 Visual Studio |
-| `exe` | `-windows-x64-setup.exe` | [Inno Setup 6](https://jrsoftware.org/isinfo.php)（`ISCC.exe`；默认安装位置会自动查找，也可用 `windows.inno_setup.iscc` 指定） |
-| `msix` | `-windows-x64.msix` | `dart pub add --dev msix` |
+::: tip
+把证书密码放在变量（`${WINDOWS_PFX_PASSWORD}`）或 CI 密钥里。fpack 绝不会打印它。
+:::
 
-三者共用一次 `flutter build windows`。
+## 钩子与引号
 
-## 注意事项
+[钩子](/guides/hooks)在 Windows 上通过 `cmd /S /C` 运行，所以钩子变量要写成 `%VAR%`（`%FPACK_OUTPUT_DIR%`）；带引号的路径照常使用。
 
-- **项目路径**：项目请放在只含 ASCII 字符的路径下。路径含中文等字符时 `flutter build windows` 会失败（`Unable to read file … app.dill`），`fpack doctor` 会给出警告；也可以在 Windows 区域设置中启用“Beta 版：使用 Unicode UTF-8 提供全球语言支持”。
-- **MSIX 描述**：`msix` 包只从 `pubspec.yaml` 读取描述（`msix_config.description`，否则为 `description`）；当 `windows.msix.description` / `app.description` 与之不同时，fpack 会提示需要添加的条目。
-- **钩子**通过 `cmd /S /C` 运行，钩子变量请写 `%VAR%`（如 `%FPACK_OUTPUT_DIR%`）；带引号的路径会按原样生效。
+## 在 CI 中
 
-## 安装包示例
+使用 `windows-latest`；见 [CI 示例](/ci#windows-zh)。
 
-```yaml
-windows:
-  inno_setup:
-    languages: [zh-CN, en]      # 第一个为默认语言
-    privileges: user            # user | admin | ask
-    desktop_icon: checked       # checked | unchecked | none
-    license_file: LICENSE.txt
-  msix:
-    publisher: "CN=Your Company"
-    capabilities: [internetClient]
-  sign:
-    certificate: C:/certs/codesign.pfx
-    password: ${WINDOWS_CERT_PASSWORD}
-```
+## 出问题时
 
-`windows.inno_setup.app_id` 由 `fpack init` 生成一次——请保持不变，升级安装时才能替换已安装的版本。要使用自己的 `.iss` 脚本，请设置 `windows.inno_setup.script`。
+| 提示 | 处理 |
+| --- | --- |
+| `Inno Setup (ISCC.exe) not found` | `winget install --id JRSoftware.InnoSetup -e`，或设置 `windows.inno_setup.iscc` |
+| `Unable to read file … app.dill` | 把项目移到只含 ASCII 的路径 |
+| msix 目标提示缺少包 | `dart pub add --dev msix` |
+| 找不到 signtool | 安装 Windows SDK 或设置 `windows.sign.signtool` |
+
+更多见[故障排查页](/troubleshooting#windows-zh)。

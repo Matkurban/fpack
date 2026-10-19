@@ -26,8 +26,14 @@ final Map<String, String> docGrammars = () {
     {'match': r'\$\{[^}]*\}', 'name': 'variable.other.yaml'},
     {'match': r'\b(?:true|false|null)\b|\b\d+(?:\.\d+)?\b', 'name': 'constant.language.yaml'},
   ]);
+  final json = g('json', [
+    {'match': r'"(?:[^"\\]|\\.)*"(?=\s*:)', 'name': 'entity.name.tag.json'},
+    {'match': r'"(?:[^"\\]|\\.)*"', 'name': 'string.quoted.double.json'},
+    {'match': r'\b(?:true|false|null)\b|-?\b\d+(?:\.\d+)?\b', 'name': 'constant.language.json'},
+  ]);
   return {
     'text': text,
+    'json': json,
     'plain': text,
     'txt': text,
     'console': bash,

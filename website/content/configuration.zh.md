@@ -1,20 +1,31 @@
 ---
-title: "配置"
-description: "fpack.yaml：校验、环境变量插值、钩子以及全部键。"
+title: "fpack.yaml 参考"
+description: "fpack.yaml 的每个键：类型、默认值、适用目标，以及对应的变量或参数。"
 ---
 
-所有键都是可选的，`fpack init` 会生成**列出全部键**的文件：每个键都有中文（`--lang en` 为英文）注释，说明作用、可选值、默认值、示例以及对应的环境变量/命令行参数，并预填从项目检测到的值（应用 ID、flavor、版本号、团队 ID、Inno AppId…）；不需要的键保持注释即可。
+本页是完整参考。如果你想知道*怎么做某件事*，请先看指南：[名称、版本与输出](/guides/project-and-output)、[Flavor 与编译变量](/guides/build-variants)、[密钥](/guides/secrets)、[钩子](/guides/hooks)，或[平台教程](/platforms/android)。
 
-- **校验**：未知键（提示「你是不是想写 …」）、类型错误（`line 12: android.signing.v1: expected true or false, got "maybe"`）、可选值与取值范围、组合冲突；构建前检查当前目标用到的文件是否存在。
-- **编辑器补全**：生成的文件第一行是 `# yaml-language-server: $schema=…/schema/fpack.schema.json`，VS Code（YAML 插件）/ JetBrains 会提供补全、悬停说明（中英文）和校验。`fpack schema -o fpack.schema.json` 可导出本地副本。
-- **环境变量**：任何值中的 `${VAR}` / `${VAR:-默认值}` 都会在加载时替换（`obfuscate: ${OBF:-false}` 也可以）；构建、签名、公证相关设置还有专门的 `FPACK_*` 变量（见[完整列表](/environment)）。
+所有键都是可选的。fpack 在项目根目录查找 `fpack.yaml`（或 `--config 文件` / `FPACK_CONFIG`）。文件会被读取、校验，并与 `FPACK_*` 变量和命令行参数合并，见[哪个设置优先](/guides/secrets#哪个设置优先)。
+
+## 创建文件
+
+`fpack init` 会写出一个**列出所有键**的文件，每个键都带有英文（`--lang zh` 时为中文）注释，说明它的作用、允许的值、默认值、示例以及对应的环境变量或参数，并预填从项目里检测到的值（应用 ID、flavor、版本、团队 ID、Inno AppId…）。不需要的键保持注释状态即可。以后再次运行，它会写出 `fpack.yaml.new` 并显示差异；`--force` 覆盖。
+
+## 校验
+
+- 未知的键（带“是不是想写 …”的提示）、类型错误（`line 12: android.signing.v1: expected true or false, got "maybe"`）、允许的值和范围、互相冲突的组合。
+- 所选目标用到的文件会在构建前检查。
+- 任何值里的 `${VAR}` 和 `${VAR:-默认值}` 会在加载时展开。
+- **编辑器补全**：生成文件的第一行是 `# yaml-language-server: $schema=…`，所以 VS Code（YAML 扩展）和 JetBrains 都能提供补全、悬停文档（中英文）和校验。见 [JSON Schema](/schema)。
+
+## 完整示例
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Matkurban/fpack/main/schema/fpack.schema.json
 app:
   display_name: 雪花IM
-  publisher: XueHua Tech             # 默认：windows/runner/Runner.rc 的 CompanyName
-  homepage: https://xuehua.example.com
+  publisher: Example Inc             # 默认：windows/runner/Runner.rc 的 CompanyName
+  homepage: https://example.com
   license: MIT
 
 build:
@@ -42,12 +53,12 @@ android:
 ios:
   export_method: ad-hoc
   team_id: ABCDE12345                # 设置后 fpack 自动生成 ExportOptions.plist
-  provisioning_profiles: { com.xuehua.im: XueHua AdHoc }
+  provisioning_profiles: { com.example.app: My App AdHoc }
 
 macos:
   sign:
-    identity: "Developer ID Application: XueHua Tech (ABCDE12345)"
-    notary_profile: XueHua           # 或 notary_api_key/_id/_issuer，或 notary_apple_id/_team_id/_password
+    identity: "Developer ID Application: Example Inc (ABCDE12345)"
+    notary_profile: fpack-notary           # 或 notary_api_key/_id/_issuer，或 notary_apple_id/_team_id/_password
   notarize:
     wait: true                       # false：提交后不等待（fpack notarize finish 稍后装订）
   dmg: { background: macos/dmg/bg.png, window_size: [660, 400], format: ULFO }
@@ -56,11 +67,11 @@ macos:
 windows:
   inno_setup: { languages: [zh-CN, en], privileges: ask, desktop_icon: checked }
   sign: { certificate: C:/certs/codesign.pfx, password: ${WINDOWS_CERT_PASSWORD} }
-  msix: { publisher: "CN=XueHua Tech", capabilities: [internetClient] }
+  msix: { publisher: "CN=Example Inc", capabilities: [internetClient] }
 
 linux:
   categories: [Network, InstantMessaging]
-  metainfo: linux/com.xuehua.im.metainfo.xml
+  metainfo: linux/com.example.app.metainfo.xml
   deb: { depends: ["libgtk-3-0 | libgtk-3-0t64"], postinst: linux/postinst }
   rpm: { requires: [gtk3], license: MIT }
 
@@ -69,7 +80,7 @@ web:
   source_maps: true
 ```
 
-**钩子**（`hooks`）：`pre_build`（第一次 flutter build 前执行一次，失败则停止）、`pre_package.<目标>` / `post_package.<目标>`（打包前后，提供 `FPACK_TARGET`、`FPACK_ARTIFACT`、`FPACK_ARTIFACTS`）、`post_build`（最后执行一次，提供 `FPACK_ARTIFACTS`、`FPACK_SUCCESS` = `1`/`0`；构建失败后也会执行，但如果所有目标都未通过构建前检查（例如缺少工具、flavor 不存在）则跳过）。所有钩子都在项目根目录用 `sh -c`（Windows：`cmd /S /C`，带引号的路径按原样生效）执行，并提供 `FPACK_PROJECT_ROOT`、`FPACK_OUTPUT_DIR`、`FPACK_VERSION`、`FPACK_BUILD_NUMBER`、`FPACK_MODE`、`FPACK_FLAVOR`；钩子运行时才有的变量请写 `$VAR`（Windows `cmd` 中写 `%VAR%`；`${VAR}` 会在加载配置时被替换）。钩子失败时退出码为 1。
+钩子：见[钩子指南](/guides/hooks)。
 
 ## 文件名模板
 

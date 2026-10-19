@@ -4,6 +4,7 @@ import 'package:jaspr_content/jaspr_content.dart';
 
 import '../content/localized_headings.dart';
 import '../l10n/locales.dart';
+import '../nav.dart';
 
 /// Picks the language before the first paint: `?lang=` (saved), the saved
 /// choice, then the browser language. Sets `<html data-locale lang>`, which the
@@ -65,6 +66,7 @@ class SiteLayout extends DocsLayout {
                   ]);
                 }),
               child,
+              pageNavigation(page.url),
               if (footer case final footer?) div(classes: 'content-footer', [footer]),
             ]),
             aside(classes: 'toc', [
@@ -75,7 +77,7 @@ class SiteLayout extends DocsLayout {
                     ul([
                       for (final item in tocs[locale.languageCode] ?? const <TocItem>[])
                         li(styles: Styles(padding: Padding.only(left: (0.75 * item.level).em)), [
-                          a(href: '#${item.id}', [Component.text(item.text)]),
+                          a(href: _pageAnchor(page.url, item.id), [Component.text(item.text)]),
                         ]),
                     ]),
                   ]),
@@ -93,3 +95,33 @@ Map<String, Map<String, Object?>> localizedData(Page page) => {
   for (final MapEntry(:key, :value) in ((page.data.page['locales'] as Map?) ?? const {}).entries)
     if (value is Map) '$key': value.cast<String, Object?>(),
 };
+
+/// An in-page link that survives `<base href>`: a bare `#id` would resolve
+/// against the base (the site root) and navigate to the home page.
+String _pageAnchor(String url, String id) => '${url == '/' ? '' : url}/#$id';
+
+/// Previous / next links in reading order, one block per locale.
+Component pageNavigation(String url) {
+  final (previous, next) = neighbours(url);
+  if (previous == null && next == null) return const Component.empty();
+  return LocalizedBlock(
+    (locale) => nav(
+      classes: 'page-nav',
+      attributes: {'aria-label': locale.strings.nextPage},
+      [
+        if (previous != null)
+          a(classes: 'page-nav-prev', href: previous.href, [
+            span([Component.text('← ${locale.strings.previousPage}')]),
+            strong([Component.text(previous.title(locale.strings))]),
+          ])
+        else
+          const Component.empty(),
+        if (next != null)
+          a(classes: 'page-nav-next', href: next.href, [
+            span([Component.text('${locale.strings.nextPage} →')]),
+            strong([Component.text(next.title(locale.strings))]),
+          ]),
+      ],
+    ),
+  );
+}

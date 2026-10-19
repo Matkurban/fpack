@@ -1,7 +1,9 @@
 ---
 title: "Targets and artifacts"
-description: "What every target builds, where it runs and which tools it needs."
+description: "What every target builds, where it runs, which tools it needs, and how artifacts are named."
 ---
+
+Fifteen targets in six platforms. For a walk-through of each platform see the tutorials: [Android](/platforms/android), [iOS](/platforms/ios), [macOS](/platforms/macos), [Windows](/platforms/windows), [Linux](/platforms/linux), [Web](/platforms/web).
 
 The default file name template is `{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}` (no mode for release).
 

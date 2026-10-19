@@ -1,192 +1,173 @@
 ---
 title: "macOS"
-description: "Developer ID 签名、公证、DMG 与 pkg 安装包，以及如何获取证书和凭证。"
+description: "构建压缩的 app、DMG 或 pkg 安装包，用 Developer ID 签名并交给 Apple 公证。"
 ---
 
-## 签名与公证
+本教程为**在 Mac App Store 之外分发**的 macOS 应用构建：压缩的 `.app`（`macos`）、磁盘映像（`dmg`）和安装包（`pkg`），用 Developer ID 证书签名并由 Apple 公证，这样 Gatekeeper 打开时不会有警告。三者都只能在 macOS 上构建，并共用一次 `flutter build macos`。
 
-用于 App Store 之外的分发（Developer ID）。**只**通过 fpack 自己的配置开启（低 → 高）：
+## 你需要什么
 
-1. `fpack.yaml` 的 `macos.sign`（`fpack init` 会生成带占位符的注释段，并在注释中列出本机钥匙串里的 Developer ID 证书）
-2. 环境变量 `FPACK_MACOS_SIGN`、`FPACK_MACOS_SIGN_IDENTITY`、`FPACK_MACOS_INSTALLER_IDENTITY`、`FPACK_MACOS_NOTARIZE`、`FPACK_MACOS_NOTARY_PROFILE`、`FPACK_MACOS_PROVISIONING_PROFILE`、`FPACK_MACOS_PROFILE_CHECK`、`FPACK_MACOS_SMOKE_TEST`
-3. 命令行 `--sign/--no-sign`、`--sign-identity`、`--installer-identity`、`--notarize/--no-notarize`、`--notary-profile`、`--provisioning-profile`、`--smoke-test`
+- 装有 **Xcode** 的 Mac（工程有 Podfile 时还需要 CocoaPods）。
+- 签名与公证：付费的 Apple Developer Program 会员资格、钥匙串里的 **Developer ID Application** 证书（`pkg` 还需要 **Developer ID Installer**）以及一种公证凭证。每一项怎么获取见[证书与凭证](/platforms/macos-credentials)。
+
+前面几步不需要这些就能做。
+
+## 1. 检查机器
+
+```bash
+fpack doctor macos dmg pkg
+```
+
+doctor 检查 Xcode、CocoaPods、`hdiutil` / `create-dmg`、`pkgbuild` 和 `productbuild`，列出钥匙串里的签名证书，并校验描述文件和 entitlements。
+
+## 2. 先构建一次（未签名）
+
+```bash
+fpack build macos dmg
+```
+
+什么都没配置时，`.app` 保持 Xcode 给它的签名，DMG 不签名，汇总里的提示会说明如何开启签名。你会得到：
+
+```text
+dist/1.0.0+1/
+  my_app-1.0.0+1-macos-universal.zip
+  my_app-1.0.0+1-macos-universal.dmg
+```
+
+在你自己的 Mac 上测试没问题。在别的 Mac 上，Gatekeeper 会拦截未签名、未公证的下载文件：继续第 3 步。
+
+::: tip
+配置好签名之后，想快速打本地包，可以加 `--no-notarize`（跳过上传 Apple）或 `--no-sign`（跳过签名和公证）。
+:::
+
+## 3. 配置签名与公证
+
+只有通过 fpack 自己的设置才会启用签名：`fpack.yaml` 的 `macos.sign`、`FPACK_MACOS_*` 变量或命令行参数。优先级从低到高：文件 → 变量 → 参数。
 
 ```yaml
 macos:
   sign:
-    identity: "Developer ID Application: Your Name (TEAMID)"   # 设置后即启用签名
-    notary_profile: XueHua                                     # 设置后即启用公证
+    identity: "Developer ID Application: Your Name (ABCDE12345)"   # 设置后即启用签名
+    notary_profile: fpack-notary                                    # 设置后即启用公证
 ```
 
-公证凭证三选一（优先级从高到低）：钥匙串配置 `notary_profile`（本机推荐）→ App Store Connect API 密钥 `notary_api_key` + `notary_api_key_id`（+ `notary_api_issuer`，CI 推荐）→ Apple ID `notary_apple_id` + `notary_team_id` + `notary_password`（App 专用密码，日志中隐藏）。签名默认启用 Hardened Runtime（`hardened_runtime`，公证必需）。
+规则：
 
-规则：设置了证书即启用签名；设置了任一公证凭证即启用公证；关闭签名同时关闭公证；`--sign` 不带证书时自动选用钥匙串中第一个 “Developer ID Application” 证书；`--notarize`（或 `notarize: true`）没有任何凭证时使用钥匙串配置 `NotaryProfile`；指定的证书不存在时会列出可用证书。**什么都不配置时**，.app 保留 Xcode 工程自己的签名、DMG 不签名，产物说明中会提示如何配置。fpack 不读取 `pubspec.yaml` 中其他插件（如 [`dmg`](https://pub.dev/packages/dmg) 包的 `dmg:` 段）的配置。
+- 设置了 `identity` 即启用签名；设置了任一公证凭证即启用公证；关闭签名同时关闭公证；
+- `--sign` 不带证书时，自动选用钥匙串中第一个 “Developer ID Application” 证书；找不到证书时会列出可用的；
+- `--notarize`（或 `notarize: true`）没有任何凭证时，使用名为 `NotaryProfile` 的钥匙串配置；
+- 签名使用 **Hardened Runtime**（`macos.sign.hardened_runtime`，默认开启，公证必需）和 `macos/Runner/Release.entitlements`（或 `macos.sign.entitlements`）里的 entitlements；
+- fpack 不读取其他工具在 `pubspec.yaml` 里的设置，例如 `dmg` 包的 `dmg:` 段。
 
-DMG 流程：复制 .app → `codesign --deep` 签名内嵌代码 → 用 Hardened Runtime + `macos/Runner/Release.entitlements` 重新签名 App → 校验 → `hdiutil`（或 `create-dmg`，支持背景图、窗口大小/位置、图标大小与位置、卷图标、许可协议；`format`/`filesystem` 两种工具都支持）制作 DMG → 签名 DMG → `xcrun notarytool submit` → 等待结果 → `stapler staple` → `spctl` 评估。
+公证凭证有三种，按优先级：钥匙串配置（`notary_profile`，本机最推荐）、App Store Connect API 密钥（`notary_api_key`、`notary_api_key_id`、`notary_api_issuer`，CI 最推荐）、Apple ID 加 App 专用密码（`notary_apple_id`、`notary_team_id`、`notary_password`）。每一种怎么创建见[证书与凭证](/platforms/macos-credentials#notary-zh)。
 
-**公证等待**：Apple 公证通常需要几分钟。上传完成、拿到提交 ID 后，fpack 立即在输出目录写入 `NOTARIZATION.md`（中英文随 `--lang`）和 `notarization.json`：产物路径与 SHA-256、提交 ID、提交时间、使用的凭证（钥匙串配置名 / API 密钥 ID / Apple ID，绝不写密码），以及可直接复制的命令（`xcrun notarytool info/wait/log …`、`xcrun stapler staple/validate …`、`spctl -a -vv …`、`fpack notarize status/finish`），并在终端打印该文件路径。等待期间显示已等待时间，并提示：*公证通常需要几分钟。可以按 Ctrl-C 停止等待 —— Apple 端会继续处理；之后可用 NOTARIZATION.md 中的命令查询。* 结果出来后文件会更新为最终状态（Accepted / Invalid）；被拒绝时 fpack 自动下载 Apple 的日志（`notary-log-<文件>.json`），总结问题并给出修复建议。
+| 设置 | fpack.yaml | 变量 | 参数 |
+| --- | --- | --- | --- |
+| 开启 / 关闭签名 | `macos.sign.enabled` | `FPACK_MACOS_SIGN` | `--sign`、`--no-sign` |
+| App 证书 | `macos.sign.identity` | `FPACK_MACOS_SIGN_IDENTITY` | `--sign-identity` |
+| pkg 证书 | `macos.sign.installer_identity` | `FPACK_MACOS_INSTALLER_IDENTITY` | `--installer-identity` |
+| 开启 / 关闭公证 | `macos.sign.notarize` | `FPACK_MACOS_NOTARIZE` | `--notarize`、`--no-notarize` |
+| 钥匙串配置 | `macos.sign.notary_profile` | `FPACK_MACOS_NOTARY_PROFILE` | `--notary-profile` |
+| 描述文件 | `macos.sign.provisioning_profile` | `FPACK_MACOS_PROVISIONING_PROFILE` | `--provisioning-profile` |
+| 冒烟测试 | `macos.smoke_test` | `FPACK_MACOS_SMOKE_TEST` | `--smoke-test` |
 
-- **不等待**：`macos.notarize.wait: false`（或 `FPACK_NOTARIZE_WAIT=false`、`--notarize-no-wait`）只提交、写入记录后就结束，汇总和 `--json` 中该产物的公证状态为 `submitted`（文件尚未装订）。
-- **之后继续**：`fpack notarize status [目录|ID]` 向 Apple 查询所有未完成的提交；`fpack notarize finish [目录]` 等待结果，对通过的 DMG/pkg 装订票据（App zip 会解压、装订 .app 后重新压缩），重写 `SHA256SUMS`，并更新记录；被拒绝的会下载并总结日志。Ctrl-C 中断等待后同样可用。
+## 4. 构建、签名、公证
 
-证书与公证凭证的获取方法见下一节[获取 macOS 签名证书与公证凭证](/platforms/macos#credentials)。
+```bash
+fpack build macos dmg
+```
 
-`fpack build macos` 产出签名的 zip；开启公证时 zip 也会公证（流程：提交 zip → 装订到 .app → 重新压缩）。
+对 DMG，fpack 会复制 `.app`、用 `codesign --deep` 给内嵌代码签名、用 Hardened Runtime 和 entitlements 给 App 重新签名并验证，然后制作磁盘映像、给 DMG 签名、用 `xcrun notarytool submit` 上传、等待 Apple 的结果、用 `stapler staple` 装订票据，最后用 `spctl` 检查。对 zip（`macos`），提交的是 zip，装订 `.app` 后再重新压缩。
 
-<a id="credentials"></a>
+## 5. 等待公证
 
-## 获取 macOS 签名证书与公证凭证
+Apple 通常需要几分钟。fpack 会显示已等待的时间，并在上传拿到提交 ID 之后立刻向输出目录写入两个文件：`NOTARIZATION.md`（产物、SHA-256、提交 ID、使用的凭证（但绝不含密码）以及可直接复制的命令）和 `notarization.json`。
 
-在 App Store 之外分发 macOS 应用需要：**Developer ID Application** 证书（签名 .app / zip / DMG）、可选的 **Developer ID Installer** 证书（签名 pkg），以及一种**公证凭证**。都需要付费的 [Apple Developer Program](https://developer.apple.com/programs/) 账号；Developer ID 证书只能由团队的 **Account Holder** 创建。
+::: note
+Ctrl-C 只是停止*等待*，Apple 仍在处理。你可以稍后在这台 Mac 的任何 shell 里继续。
+:::
 
-**1. 创建 Developer ID 证书（在 Mac 上）**
+也可以完全不等待：
 
-- Xcode → Settings… → Accounts → 选择团队 → Manage Certificates… → 左下角 **+** → *Developer ID Application*（需要 pkg 时再建 *Developer ID Installer*）。证书和私钥会直接进入「登录」钥匙串。
-- 或者在网页上创建：钥匙串访问 → 证书助理 → 从证书颁发机构请求证书…（保存 CSR 到磁盘）→ [developer.apple.com/account/resources/certificates](https://developer.apple.com/account/resources/certificates/list) → **+** → Developer ID Application / Developer ID Installer → 上传 CSR → 下载 `.cer` 并双击导入（必须在生成 CSR 的那台 Mac 上导入，私钥在那里）。
-- 检查：
+```bash
+fpack build dmg --notarize-no-wait      # 提交、写入记录、结束
+fpack notarize status                   # 向 Apple 查询所有未完成的提交
+fpack notarize finish                   # 等待、给通过的文件装订、更新 SHA256SUMS
+```
 
-  ```bash
-  security find-identity -v -p codesigning   # "Developer ID Application: Your Name (ABCDE12345)"
-  security find-identity -v -p basic         # 也会列出 "Developer ID Installer: …"
-  ```
+- `fpack notarize status [目录|ID]` 报告 `notarization.json` 中每个提交的状态（或某一个提交 ID）。
+- `fpack notarize finish [目录]` 等待结果，给通过的 DMG 和 pkg 装订票据（app zip 会先解压，装订 app 后重新压缩），重写 `SHA256SUMS`；对被拒绝的提交下载 Apple 的日志（`notary-log-<文件>.json`）并总结问题。
+- 用 `macos.notarize.wait: false` 或 `FPACK_NOTARIZE_WAIT=false` 也能得到与 `--notarize-no-wait` 相同的行为。此时汇总和 `--json` 报告 `notarization.state: submitted`。
+- 用 Apple ID 提交时，运行 `notarize` 需要设置 `FPACK_NOTARY_PASSWORD`。
 
-- 填入 fpack（引号内的名称与上面输出完全一致；括号中的 10 位字符就是 **Team ID**）：
+提交被拒绝（`Invalid`）通常是内嵌代码没有签名或缺少 Hardened Runtime；总结后的日志会指出是哪个文件。
 
-  | 用途 | fpack.yaml | 环境变量 | 参数 |
-  | --- | --- | --- | --- |
-  | App 签名证书 | `macos.sign.identity` | `FPACK_MACOS_SIGN_IDENTITY` | `--sign-identity` |
-  | pkg 签名证书 | `macos.sign.installer_identity` | `FPACK_MACOS_INSTALLER_IDENTITY` | `--installer-identity` |
+## 6. 验证结果
 
-**2. 公证凭证（三选一）**
+```bash
+spctl --assess --type open --context context:primary-signature -vv dist/1.0.0+1/my_app-1.0.0+1-macos-universal.dmg
+xcrun stapler validate dist/1.0.0+1/my_app-1.0.0+1-macos-universal.dmg
+codesign --verify --deep --strict --verbose=2 /Applications/MyApp.app
+```
 
-*a) 钥匙串配置（本机推荐）*：Apple ID + App 专用密码 + Team ID，只需保存一次。
+## 7. 定制 DMG
 
-1. 在 [account.apple.com](https://account.apple.com) → 登录与安全 → **App 专用密码** → 生成一个密码（形如 `abcd-efgh-ijkl-mnop`）。
-2. Team ID：[developer.apple.com/account](https://developer.apple.com/account) → 会员资格详细信息（Membership details），或证书名称括号中的 10 位字符。
-3. 保存到钥匙串（不写 `--password` 时会提示输入）：
-
-   ```bash
-   xcrun notarytool store-credentials fpack-notary \
-     --apple-id you@example.com --team-id ABCDE12345 --password abcd-efgh-ijkl-mnop
-   xcrun notarytool history --keychain-profile fpack-notary   # 验证
-   ```
-
-4. fpack：`macos.sign.notary_profile: fpack-notary`（或 `FPACK_MACOS_NOTARY_PROFILE`、`--notary-profile`）。
-
-也可以不保存配置，直接给出 Apple ID：`notary_apple_id` / `notary_team_id` / `notary_password`（`FPACK_NOTARY_APPLE_ID`、`FPACK_NOTARY_TEAM_ID`、`FPACK_NOTARY_PASSWORD`）。密码只放在环境变量或 CI secret 中，fpack 在日志、`--dry-run` 和 NOTARIZATION.md 中都会隐藏它。
-
-*b) App Store Connect API 密钥（CI 推荐）*：不依赖个人 Apple ID，可随时吊销。
-
-1. [App Store Connect](https://appstoreconnect.apple.com) → 用户和访问 → 集成 → App Store Connect API → 团队密钥 → **+**，选择 Developer（或更高）权限。
-2. 下载 `AuthKey_<KEY_ID>.p8`（**只能下载一次**，请妥善保存）；记下页面上的 **Key ID** 和 **Issuer ID**（个人密钥没有 Issuer ID，可省略）。
-3. fpack：
-
-   | 值 | fpack.yaml | 环境变量 |
-   | --- | --- | --- |
-   | `.p8` 文件路径 | `macos.sign.notary_api_key` | `FPACK_NOTARY_API_KEY` |
-   | Key ID | `macos.sign.notary_api_key_id` | `FPACK_NOTARY_API_KEY_ID` |
-   | Issuer ID | `macos.sign.notary_api_issuer` | `FPACK_NOTARY_API_ISSUER` |
-
-   验证：`xcrun notarytool history --key AuthKey_ABC123DEF4.p8 --key-id ABC123DEF4 --issuer <Issuer ID>`。
-
-优先级：`notary_profile` → API 密钥 → Apple ID；设置任意一种即开启公证。
-
-**3. 导出证书（.p12）用于 CI**
-
-1. 钥匙串访问 → 「登录」钥匙串 → **我的证书** → 选中 “Developer ID Application: …”（展开能看到私钥，说明私钥在本机）→ 文件 → 导出项目… → 格式选「个人信息交换 (.p12)」→ 设置导出密码。需要 pkg 时对 “Developer ID Installer: …” 重复一次（也可以两个一起选中导出到同一个 .p12）。
-2. 转成 base64 存为 CI secret（例如 `MACOS_CERTS_P12_BASE64`、`MACOS_CERTS_P12_PASSWORD`），API 密钥同理（`NOTARY_API_KEY_P8_BASE64`）：
-
-   ```bash
-   base64 -i DeveloperID.p12 | pbcopy
-   base64 -i AuthKey_ABC123DEF4.p8 | pbcopy
-   ```
-
-3. 在 CI 机器上导入到临时钥匙串（GitHub Actions 示例）：
-
-   ```yaml
-   - name: import Developer ID certificates
-     env:
-       P12_BASE64: ${{ secrets.MACOS_CERTS_P12_BASE64 }}
-       P12_PASSWORD: ${{ secrets.MACOS_CERTS_P12_PASSWORD }}
-       KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}   # 任意随机字符串
-       API_KEY_BASE64: ${{ secrets.NOTARY_API_KEY_P8_BASE64 }}
-     run: |
-       KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
-       echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/certs.p12"
-       security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-       security set-keychain-settings -lut 21600 "$KEYCHAIN"
-       security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-       security import "$RUNNER_TEMP/certs.p12" -k "$KEYCHAIN" -P "$P12_PASSWORD" \
-         -T /usr/bin/codesign -T /usr/bin/productbuild -T /usr/bin/pkgbuild
-       security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-       security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
-       security find-identity -v -p codesigning "$KEYCHAIN"
-       echo "$API_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
-       rm "$RUNNER_TEMP/certs.p12"
-   - name: fpack build macos dmg pkg
-     env:
-       FPACK_MACOS_SIGN_IDENTITY: "Developer ID Application: Your Name (ABCDE12345)"
-       FPACK_MACOS_INSTALLER_IDENTITY: "Developer ID Installer: Your Name (ABCDE12345)"
-       FPACK_NOTARY_API_KEY: ${{ runner.temp }}/AuthKey.p8
-       FPACK_NOTARY_API_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
-       FPACK_NOTARY_API_ISSUER: ${{ secrets.NOTARY_API_ISSUER }}
-     run: fpack build macos dmg pkg
-   - name: clean up keychain
-     if: always()
-     run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
-   ```
-
-   `set-key-partition-list` 让 codesign / productbuild 无需弹窗即可使用私钥；`-lut 21600` 让钥匙串 6 小时内不自动锁定。证书、.p12、.p8 与密码都不要提交到仓库。
-
-## 描述文件
-
-描述文件与受限 entitlements：`flutter build macos` 会嵌入 Xcode 的开发描述文件（“Mac Team Provisioning Profile”）。用 Developer ID 重新签名后，`com.apple.developer.aps-environment`（推送）、iCloud、associated domains、keychain access groups 等受限 entitlements 不再被授权，App 无法启动（`RBSRequestErrorDomain Code=5`）。请为该 App ID 创建 **Developer ID** 描述文件（developer.apple.com → Profiles → + → Developer ID）并配置：
+fpack 默认用 `hdiutil` 制作 DMG；`create-dmg` 已安装或设置了布局键时改用它（`macos.dmg.tool: auto`）。用 `--dmg-tool hdiutil|create-dmg` 强制指定其一。
 
 ```yaml
 macos:
-  sign:
-    identity: "Developer ID Application: Your Name (ABCDE12345)"
-    provisioning_profile: macos/MyApp.provisionprofile         # 或 FPACK_MACOS_PROVISIONING_PROFILE / --provisioning-profile
-    provisioning_profiles:                                     # 内嵌 bundle：bundle id → 描述文件
-      com.example.app.share: macos/MyAppShare.provisionprofile
-  smoke_test: true                                             # 或 FPACK_MACOS_SMOKE_TEST / --smoke-test
+  dmg:
+    volume_name: My App
+    background: macos/dmg/background.png
+    window_size: [660, 400]
+    window_position: [200, 120]
+    icon_size: 128
+    app_position: [180, 190]
+    applications_position: [480, 190]
+    format: ULFO
 ```
 
-签名前，fpack 把描述文件复制为 `Contents/embedded.provisionprofile`（映射的描述文件则放入扩展和登录项），再由内向外签名：内嵌代码、各自带 entitlements 的内嵌 bundle、App 本身。每个描述文件都会用 `security cms -D -i` 检查：Developer ID 类型（`ProvisionsAllDevices`）、与签名证书相同的团队、App ID（`TEAM.bundle.id`，允许通配符）、有效期，以及签名用的每个受限 entitlement 都已授权且取值一致（如 `aps-environment` 必须为 `production`）。未配置描述文件时，受限 entitlements 或嵌入的开发描述文件会在签名前终止构建；`fpack doctor` 也会报告。`macos.sign.profile_check: false`（`FPACK_MACOS_PROFILE_CHECK=false`）跳过检查。`macos.smoke_test` 会打开签名后的 App，检查 `smoke_test_seconds`（默认 5）秒后仍在运行，然后退出。
+还可以用 `volume_icon` 和 `license`（挂载时显示的许可协议）；`format` 和 `filesystem` 对两种工具都有效。用 `brew install create-dmg` 安装 `create-dmg`。
 
-**获取 Developer ID 描述文件**（账户持有人或管理员）：
+## 8. pkg 安装包
 
-1. developer.apple.com → Certificates, IDs & Profiles → **Identifiers**：打开该 App ID（如 `com.example.app`，即 `macos/Runner/Configs/AppInfo.xcconfig` 中的 `PRODUCT_BUNDLE_IDENTIFIER`），启用 entitlements 用到的功能（Push Notifications、iCloud、Associated Domains 等）并保存。
-2. **Profiles** → **+** → 在 *Distribution* 下选择 **Developer ID** → 平台 macOS → 选择 App ID → 选择用于签名的那一张 **Developer ID Application** 证书（可用 `security find-identity -v -p codesigning` 查看其 SHA-1；为其他证书生成的描述文件会在启动时被拒绝） → 命名 → **Generate** → **Download**。
-3. 把 `.provisionprofile` 放进项目（如 `macos/MyApp.provisionprofile`；其中没有机密信息，也可以不放进 git，在 CI 中用 `FPACK_MACOS_PROVISIONING_PROFILE` 指定路径）。每个有独立 bundle id 的扩展/登录项都重复以上步骤，并在 `provisioning_profiles` 中映射。
-4. 让发布用 entitlements 与描述文件一致：Developer ID 描述文件授权的 `aps-environment` 是 **production**，因此在 `macos/Runner/Release.entitlements` 中设置 `<key>com.apple.developer.aps-environment</key><string>production</string>`。
-5. 用 `security cms -D -i macos/MyApp.provisionprofile` 查看描述文件；用 `codesign -d --entitlements - --xml MyApp.app` 和 `security cms -D -i MyApp.app/Contents/embedded.provisionprofile` 检查构建出的 App。
+```bash
+fpack build pkg
+```
 
-**校验信息**（都会在签名前终止构建；`fpack doctor` 也会显示）：
+fpack 用 `pkgbuild` 创建把应用安装到 `/Applications` 的组件包（不可重定位，所以升级总是替换 /Applications 里的那份），再用 `productbuild` 创建分发包，同时支持 Apple 芯片和 Intel，不会弹出 Rosetta 提示。
 
-| 信息 | 含义 / 解决 |
+```yaml
+macos:
+  pkg:
+    identifier: com.example.app.pkg
+    title: My App
+    welcome: macos/installer/welcome.html
+    license: macos/installer/license.rtf
+    min_os: "11.0"
+    postinstall: macos/installer/postinstall.sh
+```
+
+- **签名**：pkg 需要单独的 **Developer ID Installer** 证书（`macos.sign.installer_identity`、`--installer-identity`），结果会用 `pkgutil --check-signature` 检查。没有它会生成未签名的 pkg 并给出提示；`--no-sign` 会关闭 pkg 签名。
+- **公证**：与 DMG 共用设置；只有已签名的 pkg 才会提交和装订，然后用 `spctl --assess --type install` 评估。
+- 其他选项：`readme`、`conclusion`、`background`、`install_location`、`version`、`preinstall`、`require_restart`、`relocatable`（脚本会自动设为可执行）。`min_os` 默认是工程的 `MACOSX_DEPLOYMENT_TARGET`。
+
+## 9. 使用推送、iCloud 等受限 entitlements 的应用
+
+如果应用使用了受限 entitlements（推送通知、iCloud、关联域名、钥匙串访问组），就必须有 Developer ID 描述文件，否则签名后的应用无法启动。阅读[描述文件](/platforms/macos-profiles)；加上 `--smoke-test` 可以在公证之前发现问题。
+
+## Flavor 与 CI
+
+Flavor 是 Xcode scheme（[Flavor](/guides/build-variants#flavor)）。在 CI 里做签名构建需要把证书导入临时钥匙串：[为 CI 导出证书](/platforms/macos-credentials#ci-zh)有完整的工作流。
+
+## 出问题时
+
+| 提示 | 处理 |
 | --- | --- |
-| `… 使用了受限 entitlements（…），Developer ID App 必须配合描述文件才能使用` | 未配置描述文件：设置 `macos.sign.provisioning_profile` |
-| `App 嵌入了 Xcode 的开发描述文件 “…”` / `… 嵌入了 Xcode 的开发描述文件`（doctor） | Xcode 嵌入了 Mac Team（开发）描述文件：配置 Developer ID 描述文件，fpack 会替换它 |
-| `… 是开发/Ad Hoc 描述文件（登记了 N 台设备）` | 下载的是 Development 描述文件：请创建 **Developer ID** 类型 |
-| `… 不是 Developer ID 描述文件（缺少 ProvisionsAllDevices）` | App Store 描述文件：请创建 **Developer ID** 类型 |
-| `… 是为另一张 Developer ID Application 证书（…）生成的，而不是签名证书 …` | 描述文件中的证书不是 fpack 用来签名的证书（例如证书重新创建过）；macOS 会记录 `Unsatisfied entitlements` 并拒绝启动：编辑描述文件，选择签名证书后重新下载 |
-| `… 属于团队 X，但签名证书属于团队 Y` | 描述文件与证书不属于同一团队 |
-| `… 对应的 App ID 是 TEAM.a，而不是 TEAM.b` | 描述文件是为其他 bundle id 创建的 |
-| `… 已于 YYYY-MM-DD 过期` | 重新生成并下载描述文件 |
-| `… 未授权 entitlement …` | 为 App ID 启用对应功能后重新生成描述文件 |
-| `entitlements 中 aps-environment 为 "development"，但描述文件只允许 "production"` | 在发布用 entitlements 中改为 `production` |
+| `signing identity … not found in the keychain` | 使用列出的证书，名称与打印的完全一致，或用 `--no-sign` |
+| 公证 `Invalid` | 阅读总结后的 Apple 日志；通常是内嵌代码未签名或缺少 Hardened Runtime |
+| 公证上传超时 | fpack 会重试上传两次；检查网络后重新构建（没有提交任何内容） |
+| 签名后的应用无法启动（`RBSRequestErrorDomain Code=5`） | 使用了受限 entitlements 却没有 Developer ID 描述文件：[描述文件](/platforms/macos-profiles) |
+| pkg 未签名 | 设置 `macos.sign.installer_identity`（与 App 证书不同的证书） |
 
-确实需要强行签名时，`macos.sign.profile_check: false`（或 `FPACK_MACOS_PROFILE_CHECK=false`）可跳过检查（描述文件仍会嵌入）。
-
-**启动测试**：设置 `macos.smoke_test: true`（或 `--smoke-test`）后，fpack 对签名后的 App 执行 `open -n`，等待 `macos.smoke_test_seconds`（默认 5，范围 1-300）秒，用 `pgrep` 确认仍在运行，再用 `pkill` 退出。若 App 已不在运行，构建失败并显示 `启动 … 后 App 已不在运行（崩溃或被 macOS 拒绝启动）`，同时给出可查看原因（amfid / RunningBoard）的 `log show` 命令。测试在公证之前进行，因此不会上传无法运行的 App。
-
-## macOS 安装包（pkg）
-
-`fpack build pkg` 用 `pkgbuild` 生成把 App 安装到 `/Applications` 的组件包（不可重定位，升级时总是覆盖 /Applications 中的版本），再用 `productbuild` 生成分发包（支持 Apple silicon 与 Intel，不会提示安装 Rosetta）。可在 `macos.pkg` 中设置 `identifier`、`install_location`、`title` 以及安装界面的 `welcome` / `readme` / `license` / `conclusion`（.html/.rtf/.txt）和 `background`（图片）。
-
-- **签名**：pkg 需要单独的 **“Developer ID Installer”** 证书（与签名 App 的 “Developer ID Application” 不同），通过 `macos.sign.installer_identity` / `FPACK_MACOS_INSTALLER_IDENTITY` / `--installer-identity` 配置；签名后自动用 `pkgutil --check-signature` 校验。未配置时生成未签名 pkg 并给出说明；`--no-sign` 同样关闭 pkg 签名。
-- **App 签名**：配置了 `macos.sign.identity` 时，pkg 中的 App 与 zip/DMG 一样先用 Developer ID 重新签名。
-- **公证**：与 DMG 共用公证配置；只有已签名的 pkg 才会提交公证并 `stapler staple`，最后用 `spctl --assess --type install` 评估。
-- **更多选项**：`min_os`（低于此版本拒绝安装，默认取工程的 `MACOSX_DEPLOYMENT_TARGET`）、`require_restart`、`relocatable`、`preinstall` / `postinstall` 脚本（自动设为可执行）、`version`。
-- `doctor` 会检查 pkgbuild/productbuild，并列出钥匙串中的安装包证书。
+更多见[故障排查页](/troubleshooting#macos-zh)。

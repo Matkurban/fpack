@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 import '../l10n/locales.dart';
+import 'directives.dart';
 
 /// Loads one route per page from [directory], merging the page's translations.
 ///
@@ -76,7 +77,7 @@ class LocalizedPageSource extends PageSource {
       body
         ..writeln('<div class="l10n-block" data-l10n="${locale.languageCode}" lang="${locale.htmlLang}">')
         ..writeln()
-        ..writeln(markdown.trim())
+        ..writeln(expandDirectives(markdown.trim(), (kind) => locale.strings.calloutTitle(kind)))
         ..writeln()
         ..writeln('</div>');
     }

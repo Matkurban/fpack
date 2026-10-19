@@ -29,7 +29,7 @@ class AppLocalizations {
 
   String get navOverview => Intl.message('Overview', name: 'navOverview', locale: locale);
 
-  String get navGettingStarted => Intl.message('Getting started', name: 'navGettingStarted', locale: locale);
+  String get navGettingStarted => Intl.message('Your first build', name: 'navGettingStarted', locale: locale);
 
   String get navInstallation => Intl.message('Installation', name: 'navInstallation', locale: locale);
 
@@ -40,16 +40,16 @@ class AppLocalizations {
 
   String get navTargets => Intl.message('Targets and artifacts', name: 'navTargets', locale: locale);
 
-  String get navConfiguration => Intl.message('Configuration', name: 'navConfiguration', locale: locale);
+  String get navConfiguration => Intl.message('fpack.yaml reference', name: 'navConfiguration', locale: locale);
 
   String get navEnvironment => Intl.message('Environment variables', name: 'navEnvironment', locale: locale);
 
   String get navPlatforms =>
-      Intl.message('Platform guides', name: 'navPlatforms', desc: 'Sidebar group title', locale: locale);
+      Intl.message('Platform tutorials', name: 'navPlatforms', desc: 'Sidebar group title', locale: locale);
 
-  String get navMacos => Intl.message('macOS (signing, notarization)', name: 'navMacos', locale: locale);
+  String get navMacos => Intl.message('macOS', name: 'navMacos', locale: locale);
 
-  String get navMore => Intl.message('More', name: 'navMore', desc: 'Sidebar group title', locale: locale);
+  String get navMore => Intl.message('Help and project', name: 'navMore', desc: 'Sidebar group title', locale: locale);
 
   String get navCi => Intl.message('CI recipes', name: 'navCi', locale: locale);
 
@@ -90,4 +90,53 @@ class AppLocalizations {
       Intl.message('This page does not exist or has moved.', name: 'notFoundMessage', locale: locale);
 
   String get notFoundHome => Intl.message('Go to the documentation home', name: 'notFoundHome', locale: locale);
+
+  String get navStart => Intl.message('Start here', name: 'navStart', desc: 'Sidebar group title', locale: locale);
+
+  String get navConcepts => Intl.message('How fpack works', name: 'navConcepts', locale: locale);
+
+  String get navMacosCredentials =>
+      Intl.message('macOS: certificates and credentials', name: 'navMacosCredentials', locale: locale);
+
+  String get navMacosProfiles => Intl.message('macOS: provisioning profiles', name: 'navMacosProfiles', locale: locale);
+
+  String get navGuides =>
+      Intl.message('Configuration guides', name: 'navGuides', desc: 'Sidebar group title', locale: locale);
+
+  String get navGuideProject => Intl.message('Names, versions and output', name: 'navGuideProject', locale: locale);
+
+  String get navGuideVariants =>
+      Intl.message('Flavors, entry points and defines', name: 'navGuideVariants', locale: locale);
+
+  String get navGuideSecrets => Intl.message('Secrets and variables', name: 'navGuideSecrets', locale: locale);
+
+  String get navGuideHooks => Intl.message('Hooks', name: 'navGuideHooks', locale: locale);
+
+  String get navGuideMulti => Intl.message('Many targets, one command', name: 'navGuideMulti', locale: locale);
+
+  String get navExitCodes => Intl.message('Exit codes and JSON output', name: 'navExitCodes', locale: locale);
+
+  String get navSchema => Intl.message('JSON Schema', name: 'navSchema', locale: locale);
+
+  String get previousPage => Intl.message('Previous', name: 'previousPage', locale: locale);
+
+  String get nextPage => Intl.message('Next', name: 'nextPage', locale: locale);
+
+  String get admonitionTip => Intl.message('Tip', name: 'admonitionTip', locale: locale);
+
+  String get admonitionNote => Intl.message('Note', name: 'admonitionNote', locale: locale);
+
+  String get admonitionWarning => Intl.message('Warning', name: 'admonitionWarning', locale: locale);
+
+  String get admonitionDanger => Intl.message('Danger', name: 'admonitionDanger', locale: locale);
+
+  String get pagesInSection => Intl.message('Where to go next', name: 'pagesInSection', locale: locale);
+
+  /// Default title of a callout of [kind] (`tip`, `note`, `warning`, `danger`).
+  String calloutTitle(String kind) => switch (kind) {
+    'tip' => admonitionTip,
+    'warning' => admonitionWarning,
+    'danger' => admonitionDanger,
+    _ => admonitionNote,
+  };
 }

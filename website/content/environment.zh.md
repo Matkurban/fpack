@@ -3,51 +3,7 @@ title: "环境变量"
 description: "所有 FPACK_* 变量以及 fpack 读取的其他变量。"
 ---
 
-| 变量 | 作用 |
-| --- | --- |
-| `FPACK_FLUTTER` | Flutter SDK 路径 |
-| `FPACK_CONFIG` | 配置文件路径 |
-| `FPACK_MODE` `FPACK_FLAVOR` `FPACK_ENTRY` `FPACK_BUILD_NAME` `FPACK_BUILD_NUMBER` | 构建参数 |
-| `FPACK_OUTPUT_DIR` `FPACK_OVERWRITE` `FPACK_SPLIT_PER_ABI` `FPACK_OBFUSCATE` | 输出 / Android / 混淆 |
-| `FPACK_ANDROID_KEYSTORE` `FPACK_ANDROID_KEYSTORE_BASE64` `FPACK_ANDROID_KEYSTORE_PASSWORD` `FPACK_ANDROID_KEY_ALIAS` `FPACK_ANDROID_KEY_PASSWORD` | Android 签名 |
-| `FPACK_IOS_EXPORT_METHOD` `FPACK_IOS_EXPORT_OPTIONS_PLIST` `FPACK_IOS_CODESIGN` | iOS 导出 |
-| `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_NOTARIZE_WAIT` `FPACK_MACOS_PROVISIONING_PROFILE` `FPACK_MACOS_PROFILE_CHECK` `FPACK_MACOS_SMOKE_TEST` `FPACK_DMG_TOOL` | macOS |
-| `FPACK_NOTARY_APPLE_ID` `FPACK_NOTARY_TEAM_ID` `FPACK_NOTARY_PASSWORD` `FPACK_NOTARY_API_KEY` `FPACK_NOTARY_API_KEY_ID` `FPACK_NOTARY_API_ISSUER` | macOS 公证凭证（Apple ID / API 密钥） |
-| `FPACK_WINDOWS_CERTIFICATE` `FPACK_WINDOWS_CERTIFICATE_PASSWORD` `FPACK_WINDOWS_CERT_THUMBPRINT` `FPACK_WINDOWS_CERT_SUBJECT` `FPACK_WINDOWS_SIGN_DLIB` `FPACK_WINDOWS_SIGN_DLIB_METADATA` | Windows 代码签名（.pfx、证书存储，或 Azure Trusted Signing 等 signtool dlib） |
-| `FPACK_LANG` | `zh` / `en`（默认跟随系统语言，见下文「输出语言」） |
-| `NO_COLOR` / `FPACK_NO_COLOR` / `FORCE_COLOR` | 颜色控制 |
-| `FPACK_CORE` | 指定原生核心二进制（开发用） |
-| `FPACK_HOME` | 核心缓存目录 |
-| `FPACK_REBUILD=1` | 强制先用本机 Go 重新编译核心（修改了 Go 源码时） |
-| `FPACK_GO` | 回退编译时使用的 Go（`none` 表示禁止本机编译） |
-| `FPACK_NO_DOWNLOAD=1` / `FPACK_DOWNLOAD_URL` | 禁止下载（直接本机编译） / 自定义下载地址（内网镜像）；见[启动器如何找到原生核心](/installation#launcher) |
-
-## 输出语言
-
-fpack（Go 核心和 Dart 启动器）在操作系统语言为中文（任何 `zh` 变体：简体、繁体、香港等）时使用中文，其余情况一律使用英文。所有内容都随之切换：提示信息、帮助、`doctor` / `list` 输出、错误提示、`fpack init` 生成的 `fpack.yaml` 注释，以及 `NOTARIZATION.md`。
-
-优先级（先匹配者生效）：
-
-1. `--lang zh|en`
-2. `FPACK_LANG=zh|en`
-3. 操作系统语言：
-   - **macOS**：系统设置 → 通用 → 语言与地区 中的第一个语言（`defaults read -g AppleLanguages`），其次 `AppleLocale`。终端通常按“地区”设置 `LANG`（即使界面是中文也常为 `en_US.UTF-8`），所以只有读取失败时才使用 `LANG` / `LANGUAGE`；显式设置的 `LC_ALL` 或 `LC_MESSAGES` 仍然优先。结果缓存在 `~/Library/Caches/fpack/os-language`，系统偏好设置变化后自动刷新。
-   - **Windows**：用户的显示语言（`GetUserDefaultUILanguage`，不启动子进程）；忽略 Git Bash/MSYS 设置的 `LANG`，显式的 `LC_ALL` / `LC_MESSAGES` 仍然优先。
-   - **Linux 等**：依次读取 `LC_ALL`、`LC_MESSAGES`、`LANGUAGE`（第一项）、`LANG`；跳过 `C` / `POSIX`。
-
-## fpack 读取的其他变量
-
-| 变量 | 用途 |
-| --- | --- |
-| `FLUTTER_ROOT`、`FVM_CACHE_PATH` | 查找 Flutter SDK（在 `--flutter`、`FPACK_FLUTTER`、`flutter.sdk` 与项目的 FVM 链接之后） |
-| `ANDROID_HOME` / `ANDROID_SDK_ROOT` | Android SDK 工具（`apksigner`），顺序与 Flutter 相同：先 `flutter config --android-sdk`，再这两个变量，最后默认安装目录 |
-| `JAVA_HOME` | `keytool` / Java 版本检查：先 `flutter config --jdk-dir` 与 Android Studio 自带的 JDK，再 `JAVA_HOME`，最后 `PATH` |
-| `XDG_CONFIG_HOME`、`APPDATA` | 读取 Flutter 设置文件的位置（`--android-sdk` / `--jdk-dir`） |
-| `LOCALAPPDATA`、`ProgramFiles`、`ProgramFiles(x86)` | Windows：Android SDK、Inno Setup、FVM 与 Flutter 的默认安装位置 |
-| `LC_ALL`、`LC_MESSAGES`、`LANGUAGE`、`LANG` | 输出语言（见上文） |
-| `NO_COLOR`、`FPACK_NO_COLOR`、`TERM=dumb`、`FORCE_COLOR` | 颜色；`TERM=dumb` 同时关闭进度动画 |
-| `COLUMNS` | 无法获取终端宽度时的表格宽度 |
-| `XDG_CACHE_HOME` | 启动器：Linux 上的缓存根目录（可被 `FPACK_HOME` 覆盖） |
+环境变量在[优先级](/guides/secrets#哪个设置优先)中位于命令行参数和 `fpack.yaml` 之间：参数覆盖变量，变量覆盖文件。本页按用途列出 fpack 读取的每个变量。如何用它们保管密钥，见[密钥与环境变量](/guides/secrets)。
 
 ## 对应 fpack.yaml 键的变量
 
@@ -97,3 +53,65 @@ fpack（Go 核心和 Dart 启动器）在操作系统语言为中文（任何 `z
 | `FPACK_WINDOWS_SIGN_DLIB_METADATA` | `windows.sign.dlib_metadata` | path | dlib 的元数据文件（/dmdf），如 Trusted Signing 的账户和证书配置。 |
 | `FPACK_SNAP_BUILD_MODE` | `linux.snap.build_mode` | `auto` \\| `destructive` \\| `lxd` \\| `multipass` | snapcraft 的构建方式：destructive（用 sudo 在本机构建，最快，适合 CI）、lxd 或 multipass（隔离的构建环境）。 |
 <!-- END GENERATED ENV -->
+
+## 按用途分类的变量
+
+| 变量 | 作用 |
+| --- | --- |
+| `FPACK_FLUTTER` | Flutter SDK 路径 |
+| `FPACK_CONFIG` | 配置文件路径 |
+| `FPACK_MODE` `FPACK_FLAVOR` `FPACK_ENTRY` `FPACK_BUILD_NAME` `FPACK_BUILD_NUMBER` | 构建参数 |
+| `FPACK_OUTPUT_DIR` `FPACK_OVERWRITE` `FPACK_SPLIT_PER_ABI` `FPACK_OBFUSCATE` | 输出 / Android / 混淆 |
+| `FPACK_ANDROID_KEYSTORE` `FPACK_ANDROID_KEYSTORE_BASE64` `FPACK_ANDROID_KEYSTORE_PASSWORD` `FPACK_ANDROID_KEY_ALIAS` `FPACK_ANDROID_KEY_PASSWORD` | Android 签名 |
+| `FPACK_IOS_EXPORT_METHOD` `FPACK_IOS_EXPORT_OPTIONS_PLIST` `FPACK_IOS_CODESIGN` | iOS 导出 |
+| `FPACK_MACOS_SIGN` `FPACK_MACOS_SIGN_IDENTITY` `FPACK_MACOS_INSTALLER_IDENTITY` `FPACK_MACOS_NOTARIZE` `FPACK_MACOS_NOTARY_PROFILE` `FPACK_NOTARIZE_WAIT` `FPACK_MACOS_PROVISIONING_PROFILE` `FPACK_MACOS_PROFILE_CHECK` `FPACK_MACOS_SMOKE_TEST` `FPACK_DMG_TOOL` | macOS |
+| `FPACK_NOTARY_APPLE_ID` `FPACK_NOTARY_TEAM_ID` `FPACK_NOTARY_PASSWORD` `FPACK_NOTARY_API_KEY` `FPACK_NOTARY_API_KEY_ID` `FPACK_NOTARY_API_ISSUER` | macOS 公证凭证（Apple ID / API 密钥） |
+| `FPACK_WINDOWS_CERTIFICATE` `FPACK_WINDOWS_CERTIFICATE_PASSWORD` `FPACK_WINDOWS_CERT_THUMBPRINT` `FPACK_WINDOWS_CERT_SUBJECT` `FPACK_WINDOWS_SIGN_DLIB` `FPACK_WINDOWS_SIGN_DLIB_METADATA` | Windows 代码签名（.pfx、证书存储，或 Azure Trusted Signing 等 signtool dlib） |
+| `FPACK_LANG` | `zh` / `en`（默认跟随系统语言，见下文「输出语言」） |
+| `NO_COLOR` / `FPACK_NO_COLOR` / `FORCE_COLOR` | 颜色控制 |
+| `FPACK_CORE` | 指定原生核心二进制（开发用） |
+| `FPACK_HOME` | 核心缓存目录 |
+| `FPACK_REBUILD=1` | 强制先用本机 Go 重新编译核心（修改了 Go 源码时） |
+| `FPACK_GO` | 回退编译时使用的 Go（`none` 表示禁止本机编译） |
+| `FPACK_NO_DOWNLOAD=1` / `FPACK_DOWNLOAD_URL` | 禁止下载（直接本机编译） / 自定义下载地址（内网镜像）；见[启动器如何找到原生核心](/installation#launcher-zh) |
+
+## 输出语言
+
+fpack（Go 核心和 Dart 启动器）在操作系统语言为中文（任何 `zh` 变体：简体、繁体、香港等）时使用中文，其余情况一律使用英文。所有内容都随之切换：提示信息、帮助、`doctor` / `list` 输出、错误提示、`fpack init` 生成的 `fpack.yaml` 注释，以及 `NOTARIZATION.md`。
+
+优先级（先匹配者生效）：
+
+1. `--lang zh|en`
+2. `FPACK_LANG=zh|en`
+3. 操作系统语言：
+   - **macOS**：系统设置 → 通用 → 语言与地区 中的第一个语言（`defaults read -g AppleLanguages`），其次 `AppleLocale`。终端通常按“地区”设置 `LANG`（即使界面是中文也常为 `en_US.UTF-8`），所以只有读取失败时才使用 `LANG` / `LANGUAGE`；显式设置的 `LC_ALL` 或 `LC_MESSAGES` 仍然优先。结果缓存在 `~/Library/Caches/fpack/os-language`，系统偏好设置变化后自动刷新。
+   - **Windows**：用户的显示语言（`GetUserDefaultUILanguage`，不启动子进程）；忽略 Git Bash/MSYS 设置的 `LANG`，显式的 `LC_ALL` / `LC_MESSAGES` 仍然优先。
+   - **Linux 等**：依次读取 `LC_ALL`、`LC_MESSAGES`、`LANGUAGE`（第一项）、`LANG`；跳过 `C` / `POSIX`。
+
+## fpack 读取的其他变量
+
+| 变量 | 用途 |
+| --- | --- |
+| `FLUTTER_ROOT`、`FVM_CACHE_PATH` | 查找 Flutter SDK（在 `--flutter`、`FPACK_FLUTTER`、`flutter.sdk` 与项目的 FVM 链接之后） |
+| `ANDROID_HOME` / `ANDROID_SDK_ROOT` | Android SDK 工具（`apksigner`），顺序与 Flutter 相同：先 `flutter config --android-sdk`，再这两个变量，最后默认安装目录 |
+| `JAVA_HOME` | `keytool` / Java 版本检查：先 `flutter config --jdk-dir` 与 Android Studio 自带的 JDK，再 `JAVA_HOME`，最后 `PATH` |
+| `XDG_CONFIG_HOME`、`APPDATA` | 读取 Flutter 设置文件的位置（`--android-sdk` / `--jdk-dir`） |
+| `LOCALAPPDATA`、`ProgramFiles`、`ProgramFiles(x86)` | Windows：Android SDK、Inno Setup、FVM 与 Flutter 的默认安装位置 |
+| `LC_ALL`、`LC_MESSAGES`、`LANGUAGE`、`LANG` | 输出语言（见上文） |
+| `NO_COLOR`、`FPACK_NO_COLOR`、`TERM=dumb`、`FORCE_COLOR` | 颜色；`TERM=dumb` 同时关闭进度动画 |
+| `COLUMNS` | 无法获取终端宽度时的表格宽度 |
+| `XDG_CACHE_HOME` | 启动器：Linux 上的缓存根目录（可被 `FPACK_HOME` 覆盖） |
+
+## fpack 为钩子设置的变量
+
+fpack 把这些变量传给[钩子](/guides/hooks)；它们是输出，不是设置。
+
+| 变量 | 值 |
+| --- | --- |
+| `FPACK_PROJECT_ROOT` | 项目目录 |
+| `FPACK_OUTPUT_DIR` | 产物目录 |
+| `FPACK_VERSION`、`FPACK_BUILD_NUMBER` | 版本名和构建号 |
+| `FPACK_MODE`、`FPACK_FLAVOR` | 构建模式和 flavor |
+| `FPACK_TARGET` | 目标（`pre_package` / `post_package`） |
+| `FPACK_ARTIFACT`、`FPACK_ARTIFACTS` | 产物（`post_package`、`post_build`） |
+| `FPACK_SUCCESS` | `1` 或 `0`（`post_build`） |

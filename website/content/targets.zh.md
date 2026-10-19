@@ -3,6 +3,8 @@ title: "目标与产物"
 description: "每个目标产出什么、在哪里构建、需要哪些工具。"
 ---
 
+共 15 个目标，分属 6 个平台。每个平台的完整流程见教程：[Android](/platforms/android)、[iOS](/platforms/ios)、[macOS](/platforms/macos)、[Windows](/platforms/windows)、[Linux](/platforms/linux)、[Web](/platforms/web)。
+
 文件名模板默认为 `{app}{-flavor}-{version}{+build}-{platform}{-arch}{-variant}{-mode}`（release 模式不带 mode）。
 
 | 目标 | 需要的系统 | 产物 | 使用的工具 |

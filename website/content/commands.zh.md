@@ -1,67 +1,188 @@
 ---
 title: "命令"
-description: "fpack 的所有命令与参数。"
+description: "每个 fpack 命令和选项，附示例。"
 ---
 
-```
-fpack build [目标…] [选项] [-- 透传给 flutter 的参数]
-fpack doctor          检查每个目标的前置条件，并给出修复方法
-fpack list            列出所有目标、产物格式，以及本机能否构建
-fpack init            生成列出全部键、带中文/英文注释的 fpack.yaml（-y/--yes 用检测到的默认值；
-                      已存在时写入 fpack.yaml.new 并显示差异，--force 才覆盖）
-fpack schema          输出 fpack.yaml 的 JSON Schema（-o FILE 写入文件）
-fpack notarize status [目录|ID]   查询 macOS 公证提交的状态（读取 dist/…/notarization.json）
-fpack notarize finish [目录]      等待公证结果、装订票据、更新 SHA256SUMS
-fpack clean           删除 build/fpack 临时文件；--dist 同时删除 dist/；--flutter-clean 运行 flutter clean；--all 全部
-fpack version         版本信息（--version / -V 同义）
-fpack help <命令>     查看命令帮助
+```text
+fpack build [目标…] [选项] [-- 传给 flutter 的参数]
+fpack doctor [目标…]         检查每个目标的前置条件，并给出修复办法
+fpack list                   列出所有目标、产物格式以及这台机器能否构建
+fpack init                   写出列出所有键的 fpack.yaml，带中英文注释
+fpack schema                 打印 fpack.yaml 的 JSON Schema
+fpack notarize status|finish 查询或完成 macOS 公证提交
+fpack clean                  删除 fpack 的临时文件（可选地也删除 dist/ 或 flutter 构建输出）
+fpack version                版本信息（等同于 --version / -V）
+fpack help <命令>            命令的帮助
 ```
 
-全局选项：`-C, --project DIR`、`--config FILE`、`--flutter SDK`、`--lang zh|en`、`-v, --verbose`、`--json`、`--no-color`、`-y, --yes`。
+别名：`build` = `b`，`doctor` = `check`，`list` = `ls` / `targets`。
 
-## build 选项
+## 全局选项
+
+对所有命令都有效，写在命令前后都行。
 
 | 选项 | 说明 |
 | --- | --- |
-| `-a, --all` | 构建本机能构建的全部目标，其余跳过并说明原因 |
-| `-n, --dry-run` | 打印完整计划与精确命令，不执行任何操作 |
-| `-m, --mode` / `--release` `--profile` `--debug` | 构建模式（默认 release） |
-| `--flavor NAME` | Android productFlavor / Xcode scheme。名称不在检测到的 flavor 中时报错（退出码 3，并给出建议）；如果项目中未检测到任何 flavor，则只给出警告 |
-| `-t, --target FILE` | 入口文件，例如 `lib/main_prod.dart` |
-| `--dart-define K=V`（可重复） / `--dart-define-from-file FILE` | 编译期变量 |
-| `--build-name X.Y.Z` / `--build-number N` | 覆盖 pubspec 中的版本 |
-| `--split-per-abi[=true\|both]` / `--abis LIST` | APK 按 ABI 拆分；`both` 同时保留通用包 |
-| `--obfuscate` / `--split-debug-info DIR` | 混淆；符号默认保存到 `<输出目录>/debug-info/<平台>` |
-| `-o, --output DIR` / `-f, --force` | 输出目录 / 允许覆盖 |
-| `--export-method M` / `--export-options-plist FILE` / `--no-codesign` | iOS 导出 |
-| `--sign` `--no-sign` `--sign-identity ID` `--installer-identity ID` `--notarize` `--no-notarize` `--notarize-no-wait` `--notary-profile NAME` `--dmg-tool T` | macOS 签名（App / pkg）、公证（`--notarize-no-wait`：提交后不等待）、DMG 工具 |
-| `--base-href PATH` / `--wasm` | Web |
-| `-- …` | 之后的参数原样传给 `flutter build`，例如 `-- --no-tree-shake-icons` |
+| `-C`、`--project 目录` | Flutter 项目目录（默认：当前目录或含有 `pubspec.yaml` 的上级目录） |
+| `--config 文件` | 配置文件（默认：项目里的 `fpack.yaml`；`FPACK_CONFIG`） |
+| `--flutter SDK` | Flutter SDK 根目录（默认：FVM、`PATH`、`FLUTTER_ROOT` 等；见[用哪个 Flutter？](/guides/build-variants#用哪个-flutter)） |
+| `--lang zh\|en` | 输出语言（默认取你的系统语言） |
+| `-v`、`--verbose` | 输出工具的完整输出 |
+| `--json` | 向 stdout 输出机器可读的 JSON 结果（[格式](/exit-codes#json-zh)） |
+| `--no-color` | 关闭颜色 |
+| `-y`、`--yes` | 默认回答“是”/使用默认值 |
+| `-h`、`--help` | 显示帮助 |
+| `-V`、`--version` | 打印版本 |
+| `--wrapper-info` | 启动器诊断：使用的是哪个原生核心、来自哪里（[安装](/installation#launcher-zh)） |
 
-示例：
+**优先级**：命令行参数 > `FPACK_*` 环境变量 > `fpack.yaml` > 默认值。
+
+## `fpack build`
+
+构建并把目标打包到 `dist/`。`fpack build apk aab`、`fpack build --all`，不带目标时使用 `build.targets` 里的列表。
+
+### 构建什么、怎么构建
+
+| 选项 | 说明 | 指南 |
+| --- | --- | --- |
+| `-a`、`--all` | 构建这台机器能构建的每个目标；其余的注明原因并跳过 | [多目标](/guides/many-targets) |
+| `-n`、`--dry-run` | 打印完整计划和确切命令，什么都不运行 | [多目标](/guides/many-targets#预演与查看) |
+| `-m`、`--mode MODE`、`--release`、`--profile`、`--debug` | 构建模式（默认 `release`） | [构建模式](/guides/build-variants#构建模式) |
+| `--flavor 名称` | Android productFlavor / Xcode scheme。名称未知会报错（退出码 3，并给出建议）；没有检测到 flavor 时只是警告 | [Flavor](/guides/build-variants#flavor) |
+| `-t`、`--target 文件` | 入口文件，如 `lib/main_prod.dart` | [入口文件](/guides/build-variants#入口文件) |
+| `--dart-define K=V`（可重复）、`--dart-define-from-file 文件`（可重复） | 编译期变量 | [编译期变量](/guides/build-variants#编译期变量) |
+| `--build-name X.Y.Z`、`--build-number N` | 覆盖 pubspec 里的版本 | [版本](/guides/project-and-output#版本) |
+| `--obfuscate`、`--split-debug-info 目录` | 混淆；符号默认放在 `<输出目录>/debug-info/<平台>` | [混淆](/guides/build-variants#混淆与调试符号) |
+| `-o`、`--output 目录`、`-f`、`--force` | 输出目录；允许覆盖 | [输出](/guides/project-and-output#产物放在哪里) |
+| `-- …` | `--` 之后的所有内容传给 `flutter build`，如 `-- --no-tree-shake-icons` | [Flutter 选项](/guides/build-variants#图标与其他-flutter-选项) |
+
+### Android
+
+| 选项 | 说明 |
+| --- | --- |
+| `--split-per-abi[=true\|both]` | 每个 ABI 一个 APK；`both` 同时保留通用 APK |
+| `--abis 列表` | 要构建的 ABI，如 `arm64-v8a,armeabi-v7a` |
+
+见 [Android](/platforms/android#apk-变体)。
+
+### iOS
+
+| 选项 | 说明 |
+| --- | --- |
+| `--export-method M` | `app-store-connect`、`app-store`、`release-testing`、`ad-hoc`、`development`、`debugging`、`enterprise` |
+| `--export-options-plist 文件` | 使用你自己的 `ExportOptions.plist` |
+| `--no-codesign` | 构建未签名的 IPA |
+
+见 [iOS](/platforms/ios#其他分发方式)。
+
+### macOS
+
+| 选项 | 说明 |
+| --- | --- |
+| `--sign`、`--no-sign` | 用 Developer ID 给 app / DMG 签名；`--no-sign` 同时关闭公证 |
+| `--sign-identity ID` | codesign 证书（Developer ID Application） |
+| `--installer-identity ID` | `.pkg` 签名证书（Developer ID Installer） |
+| `--notarize`、`--no-notarize` | 公证并装订 zip / DMG / pkg，或跳过（本地构建更快） |
+| `--notarize-no-wait` | 提交后不等待就结束（之后用 `fpack notarize finish`） |
+| `--notary-profile 名称` | `notarytool` 钥匙串配置 |
+| `--provisioning-profile 文件` | 要嵌入的 Developer ID 描述文件 |
+| `--smoke-test` | 启动已签名的应用，检查它是否一直在运行 |
+| `--dmg-tool T` | `auto`、`hdiutil` 或 `create-dmg` |
+
+见 [macOS](/platforms/macos#3-配置签名与公证)和[描述文件](/platforms/macos-profiles)。
+
+### Web
+
+| 选项 | 说明 |
+| --- | --- |
+| `--base-href 路径` | `<base href>`，如 `/app/` |
+| `--wasm` | 用 WebAssembly 构建 |
+
+见 [Web](/platforms/web)。
+
+### 示例
 
 ```bash
 fpack build apk aab --flavor prod --dart-define-from-file env/prod.json
 fpack build apk --split-per-abi=both
 fpack build ipa --export-method ad-hoc
-fpack build ipa --no-codesign                # 未签名 IPA（Payload 结构）
+fpack build ipa --no-codesign                # 未签名的 IPA（Payload 布局）
 fpack build macos dmg                        # 按 fpack.yaml 的 macos.sign 签名/公证（未配置则不签名）
-fpack build dmg --no-notarize                # 本地快速出包
-fpack build dmg --notarize-no-wait           # 提交公证后立即结束，之后 fpack notarize finish
-fpack build macos dmg pkg                    # zip + DMG + pkg 安装包，只跑一次 flutter build
+fpack build dmg --no-notarize                # 快速的本地包
+fpack build dmg --notarize-no-wait           # 提交后退出；之后：fpack notarize finish
+fpack build macos dmg pkg                    # 一次 flutter 构建，得到 zip + DMG + pkg 安装包
 fpack build --all --json > result.json
 fpack -C apps/client build web --base-href /app/
 ```
 
-**优先级**：命令行参数 > `FPACK_*` 环境变量 > `fpack.yaml` > 默认值。
+## `fpack doctor`
 
-**不指定目标**：`fpack build` 不带目标时构建 `fpack.yaml` 中的 `build.targets`；没有设置该键时以退出码 2 结束，并提示要构建哪些目标。
+```bash
+fpack doctor                  # 所有目标
+fpack doctor apk ipa dmg      # 只检查这几个
+fpack doctor --json
+```
 
-**中断**：按一次 Ctrl-C 会优雅停止正在运行的 flutter/gradle/xcodebuild（整个进程组），再按一次强制结束；退出码 130。
+按目标检查前置条件，并给出缺失项的修复办法：Flutter、Dart、项目、Android SDK、许可和 Java、签名配置和密钥库、Xcode 和 CocoaPods、iOS 团队和证书、Developer ID 证书、描述文件和 entitlements、Visual Studio、Inno Setup、`signtool`、Linux 工具链和打包工具、带 LXD 或 Multipass 的 snapcraft。发现问题时退出码为 1。
 
-**Monorepo**：在项目子目录中运行会向上查找 `pubspec.yaml`；在仓库根目录运行时会列出找到的 Flutter 项目，用 `-C <目录>` 选择。
+## `fpack list`
 
-**Flutter SDK 查找顺序**：`--flutter` → `FPACK_FLUTTER` → `fpack.yaml` 的 `flutter.sdk` → FVM（`.fvm/flutter_sdk`、`.fvmrc`）→ `FLUTTER_ROOT` → `PATH` → 常见安装位置（如 `~/develop/flutter`、`~/flutter`）。
+```bash
+fpack list                    # 也可以：fpack ls、fpack targets
+fpack list --json
+```
+
+一张表，列出每个目标的平台、输出扩展名，以及这台机器能否构建（以及为什么不能）。
+
+## `fpack init`
+
+```bash
+fpack init                    # 交互式
+fpack init --yes              # 接受检测到的默认值
+fpack init --force            # 覆盖已有的 fpack.yaml
+```
+
+写出一个带注释的 `fpack.yaml`，列出每个键，并预填检测到的值。如果 `fpack.yaml` 已存在，则写出 `fpack.yaml.new` 并显示差异；`--force` 覆盖。`-y` / `--yes` 不询问，直接接受默认值。
+
+## `fpack schema`
+
+```bash
+fpack schema                              # 打印到 stdout
+fpack schema -o .vscode/fpack.schema.json # 写入文件
+```
+
+打印 `fpack.yaml` 的 JSON Schema（[JSON Schema](/schema)）。
+
+## `fpack notarize`
+
+```bash
+fpack notarize status                  # 最新 notarization.json 里的每个提交
+fpack notarize status dist/1.2.0+5     # 指定的输出目录
+fpack notarize status 2efe2717-52ef-…  # 单个提交 ID
+fpack notarize finish                  # 等待、给通过的文件装订、更新 SHA256SUMS
+```
+
+`status` 向 Apple 查询 `<输出目录>/notarization.json`（上传后立即写入）里记录的每个提交的状态。`finish` 等待未完成的提交，给通过的 DMG/pkg/app zip 装订票据，重写校验和文件，并对被拒绝的提交下载并总结 Apple 的日志。凭证来自 `macos.sign`（或记录下来的钥匙串配置、API 密钥；用 Apple ID 提交需要 `FPACK_NOTARY_PASSWORD`）。见 [macOS：等待公证](/platforms/macos#5-等待公证)。
+
+## `fpack clean`
+
+```bash
+fpack clean                   # 删除 build/fpack
+fpack clean --dist --yes      # 同时不询问地删除 dist/
+fpack clean --all             # --dist + --flutter-clean
+fpack clean --dry-run         # 显示将删除什么
+```
+
+| 选项 | 说明 |
+| --- | --- |
+| `--dist` | 同时删除输出目录（会先询问） |
+| `--flutter-clean` | 同时运行 `flutter clean` |
+| `--all` | `--dist` + `--flutter-clean` |
+| `-n`、`--dry-run` | 显示将删除什么 |
+
+## `fpack version` 和 `fpack help`
+
+`fpack version`（或 `fpack --version`）打印 fpack 版本以及核心的平台和 Go 版本（例如 `… (core linux/amd64, go1.27.2)`）。`fpack help <命令>` 打印下面的帮助。
 
 ## 每个命令的完整帮助
 
