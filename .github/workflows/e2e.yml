@@ -3,14 +3,21 @@ name: E2E
 # Installs fpack from this checkout on every host OS and packages a freshly
 # created Flutter app for real.
 on:
-  workflow_dispatch:
+  # Runs only when the version changes (both files hold nothing but the
+  # version) or by hand: gh workflow run e2e.yml
   push:
     branches: [main]
+    paths: [go/internal/version/version.go, lib/src/version.dart]
+  workflow_dispatch:
 
 # One pinned Flutter version for every job (the action's "latest stable"
 # lookup once resolved a release that had no macOS arm64 build).
 env:
   FLUTTER_VERSION: "3.47.6"
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   windows:

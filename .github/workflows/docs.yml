@@ -1,11 +1,13 @@
 name: Docs
 
 # Builds the Jaspr documentation site in website/ and deploys it to GitHub
-# Pages (https://matkurban.github.io/fpack/). Pull requests only build it.
+# Pages (https://matkurban.github.io/fpack/).
 on:
+  # Runs only when the version changes (both files hold nothing but the
+  # version) or by hand: gh workflow run docs.yml
   push:
     branches: [main]
-  pull_request:
+    paths: [go/internal/version/version.go, lib/src/version.dart]
   workflow_dispatch:
 
 permissions:
@@ -52,7 +54,7 @@ jobs:
           path: website/build/jaspr
 
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     permissions:

@@ -37,3 +37,5 @@ FPACK_CORE=$PWD/prebuilt/darwin-arm64/fpack-core fpack doctor   # debug with a s
 ```
 
 Releasing: bump the version in `pubspec.yaml`, `lib/src/version.dart` and `go/internal/version/version.go` together (`scripts/check_versions.sh` checks them), update `CHANGELOG.md`, push a `vX.Y.Z` tag. `release.yml` cross-compiles, creates the GitHub Release (binaries + `checksums.txt` + offline bundle) and optionally publishes to pub.dev.
+
+To save Actions minutes, `ci.yml`, `e2e.yml`, `docs.yml` and `snap-modes.yml` run only when a push to `main` changes the version (`go/internal/version/version.go` or `lib/src/version.dart`) or when started by hand (`gh workflow run ci.yml`); `release.yml` runs on a `v*` tag. Run the tests above locally before pushing.

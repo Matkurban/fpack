@@ -5,13 +5,19 @@ name: Snap build modes
 # by e2e.yml. Each job builds the snap, installs it, starts it under Xvfb and
 # removes it.
 on:
-  workflow_dispatch:
+  # Runs only when the version changes (both files hold nothing but the
+  # version) or by hand: gh workflow run snap-modes.yml
   push:
-    branches: [main, snap-modes]
-    paths: ["go/internal/targets/snap*.go", ".github/workflows/snap-modes.yml", "example/**"]
+    branches: [main]
+    paths: [go/internal/version/version.go, lib/src/version.dart]
+  workflow_dispatch:
 
 env:
   FLUTTER_VERSION: "3.47.6"
+
+concurrency:
+  group: snap-modes-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   snap:

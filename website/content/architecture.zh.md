@@ -37,3 +37,5 @@ FPACK_CORE=$PWD/prebuilt/darwin-arm64/fpack-core fpack doctor   # 用指定核�
 ```
 
 发布：同时修改 `pubspec.yaml`、`lib/src/version.dart`、`go/internal/version/version.go` 中的版本号（`scripts/check_versions.sh` 会检查），更新 `CHANGELOG.md`，推送 `vX.Y.Z` 标签。`release.yml` 会交叉编译、创建 GitHub Release（二进制 + `checksums.txt` + 离线包），并可选发布到 pub.dev。
+
+为节省 Actions 分钟数，`ci.yml`、`e2e.yml`、`docs.yml` 和 `snap-modes.yml` 只在推送到 `main` 且版本号变化（`go/internal/version/version.go` 或 `lib/src/version.dart`）时运行，或手动触发（`gh workflow run ci.yml`）；`release.yml` 在推送 `v*` 标签时运行。推送前请在本地运行上面的测试。

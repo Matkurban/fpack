@@ -1,9 +1,16 @@
 name: CI
 
 on:
+  # Runs only when the version changes (both files hold nothing but the
+  # version) or by hand: gh workflow run ci.yml
   push:
     branches: [main]
-  pull_request:
+    paths: [go/internal/version/version.go, lib/src/version.dart]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
