@@ -43,7 +43,7 @@ func doctorCommand() *command {
 		h := host.Current()
 		ctxT, err := build.NewContext(build.Options{ProjectDir: p.s("project"), ConfigPath: p.s("config"), FlutterPath: p.s("flutter"), Getenv: e.Getenv})
 		var nf *project.ErrNotFound
-		in := doctor.Input{Host: h, Tools: targets.SystemTools{}, Only: only}
+		in := doctor.Input{Host: h, Tools: targets.SystemTools{}, Only: only, Getenv: e.Getenv, Verbose: p.b("verbose")}
 		switch {
 		case err == nil:
 			in.Ctx = ctxT

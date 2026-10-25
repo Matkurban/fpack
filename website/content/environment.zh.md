@@ -74,6 +74,7 @@ description: "所有 FPACK_* 变量以及 fpack 读取的其他变量。"
 | `FPACK_REBUILD=1` | 强制先用本机 Go 重新编译核心（修改了 Go 源码时） |
 | `FPACK_GO` | 回退编译时使用的 Go（`none` 表示禁止本机编译） |
 | `FPACK_NO_DOWNLOAD=1` / `FPACK_DOWNLOAD_URL` | 禁止下载（直接本机编译） / 自定义下载地址（内网镜像）；见[启动器如何找到原生核心](/installation#launcher-zh) |
+| `FPACK_SKIP_UPDATE_CHECK=1` | 跳过 `fpack doctor` 的 pub.dev 版本检查（CI / 离线） |
 
 ## 输出语言
 

@@ -48,7 +48,13 @@ func TestMissingJavaMeansAndroidNotReady(t *testing.T) {
 	aab, _ := targets.Get("aab")
 	run := func(env *targets.AndroidEnv) *Report {
 		c := androidCtx(t, env)
-		return Run(Input{Ctx: c, SDK: c.SDK, Host: c.Host, Tools: noTools{}, Only: []targets.Target{apk, aab}})
+		return Run(Input{Ctx: c, SDK: c.SDK, Host: c.Host, Tools: noTools{}, Only: []targets.Target{apk, aab},
+			Getenv: func(k string) string {
+				if k == EnvSkipUpdateCheck {
+					return "1"
+				}
+				return ""
+			}})
 	}
 	r := run(&targets.AndroidEnv{SDK: "/android", Licenses: true})
 	if len(r.Ready) != 0 {

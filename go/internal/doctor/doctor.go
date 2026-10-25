@@ -68,6 +68,10 @@ type Input struct {
 	Tools     targets.Tools
 	Only      []targets.Target // restrict to these targets
 	WrapperOK string           // wrapper/core version info
+	Getenv    func(string) string
+	Verbose   bool
+	// UpdateGet fetches the pub.dev package JSON. nil uses a short-timeout HTTP client.
+	UpdateGet version.Getter
 }
 
 // Run performs all checks.
@@ -206,6 +210,9 @@ func Run(in Input) *Report {
 			}
 		}
 		r.Groups = append(r.Groups, g)
+	}
+	if line := updateLine(version.Version, in.Getenv, in.Verbose, in.UpdateGet); line != nil {
+		r.General = append(r.General, *line)
 	}
 	count := func(lines []Line) {
 		for _, l := range lines {

@@ -6,6 +6,11 @@ description: "每个 fpack 版本的变更。"
 更新日志仅提供英文版本。
 
 <!-- BEGIN GENERATED CHANGELOG -->
+## 1.1.18
+
+### Added
+- `fpack doctor` checks the installed package version against the latest on pub.dev (short timeout; never fails doctor when offline). Outdated installs get a tip to run `dart pub global activate fpack`; set `FPACK_SKIP_UPDATE_CHECK=1` to skip (CI).
+
 ## 1.1.17
 
 ### Fixed

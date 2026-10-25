@@ -125,6 +125,8 @@ fpack doctor --json
 
 Checks the prerequisites per target and shows how to fix what is missing: Flutter, Dart, the project, Android SDK, licenses and Java, signing setup and keystore, Xcode and CocoaPods, the iOS team and certificates, Developer ID identities, provisioning profiles and entitlements, Visual Studio, Inno Setup, `signtool`, Linux toolchain and packaging tools, snapcraft with LXD or Multipass. Exit code 1 when problems were found.
 
+Also compares the installed package version with the latest on [pub.dev](https://pub.dev/packages/fpack) (about 2.5s timeout; offline/failure never fails doctor). When outdated, prints a tip to run `dart pub global activate fpack`; when current, stays quiet unless `--verbose`. Set `FPACK_SKIP_UPDATE_CHECK=1` in CI to skip the check.
+
 ## `fpack list`
 
 ```bash

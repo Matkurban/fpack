@@ -20,7 +20,7 @@ fpack doctor
 ```
 
 ```text
-fpack doctor  ·  fpack 1.1.17  ·  linux/amd64
+fpack doctor  ·  fpack 1.1.18  ·  linux/amd64
 
 General
   ✓ Flutter 3.47.7 (stable) · /home/me/flutter  [PATH]

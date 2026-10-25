@@ -125,6 +125,8 @@ fpack doctor --json
 
 按目标检查前置条件，并给出缺失项的修复办法：Flutter、Dart、项目、Android SDK、许可和 Java、签名配置和密钥库、Xcode 和 CocoaPods、iOS 团队和证书、Developer ID 证书、描述文件和 entitlements、Visual Studio、Inno Setup、`signtool`、Linux 工具链和打包工具、带 LXD 或 Multipass 的 snapcraft。发现问题时退出码为 1。
 
+还会对照 [pub.dev](https://pub.dev/packages/fpack) 上的最新版本（约 2.5 秒超时；离线/失败不影响退出码）。有更新时提示 `dart pub global activate fpack`；已是最新则默认不输出（`--verbose` 会显示一行）。CI 可设 `FPACK_SKIP_UPDATE_CHECK=1` 跳过。
+
 ## `fpack list`
 
 ```bash

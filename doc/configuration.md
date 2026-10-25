@@ -703,6 +703,7 @@ macos:
 | `FPACK_REBUILD` | 未设置 | 设为 `1` 时忽略缓存，先用本机 Go 从包内源码编译核心（开发 fpack 本身时用）。 |
 | `FPACK_GO` | 自动查找（PATH、`/usr/local/go/bin`、`/opt/homebrew/bin` 等） | 回退编译时使用的 Go；设为 `none` 表示禁止本机编译（下载失败时直接报错）。 |
 | `FPACK_NO_DOWNLOAD` | 未设置 | 设为 `1` 时禁止从 GitHub Release 下载核心（离线/内网：使用包内二进制或直接本机编译）。 |
+| `FPACK_SKIP_UPDATE_CHECK` | 未设置 | 设为 `1` 时跳过 `fpack doctor` 对 pub.dev 最新版本的检查（CI / 离线）。 |
 | `FPACK_DOWNLOAD_URL` | `https://github.com/Matkurban/fpack/releases/download/v<版本>/` | 核心下载地址（内网镜像）。目录下需要 `checksums.txt` 和 `fpack-core-<os>-<arch>[.exe]`，下载后会校验 SHA-256。 |
 
 核心的查找顺序（**优先使用经过校验的预编译二进制**）：`FPACK_CORE` → 缓存（版本匹配时）→ 包内预编译二进制（按 `prebuilt/manifest.json` 校验 SHA-256）→ 从 GitHub Release（或 `FPACK_DOWNLOAD_URL`）下载并按 `checksums.txt` 校验 SHA-256 → **只有下载失败或被禁用时**才用本机 Go 编译包内源码，此时会提示 `fpack: note: no verified prebuilt core available (<原因>); fpack: falling back to a local build from the bundled sources with <Go 版本> (<路径>)`。`FPACK_REBUILD=1` 时先本机编译。

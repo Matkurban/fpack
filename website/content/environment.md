@@ -75,6 +75,7 @@ Generated from the key registry. Any value in `fpack.yaml` can also reference ar
 | `FPACK_REBUILD=1` | build the core with local Go first (after changing the Go sources) |
 | `FPACK_GO` | the Go used for the fallback build (`none` disables local builds) |
 | `FPACK_NO_DOWNLOAD=1` / `FPACK_DOWNLOAD_URL` | never download (build locally) / download mirror (intranet); see [how the launcher finds the native core](/installation#launcher) |
+| `FPACK_SKIP_UPDATE_CHECK=1` | skip the pub.dev version check in `fpack doctor` (CI / offline) |
 
 ## Output language
 

@@ -7,7 +7,7 @@ fpack is built for CI: no prompts, stable exit codes, JSON output, redacted logs
 
 ## Principles
 
-- **Pin the version** so CI is reproducible: `dart pub global activate fpack 1.1.17`.
+- **Pin the version** so CI is reproducible: `dart pub global activate fpack 1.1.18`.
 - **Build each platform on its own OS.** iOS and macOS on `macos-*`, Windows on `windows-*`, Linux on `ubuntu-*`; Android and web run anywhere ([why](/concepts#targets-and-artifacts)).
 - **Secrets through environment variables.** Never in `fpack.yaml` ([Secrets and variables](/guides/secrets)).
 - **Upload `dist/`.** It contains the artifacts and `SHA256SUMS`.
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.17 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.18 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build apk aab --split-per-abi=both
         env:
           FPACK_ANDROID_KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -44,7 +44,7 @@ Create the secret with `base64 -i upload.jks | pbcopy` (Linux: `base64 -w0 uploa
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.17 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.18 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build ipa dmg --json > result.json
 ```
 
@@ -58,7 +58,7 @@ Signed and notarized macOS builds need certificates in a temporary keychain and 
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.17
+      - run: dart pub global activate fpack 1.1.18
       - run: fpack build windows exe
 ```
 
@@ -73,7 +73,7 @@ Inno Setup is preinstalled on GitHub's Windows runners; for code signing, base64
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
       - run: sudo apt-get install -y ninja-build libgtk-3-dev rpm
-      - run: dart pub global activate fpack 1.1.17 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.18 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build linux deb rpm web
 ```
 
