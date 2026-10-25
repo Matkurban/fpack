@@ -538,7 +538,13 @@ func embedProfiles(c *Context, app string, nested *[]nestedSignature, env OpEnv)
 		nents, raw := signedEntitlements(c.Tools, b)
 		sig := nestedSignature{Bundle: b}
 		if raw != "" {
-			sig.Entitlements = filepath.Join(filepath.Dir(app), fmt.Sprintf("nested-%d.entitlements", i))
+			// Never write beside the .app: for dmg/pkg that directory is the
+			// package root and the file would ship next to the app.
+			dir := filepath.Join(c.WorkDir, "nested-entitlements")
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				return err
+			}
+			sig.Entitlements = filepath.Join(dir, fmt.Sprintf("nested-%d.entitlements", i))
 			if err := os.WriteFile(sig.Entitlements, []byte(raw), 0o644); err != nil {
 				return err
 			}
@@ -582,6 +588,13 @@ func signNestedOp(c *Context, nested *[]nestedSignature, rt []string) Op {
 	return Op{Desc: i18n.S("sign nested bundles (extensions, login items) with their own entitlements", "用各自的 entitlements 签名内嵌 bundle（扩展、登录项）"),
 		Hint: hintIdentity(),
 		Run: func(_ context.Context, env OpEnv) (string, error) {
+			defer func() {
+				for _, n := range *nested {
+					if n.Entitlements != "" {
+						_ = os.Remove(n.Entitlements)
+					}
+				}
+			}()
 			for _, n := range *nested {
 				args := append(append([]string{"--force"}, rt...), "--timestamp")
 				if n.Entitlements != "" {

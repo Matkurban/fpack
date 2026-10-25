@@ -182,11 +182,64 @@ func TestEmbedProfilesAndNestedSigning(t *testing.T) {
 	if len(nested) != 1 || nested[0].Entitlements == "" {
 		t.Fatalf("nested: %+v", nested)
 	}
+	if !strings.HasPrefix(nested[0].Entitlements, filepath.Join(c.WorkDir, "nested-entitlements")+string(filepath.Separator)) {
+		t.Fatalf("entitlements written under payload dir: %s", nested[0].Entitlements)
+	}
+	if _, err := os.Stat(nested[0].Entitlements); err != nil {
+		t.Fatalf("entitlements file missing before signing: %v", err)
+	}
 	if _, err := signNestedOp(c, &nested, []string{"--options", "runtime"}).Run(context.Background(), fe.env()); err != nil {
 		t.Fatal(err)
 	}
 	if len(fe.cmds) != 1 || !strings.Contains(fe.cmds[0], "--entitlements "+nested[0].Entitlements) || !strings.HasSuffix(fe.cmds[0], "Share.appex") {
 		t.Errorf("nested signing: %v", fe.cmds)
+	}
+	if _, err := os.Stat(nested[0].Entitlements); !os.IsNotExist(err) {
+		t.Errorf("entitlements file not cleaned after signing: %v", err)
+	}
+}
+
+// TestNestedEntitlementsStayOutOfPackageRoot ensures the temporary
+// entitlements file used to re-sign a nested bundle is not written next to
+// the .app. For dmg/pkg that directory is the package root (hdiutil
+// -srcfolder / pkgbuild --root), so a leak would ship nested-0.entitlements
+// beside the app — the bug reported for Elephant.app.
+func TestNestedEntitlementsStayOutOfPackageRoot(t *testing.T) {
+	c := macSignedCtx(t, "")
+	off := false
+	c.Config.MacOS.Sign.ProfileCheck = &off
+	root := filepath.Join(c.Stage("dmg"), "root")
+	app := filepath.Join(root, "Elephant.app")
+	ext := filepath.Join(app, "Contents", "PlugIns", "Share.appex")
+	must(t, os.MkdirAll(filepath.Join(ext, "Contents"), 0o755))
+	ft := c.Tools.(*fakeTools)
+	ft.probes["plutil -extract CFBundleIdentifier raw -o - "+filepath.Join(app, "Contents", "Info.plist")] = "com.kurban.elephantapp"
+	ft.probes["plutil -extract CFBundleIdentifier raw -o - "+filepath.Join(ext, "Contents", "Info.plist")] = "com.kurban.elephantapp.ShareExtension"
+	ft.probes["codesign -d --entitlements - --xml "+ext] = "Executable=…\n" + pushEntitlements
+
+	var nested []nestedSignature
+	must(t, embedProfiles(c, app, &nested, (&fakeEnv{}).env()))
+	if len(nested) != 1 || nested[0].Entitlements == "" {
+		t.Fatalf("nested: %+v", nested)
+	}
+	leaked := filepath.Join(root, "nested-0.entitlements")
+	if _, err := os.Stat(leaked); err == nil {
+		t.Fatalf("nested entitlements leaked into DMG/pkg root: %s", leaked)
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".entitlements") {
+			t.Fatalf("package root contains entitlements file %q", e.Name())
+		}
+		if e.Name() != "Elephant.app" {
+			t.Fatalf("unexpected entry in package root: %s", e.Name())
+		}
+	}
+	if !strings.Contains(nested[0].Entitlements, filepath.Join("nested-entitlements", "nested-0.entitlements")) {
+		t.Fatalf("expected WorkDir/nested-entitlements/…, got %s", nested[0].Entitlements)
 	}
 }
 
