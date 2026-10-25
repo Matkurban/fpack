@@ -5,4 +5,4 @@
 package version
 
 // Version is the fpack release version. Keep in sync with pubspec.yaml.
-const Version = "1.1.16"
+const Version = "1.1.17"

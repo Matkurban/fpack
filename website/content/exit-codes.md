@@ -39,7 +39,7 @@ A successful web build looks like this (shortened):
 
 ```json
 {
-  "fpackVersion": "1.1.16",
+  "fpackVersion": "1.1.17",
   "project": "my_app",
   "version": "1.0.0",
   "buildNumber": "1",

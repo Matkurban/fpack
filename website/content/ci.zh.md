@@ -7,7 +7,7 @@ fpack 为 CI 而生：不提问、退出码稳定、有 JSON 输出、日志已�
 
 ## 原则
 
-- **固定版本**，保证 CI 可复现：`dart pub global activate fpack 1.1.16`。
+- **固定版本**，保证 CI 可复现：`dart pub global activate fpack 1.1.17`。
 - **每个平台在自己的系统上构建。** iOS 和 macOS 用 `macos-*`，Windows 用 `windows-*`，Linux 用 `ubuntu-*`；Android 和 Web 在哪里都行（[为什么](/concepts#目标与产物)）。
 - **密钥通过环境变量传入。** 永远不要写进 `fpack.yaml`（[密钥与环境变量](/guides/secrets)）。
 - **上传 `dist/`。** 里面有产物和 `SHA256SUMS`。
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.16 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.17 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build apk aab --split-per-abi=both
         env:
           FPACK_ANDROID_KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.16 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.17 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build ipa dmg --json > result.json
 ```
 
@@ -58,7 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
-      - run: dart pub global activate fpack 1.1.16
+      - run: dart pub global activate fpack 1.1.17
       - run: fpack build windows exe
 ```
 
@@ -73,7 +73,7 @@ GitHub 的 Windows runner 预装了 Inno Setup；代码签名时，把 `.pfx` �
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
       - run: sudo apt-get install -y ninja-build libgtk-3-dev rpm
-      - run: dart pub global activate fpack 1.1.16 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+      - run: dart pub global activate fpack 1.1.17 && echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
       - run: fpack build linux deb rpm web
 ```
 

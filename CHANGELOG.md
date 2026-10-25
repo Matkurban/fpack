@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.17
 
 ### Fixed
 - macOS DMG (and pkg) packages no longer include leftover `nested-N.entitlements` files next to the `.app`. Those temporary files are written under fpack's work directory for re-signing app extensions and are deleted after codesign.
