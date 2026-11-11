@@ -1,5 +1,10 @@
 package config
 
+import (
+	"slices"
+	"strings"
+)
+
 // The key registry describes every fpack.yaml key once: type, default,
 // affected targets, environment variable, CLI flag and a zh/en explanation.
 // `fpack init`, the JSON schema, doc/configuration.md, FPACK_* handling and
@@ -607,42 +612,17 @@ func KeyByPath(path string) (Key, bool) {
 
 // AppliesTo reports whether a key affects the given target.
 func (k Key) AppliesTo(target string) bool {
-	if k.Targets == "all" {
-		return true
-	}
-	for _, t := range splitTargets(k.Targets) {
-		if t == target {
-			return true
-		}
-	}
-	return false
+	return k.Targets == "all" || slices.Contains(splitTargets(k.Targets), target)
 }
 
-func splitTargets(s string) []string { return stringsFields(s) }
-
-func stringsFields(s string) []string {
-	var out []string
-	cur := ""
-	for _, r := range s {
-		if r == ',' || r == ' ' {
-			if cur != "" {
-				out = append(out, cur)
-			}
-			cur = ""
-			continue
-		}
-		cur += string(r)
-	}
-	if cur != "" {
-		out = append(out, cur)
-	}
-	return out
+func splitTargets(s string) []string {
+	return strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ' ' })
 }
 
 // IsKeyName reports whether name is the last segment of some key.
 func IsKeyName(name string) bool {
 	for _, k := range Keys {
-		if k.Path == name || len(k.Path) > len(name) && k.Path[len(k.Path)-len(name)-1:] == "."+name {
+		if k.Path == name || strings.HasSuffix(k.Path, "."+name) {
 			return true
 		}
 	}

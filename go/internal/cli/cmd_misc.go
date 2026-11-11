@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/Matkurban/fpack/go/internal/build"
@@ -143,10 +144,8 @@ func listCommand() *command {
 }
 
 func firstLine(s string) string {
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return s[:i]
-	}
-	return s
+	line, _, _ := strings.Cut(s, "\n")
+	return line
 }
 
 // ------------------------------------------------------------------- clean --
@@ -155,12 +154,10 @@ func cleanCommand() *command {
 	c := &command{name: "clean", en: "remove fpack's temporary files (and optionally dist/ or flutter build output)", zh: "删除 fpack 的临时文件（可选删除 dist/ 或 flutter 构建产物）",
 		flags: []flagSpec{
 			{names: []string{"--dist"}, kind: kBool, en: "also delete the output directory (asks first)", zh: "同时删除输出目录（会先确认）"},
-			{names: []string{"--flutter"}, kind: kBool, en: "also run `flutter clean`", zh: "同时运行 `flutter clean`"},
+			{names: []string{"--flutter-clean"}, kind: kBool, en: "also run `flutter clean`", zh: "同时运行 `flutter clean`"},
 			{names: []string{"--all"}, kind: kBool, en: "--dist + --flutter-clean", zh: "等同 --dist + --flutter-clean"},
 			{names: []string{"--dry-run", "-n"}, kind: kBool, en: "show what would be deleted", zh: "只显示将删除的内容"},
 		}}
-	// --flutter conflicts with the global --flutter <sdk>: use a distinct key.
-	c.flags[1].names = []string{"--flutter-clean"}
 	c.help = func() string {
 		return cmdHelp(c, "fpack clean [--dist] [--flutter-clean] [--all]", "  fpack clean\n  fpack clean --dist --yes\n  fpack clean --all\n")
 	}
@@ -370,7 +367,7 @@ func runInit(e *Env, p *parsed) int {
 		// Without a flavor flutter cannot build a project with productFlavors.
 		for {
 			flavor = pr.ask(i18n.F("Default flavor (%s)", "默认 flavor（%s）", strings.Join(fl, " / ")), fl[0])
-			if contains(fl, flavor) || !interactive {
+			if slices.Contains(fl, flavor) || !interactive {
 				break
 			}
 			u.Warn(i18n.F("unknown flavor %q", "未知 flavor %q", flavor))
@@ -389,7 +386,7 @@ func runInit(e *Env, p *parsed) int {
 	exportMethod := ""
 	if proj.Platforms[host.IOS] {
 		exportMethod = pr.ask(i18n.S("iOS export method (app-store / ad-hoc / development / enterprise; empty = Flutter default app-store)", "iOS 导出方式（app-store / ad-hoc / development / enterprise；留空 = Flutter 默认 app-store）"), "")
-		if exportMethod != "" && !contains(config.ExportMethods, exportMethod) {
+		if exportMethod != "" && !slices.Contains(config.ExportMethods, exportMethod) {
 			u.Warn(i18n.F("unknown export method %q – leaving it commented out", "未知导出方式 %q —— 将保持注释状态", exportMethod))
 			exportMethod = ""
 		}
@@ -465,15 +462,6 @@ func runInit(e *Env, p *parsed) int {
 	}
 	u.Info("fpack build --all   " + u.Dim(i18n.S("# everything this machine can build", "# 本机能构建的全部目标")))
 	return 0
-}
-
-func contains(l []string, v string) bool {
-	for _, x := range l {
-		if x == v {
-			return true
-		}
-	}
-	return false
 }
 
 // lineDiff returns a compact line diff (LCS based): "-" removed, "+" added,

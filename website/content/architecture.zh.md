@@ -7,7 +7,7 @@ description: "fpack 的结构，以及如何开发和发布。"
 fpack/
   bin/fpack.dart            Dart 入口（pub executable）
   lib/src/                  启动器：平台识别、核心解析（缓存 → 预编译 → 下载 → 本机编译）、SHA-256、信号转发
-  go/                       原生核心（Go，依赖已 vendor）
+  go/                       原生核心（Go）
     cmd/fpack-core/         main
     internal/cli            参数解析、命令、帮助
     internal/build          构建编排：分类 → 预检 → 共享 flutter 步骤 → 打包 → 校验和 → 汇总

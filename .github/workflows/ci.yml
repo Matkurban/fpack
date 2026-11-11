@@ -58,7 +58,9 @@ jobs:
         shell: bash
         run: |
           go version
-          test "$(go env GOVERSION)" = "$(sed -n 's/^toolchain //p' go.mod)" || { echo "::error::Go $(go env GOVERSION) != go.mod toolchain"; exit 1; }
+          want="$(sed -n 's/^toolchain //p' go.mod)"
+          [ -n "$want" ] || want="go$(sed -n 's/^go //p' go.mod)"
+          test "$(go env GOVERSION)" = "$want" || { echo "::error::Go $(go env GOVERSION) != go.mod ($want)"; exit 1; }
           go vet ./...
           go test ./...
 

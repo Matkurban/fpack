@@ -84,11 +84,11 @@ func signtoolArgs(c *Context, quote func(string) string) (args, secrets []string
 
 func signCmd(c *Context, files []string) *runner.Cmd {
 	args, secrets := signtoolArgs(c, func(s string) string { return s })
-	return &runner.Cmd{Name: orName(signtool(c), "signtool.exe"), Args: append(append([]string{"sign"}, args...), files...), Secret: secrets}
+	return &runner.Cmd{Name: orDefault(signtool(c), "signtool.exe"), Args: append(append([]string{"sign"}, args...), files...), Secret: secrets}
 }
 
 func verifyCmd(c *Context, files []string) *runner.Cmd {
-	return &runner.Cmd{Name: orName(signtool(c), "signtool.exe"), Args: append([]string{"verify", "/pa"}, files...)}
+	return &runner.Cmd{Name: orDefault(signtool(c), "signtool.exe"), Args: append([]string{"verify", "/pa"}, files...)}
 }
 
 var signHint = i18n.S("check windows.sign (certificate path/password, thumbprint or subject) and the timestamp server",

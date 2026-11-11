@@ -6,6 +6,18 @@ description: "每个 fpack 版本的变更。"
 更新日志仅提供英文版本。
 
 <!-- BEGIN GENERATED CHANGELOG -->
+## 1.1.19
+
+### Changed
+- Upgraded YAML parser from `go.yaml.in/yaml/v3` to [`go.yaml.in/yaml/v4`](https://pkg.go.dev/go.yaml.in/yaml/v4) `v4.0.0`, adopting `yaml.NewLoader` with `yaml.WithKnownFields()` and structured `*yaml.LoadErrors` / `*yaml.LoadError` diagnostics (including duplicate mapping key detection), and removed `go/vendor/` in favor of resolving modules directly from `go.mod`.
+- Modernized Go core and Dart launcher internals using Go 1.22+ standard library helpers (`cmp.Or`, `slices.Contains`, `strings.Cut`, `strings.FieldsFunc`, `reflect.TypeFor[T]()`), pre-compiled project and signing regular expressions, and added `-buildvcs=false` to `scripts/build_binaries.sh` for reproducible builds without a Git working tree.
+
+### Fixed
+- `fpack doctor`: when `pod --version` exits non-zero (e.g. broken Ruby gem environment), doctor no longer prints the trailing line of Ruby's stack trace as the CocoaPods version string.
+- Config path validation (`ConfigIssues`) now checks `flutter.sdk` instead of the non-existent `flutter.path` key.
+- iOS and macOS `PRODUCT_BUNDLE_IDENTIFIER` detection now matches bundle IDs containing underscores (`_`).
+- The Dart launcher now persists the detected macOS language to `~/Library/Caches/fpack/os-language` on first run, matching the Go core.
+
 ## 1.1.18
 
 ### Added

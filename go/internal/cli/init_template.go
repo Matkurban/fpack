@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
@@ -72,7 +73,7 @@ func initDefaults(v initValues) (active, detected map[string]string, hints map[s
 	if v.Keystore != "" {
 		active["android.signing.store_file"] = yq(v.Keystore)
 		active["android.signing.store_password"] = "${FPACK_ANDROID_KEYSTORE_PASSWORD}"
-		active["android.signing.key_alias"] = yq(orStr(v.Alias, "upload"))
+		active["android.signing.key_alias"] = yq(cmp.Or(v.Alias, "upload"))
 		active["android.signing.key_password"] = "${FPACK_ANDROID_KEY_PASSWORD:-${FPACK_ANDROID_KEYSTORE_PASSWORD}}"
 	}
 	if v.ExportMethod != "" {
@@ -109,7 +110,7 @@ func initDefaults(v initValues) (active, detected map[string]string, hints map[s
 		hints["build.dart_define_from_file"] = []string{i18n.S("files found: ", "检测到的文件：") + strings.Join(df, ", ")}
 	}
 	set("ios.team_id", p.IOSTeam)
-	set("macos.pkg.identifier", orStr(p.MacBundleID, id))
+	set("macos.pkg.identifier", cmp.Or(p.MacBundleID, id))
 	set("macos.pkg.min_os", p.MacDeploymentTarget)
 	set("macos.pkg.title", v.Display)
 	set("macos.dmg.volume_name", v.Display)
@@ -136,13 +137,6 @@ func initDefaults(v initValues) (active, detected map[string]string, hints map[s
 		set("linux.icon", p.LauncherIcon)
 	}
 	return active, detected, hints
-}
-
-func orStr(a, b string) string {
-	if a != "" {
-		return a
-	}
-	return b
 }
 
 // renderInitYAML writes every fpack.yaml key, grouped by section, each with

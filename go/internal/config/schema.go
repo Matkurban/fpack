@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"go.yaml.in/yaml/v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // SchemaURL is where editors fetch the schema (yaml-language-server).
@@ -108,7 +108,7 @@ func keySchema(k Key) obj {
 	return s
 }
 
-// normalizeYAML converts yaml.v3 maps to JSON-encodable maps.
+// normalizeYAML converts decoded YAML maps to JSON-encodable maps.
 func normalizeYAML(v any) any {
 	switch x := v.(type) {
 	case map[string]any:

@@ -45,7 +45,7 @@ func DetectAndroidEnv(t Tools) *AndroidEnv {
 		sdkCands = append(sdkCands, [2]string{filepath.Join(home, "Android", "Sdk"), "~/Android/Sdk"})
 	}
 	for _, c := range sdkCands {
-		if c[0] != "" && exists(filepath.Join(c[0], "platform-tools")) || c[0] != "" && exists(filepath.Join(c[0], "build-tools")) {
+		if c[0] != "" && (exists(filepath.Join(c[0], "platform-tools")) || exists(filepath.Join(c[0], "build-tools"))) {
 			e.SDK, e.SDKSource = c[0], c[1]
 			break
 		}

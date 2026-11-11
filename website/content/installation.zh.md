@@ -81,7 +81,7 @@ fpack 本身只需要 Dart。每个目标需要各自常用的工具链：
 2. 用户缓存：macOS `~/Library/Caches/fpack/<版本>/<os>-<arch>/`，Linux `$XDG_CACHE_HOME/fpack/…`（默认 `~/.cache/fpack`），Windows `%LOCALAPPDATA%\fpack\…`（可用 `FPACK_HOME` 覆盖）
 3. 随包的预编译二进制 `prebuilt/<os>-<arch>/`（如果有）：用 `prebuilt/manifest.json` 里的 SHA-256 校验后复制到缓存
 4. 从 GitHub Release 下载本平台的二进制，用 `checksums.txt` 校验：校验不一致的文件绝不会被执行
-5. **只有下载失败或被禁用时**：用随包的 Go 源码本地构建（`go build -trimpath`，依赖已 vendor，无需网络），并明确提示已回退到本地构建以及使用的 Go：
+5. **只有下载失败或被禁用时**：用随包的 Go 源码本地构建（`go build -trimpath`），并明确提示已回退到本地构建以及使用的 Go：
 
    ```text
    fpack: note: no verified prebuilt core available (download: …connection refused…);

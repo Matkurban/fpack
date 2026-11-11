@@ -4,6 +4,7 @@
 package flutter
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"os"
@@ -207,7 +208,7 @@ func (s *SDK) readVersion() {
 			DartSdkVersion   string `json:"dartSdkVersion"`
 		}
 		if json.Unmarshal(data, &v) == nil {
-			s.Version = firstNonEmpty(v.FlutterVersion, v.FrameworkVersion)
+			s.Version = cmp.Or(v.FlutterVersion, v.FrameworkVersion)
 			s.Channel = v.Channel
 			s.DartVersion = strings.Fields(v.DartSdkVersion + " ")[0]
 			if s.Version != "" {
@@ -242,15 +243,6 @@ func (s *SDK) QueryVersion() {
 			}
 		}
 	}
-}
-
-func firstNonEmpty(v ...string) string {
-	for _, s := range v {
-		if s != "" {
-			return s
-		}
-	}
-	return ""
 }
 
 var verRe = regexp.MustCompile(`^(\d+)\.(\d+)\.(\d+)`)

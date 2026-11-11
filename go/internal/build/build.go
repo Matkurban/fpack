@@ -1,6 +1,7 @@
 package build
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -217,7 +218,7 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 				if issues[i].Fix != "" {
 					fatalFixes = appendUnique(fatalFixes, issues[i].Fix)
 				}
-			} else if !issues[i].Fatal {
+			} else {
 				w := issues[i].Msg
 				if issues[i].Fix != "" {
 					w += "\n" + i18n.S("fix: ", "解决：") + issues[i].Fix
@@ -427,7 +428,7 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 	// 5. Checksums.
 	checksums := ""
 	if c.Config.Checksums() && anySuccess(s) {
-		alg := orSHA256(c.Config.Output.ChecksumAlgorithm)
+		alg := cmp.Or(c.Config.Output.ChecksumAlgorithm, "sha256")
 		p, sums, err := pack.WriteChecksumsAlg(c.OutDir, alg)
 		if err == nil {
 			checksums = p
@@ -477,13 +478,7 @@ func Run(ctx context.Context, c *targets.Context, u *ui.UI, req Request) *Summar
 
 func appendUnique(list []string, add ...string) []string {
 	for _, a := range add {
-		dup := false
-		for _, l := range list {
-			if l == a {
-				dup = true
-			}
-		}
-		if !dup && a != "" {
+		if a != "" && !slices.Contains(list, a) {
 			list = append(list, a)
 		}
 	}
@@ -515,13 +510,6 @@ func hasPlanned(s *Summary) bool {
 		}
 	}
 	return false
-}
-
-func orSHA256(a string) string {
-	if a == "" {
-		return "sha256"
-	}
-	return a
 }
 
 func anySuccess(s *Summary) bool {
@@ -776,10 +764,8 @@ func packageTarget(ctx context.Context, c *targets.Context, u *ui.UI, tr *Target
 }
 
 func firstLineOf(s string) string {
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return s[:i]
-	}
-	return s
+	line, _, _ := strings.Cut(s, "\n")
+	return line
 }
 
 // projectIssues are problems that make every flutter build fail early.

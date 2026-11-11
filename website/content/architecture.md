@@ -7,7 +7,7 @@ description: "How fpack is built, and how to develop and release it."
 fpack/
   bin/fpack.dart            Dart entry point (pub executable)
   lib/src/                  launcher: platform detection, core resolution (cache → bundled → download → local go build), SHA-256, signal forwarding
-  go/                       native core (Go, dependencies vendored)
+  go/                       native core (Go)
     cmd/fpack-core/         main
     internal/cli            argument parsing, commands, help
     internal/build          orchestration: classify → preflight → shared flutter steps → package → checksums → summary

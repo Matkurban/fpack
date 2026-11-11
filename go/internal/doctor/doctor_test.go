@@ -19,6 +19,22 @@ func (noTools) Find(string) string                                  { return "" 
 func (noTools) Probe(string, ...string) (string, bool)              { return "", false }
 func (noTools) ProbeEnv([]string, string, ...string) (string, bool) { return "", false }
 
+type brokenPodTools struct{ noTools }
+
+func (brokenPodTools) Find(name string) string {
+	if name == "pod" {
+		return "/opt/homebrew/bin/pod"
+	}
+	return ""
+}
+
+func (brokenPodTools) Probe(name string, args ...string) (string, bool) {
+	if name == "/opt/homebrew/bin/pod" && len(args) == 1 && args[0] == "--version" {
+		return "Traceback (most recent call last):\n\tfrom /opt/homebrew/Cellar/cocoapods/1.17.0_1/libexec/bin/pod:25:in '<main>'", false
+	}
+	return "", false
+}
+
 func androidCtx(t *testing.T, env *targets.AndroidEnv) *targets.Context {
 	t.Helper()
 	root := t.TempDir()
@@ -74,5 +90,34 @@ func TestMissingJavaMeansAndroidNotReady(t *testing.T) {
 	r = run(&targets.AndroidEnv{SDK: "/android", Licenses: true, Java: "/jdk/bin/java", JavaVersion: 21})
 	if strings.Join(r.Ready, " ") != "apk aab" {
 		t.Fatalf("with Java: %v", r.Ready)
+	}
+}
+
+func TestCocoaPodsProbeFailureDoesNotLeakStacktrace(t *testing.T) {
+	ipa, _ := targets.Get("ipa")
+	r := Run(Input{
+		Host:  host.Host{OS: "darwin", Arch: "arm64"},
+		Tools: brokenPodTools{},
+		Only:  []targets.Target{ipa},
+		Getenv: func(k string) string {
+			if k == EnvSkipUpdateCheck {
+				return "1"
+			}
+			return ""
+		},
+	})
+	found := false
+	for _, g := range r.Groups {
+		for _, l := range g.Lines {
+			if strings.Contains(l.Text, "in '<main>'") {
+				t.Fatalf("stacktrace leaked into doctor output: %q", l.Text)
+			}
+			if l.Text == "CocoaPods · /opt/homebrew/bin/pod" {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("expected fallback CocoaPods path line in %+v", r.Groups)
 	}
 }

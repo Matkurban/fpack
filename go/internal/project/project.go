@@ -12,10 +12,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Matkurban/fpack/go/internal/i18n"
-
 	"github.com/Matkurban/fpack/go/internal/host"
-	"go.yaml.in/yaml/v3"
+	"github.com/Matkurban/fpack/go/internal/i18n"
+	"go.yaml.in/yaml/v4"
 )
 
 // Project is a detected Flutter application.
@@ -149,6 +148,18 @@ func hasAnyPlatform(dir string) bool {
 	return false
 }
 
+var (
+	reIOSTeam         = regexp.MustCompile(`DEVELOPMENT_TEAM = "?([A-Z0-9]+)"?;`)
+	reIOSBundleID     = regexp.MustCompile(`PRODUCT_BUNDLE_IDENTIFIER = "?([A-Za-z0-9._\-]+)"?;`)
+	reMacDeployTarget = regexp.MustCompile(`MACOSX_DEPLOYMENT_TARGET = "?([0-9.]+)"?;`)
+	reMacProductName  = regexp.MustCompile(`(?m)^\s*PRODUCT_NAME\s*=\s*(.+?)\s*$`)
+	reMacBundleID     = regexp.MustCompile(`(?m)^\s*PRODUCT_BUNDLE_IDENTIFIER\s*=\s*([A-Za-z0-9._\-]+)\s*$`)
+	reCMakeBinary     = regexp.MustCompile(`set\(BINARY_NAME\s+"([^"]+)"\)`)
+	reCMakeAppID      = regexp.MustCompile(`set\(APPLICATION_ID\s+"([^"]+)"\)`)
+	reWinCompany      = regexp.MustCompile(`VALUE "CompanyName", "([^"]*)"`)
+	reAndroidAppID    = regexp.MustCompile(`applicationId\s*=?\s*["']([^"']+)["']`)
+)
+
 // Load reads the project at root.
 func Load(root string) (*Project, error) {
 	data, err := os.ReadFile(filepath.Join(root, "pubspec.yaml"))
@@ -189,20 +200,20 @@ func Load(root string) (*Project, error) {
 	p.IOSSchemes = schemes(filepath.Join(root, "ios", "Runner.xcodeproj"))
 	p.MacOSSchemes = schemes(filepath.Join(root, "macos", "Runner.xcodeproj"))
 	if pbx := readFile(filepath.Join(root, "ios", "Runner.xcodeproj", "project.pbxproj")); pbx != "" {
-		p.IOSTeam = firstMatch(pbx, `DEVELOPMENT_TEAM = "?([A-Z0-9]+)"?;`)
-		p.IOSBundleID = firstMatch(pbx, `PRODUCT_BUNDLE_IDENTIFIER = "?([A-Za-z0-9.\-]+)"?;`)
+		p.IOSTeam = firstMatch(pbx, reIOSTeam)
+		p.IOSBundleID = firstMatch(pbx, reIOSBundleID)
 	}
 	appInfo := readFile(filepath.Join(root, "macos", "Runner", "Configs", "AppInfo.xcconfig"))
 	if pbx := readFile(filepath.Join(root, "macos", "Runner.xcodeproj", "project.pbxproj")); pbx != "" {
-		p.MacDeploymentTarget = firstMatch(pbx, `MACOSX_DEPLOYMENT_TARGET = "?([0-9.]+)"?;`)
+		p.MacDeploymentTarget = firstMatch(pbx, reMacDeployTarget)
 	}
-	p.MacProductName = firstMatch(appInfo, `(?m)^\s*PRODUCT_NAME\s*=\s*(.+?)\s*$`)
-	p.MacBundleID = firstMatch(appInfo, `(?m)^\s*PRODUCT_BUNDLE_IDENTIFIER\s*=\s*([A-Za-z0-9.\-]+)\s*$`)
+	p.MacProductName = firstMatch(appInfo, reMacProductName)
+	p.MacBundleID = firstMatch(appInfo, reMacBundleID)
 	linuxCM := readFile(filepath.Join(root, "linux", "CMakeLists.txt"))
-	p.LinuxBinary = firstMatch(linuxCM, `set\(BINARY_NAME\s+"([^"]+)"\)`)
-	p.LinuxAppID = firstMatch(linuxCM, `set\(APPLICATION_ID\s+"([^"]+)"\)`)
-	p.WindowsBinary = firstMatch(readFile(filepath.Join(root, "windows", "CMakeLists.txt")), `set\(BINARY_NAME\s+"([^"]+)"\)`)
-	if c := firstMatch(readFile(filepath.Join(root, "windows", "runner", "Runner.rc")), `VALUE "CompanyName", "([^"]*)"`); c != "" && !orgLike.MatchString(c) {
+	p.LinuxBinary = firstMatch(linuxCM, reCMakeBinary)
+	p.LinuxAppID = firstMatch(linuxCM, reCMakeAppID)
+	p.WindowsBinary = firstMatch(readFile(filepath.Join(root, "windows", "CMakeLists.txt")), reCMakeBinary)
+	if c := firstMatch(readFile(filepath.Join(root, "windows", "runner", "Runner.rc")), reWinCompany); c != "" && !orgLike.MatchString(c) {
 		p.WindowsCompany = c
 	}
 	p.DefineFiles = defineFiles(root)
@@ -261,7 +272,7 @@ func (p *Project) inspectAndroid() {
 		}
 		p.AndroidGradleFile = f
 		p.AndroidFlavors = AndroidFlavors(txt)
-		p.AndroidApplicationID = firstMatch(txt, `applicationId\s*=?\s*["']([^"']+)["']`)
+		p.AndroidApplicationID = firstMatch(txt, reAndroidAppID)
 		p.AndroidReleaseDebugSigned = ReleaseUsesDebugSigning(txt)
 		break
 	}
@@ -492,11 +503,11 @@ func readFile(p string) string {
 	return string(b)
 }
 
-func firstMatch(s, pattern string) string {
+func firstMatch(s string, re *regexp.Regexp) string {
 	if s == "" {
 		return ""
 	}
-	m := regexp.MustCompile(pattern).FindStringSubmatch(s)
+	m := re.FindStringSubmatch(s)
 	if m == nil {
 		return ""
 	}

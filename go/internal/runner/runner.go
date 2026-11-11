@@ -51,7 +51,7 @@ func (c Cmd) String() string {
 		k, v, _ := strings.Cut(e, "=")
 		parts = append(parts, k+"="+quoteRedacted(c.redact(v)))
 	}
-	parts = append(parts, Quote(displayName(c.Name)))
+	parts = append(parts, Quote(c.Name))
 	for _, a := range c.Args {
 		parts = append(parts, quoteRedacted(c.redact(a)))
 	}
@@ -61,16 +61,6 @@ func (c Cmd) String() string {
 // quoteRedacted quotes s but keeps the *** redaction marker readable.
 func quoteRedacted(s string) string {
 	return strings.ReplaceAll(Quote(strings.ReplaceAll(s, "***", "\x00")), "\x00", "***")
-}
-
-func displayName(n string) string {
-	// Show "flutter" instead of a long absolute path when it is the SDK tool.
-	base := filepath.Base(n)
-	switch strings.TrimSuffix(strings.TrimSuffix(base, ".bat"), ".exe") {
-	case "flutter", "dart":
-		return n
-	}
-	return n
 }
 
 func (c Cmd) redact(s string) string { return Redact(s, c.Secret) }

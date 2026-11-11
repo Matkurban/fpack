@@ -12,13 +12,14 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/Matkurban/fpack/go/internal/i18n"
 
-	"go.yaml.in/yaml/v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // FileNames are the config file names looked up in the project root.
@@ -644,16 +645,16 @@ func expandString(s string, getenv func(string) string, unset map[string]bool) s
 	return restore.Replace(s)
 }
 
-var unknownField = regexp.MustCompile(`line (\d+): field (\S+) not found in type config\.(\w+)`)
-
 // Parse decodes YAML strictly (unknown keys are errors with a suggestion).
 func Parse(data []byte, c *Config) error {
 	if len(bytes.TrimSpace(data)) == 0 {
 		return nil
 	}
-	dec := yaml.NewDecoder(bytes.NewReader(data))
-	dec.KnownFields(true)
-	if err := dec.Decode(c); err != nil {
+	loader, err := yaml.NewLoader(bytes.NewReader(data), yaml.WithKnownFields())
+	if err != nil {
+		return err
+	}
+	if err := loader.Load(c); err != nil {
 		if errors.Is(err, io.EOF) {
 			return nil
 		}
@@ -690,7 +691,11 @@ func keyLines(data []byte) map[int]string {
 	return out
 }
 
-var typeError = regexp.MustCompile("^line (\\d+): cannot unmarshal !!(\\w+) (?:`([^`]*)` )?into (.+)$")
+var (
+	unknownField = regexp.MustCompile(`^field (\S+) not found in type config\.(\w+)$`)
+	dupField     = regexp.MustCompile(`^field (\S+) already set in type config\.(\w+)$`)
+	typeError    = regexp.MustCompile("^cannot (?:unmarshal|construct) !!(\\w+) (?:`([^`]*)` )?into (.+)$")
+)
 
 func expectedFor(goType string) string {
 	switch {
@@ -711,67 +716,77 @@ func expectedFor(goType string) string {
 }
 
 func friendlyYAMLError(err error, keyLines map[int]string) error {
-	msg := err.Error()
-	msg = strings.TrimPrefix(msg, "yaml: unmarshal errors:\n")
-	msg = strings.TrimPrefix(msg, "yaml: ")
-	var lines []string
-	for _, l := range strings.Split(msg, "\n") {
-		l = strings.TrimSpace(l)
-		if l == "" {
-			continue
+	var loadErrs *yaml.LoadErrors
+	if errors.As(err, &loadErrs) {
+		var lines []string
+		for _, le := range loadErrs.Errors {
+			lines = append(lines, formatLoadError(le, keyLines))
 		}
-		if m := unknownField.FindStringSubmatch(l); m != nil {
-			section := sectionName(m[3])
-			s := fmt.Sprintf(i18n.S("line %s: unknown key %q", "第 %s 行：未知键 %q"), m[1], m[2])
-			if section != "" {
-				s += fmt.Sprintf(i18n.S(" in %q", "（位于 %q）"), section)
-			}
-			if sug := suggest(m[2], keysOf(m[3])); sug != "" {
-				s += fmt.Sprintf(i18n.S(" (did you mean %q?)", "（你是不是想写 %q？）"), sug)
-			}
-			l = s
-		} else if m := typeError.FindStringSubmatch(l); m != nil {
-			n, _ := strconv.Atoi(m[1])
-			where := ""
-			if k := keyLines[n]; k != "" {
-				where = k + ": "
-			}
-			got := m[3]
-			if m[2] == "map" || m[2] == "seq" {
-				got = map[string]string{"map": i18n.S("a map", "映射"), "seq": i18n.S("a list", "列表")}[m[2]]
-			} else {
-				got = strconv.Quote(got)
-			}
-			l = fmt.Sprintf(i18n.S("line %s: %sexpected %s, got %s", "第 %s 行：%s应为 %s，实际为 %s"), m[1], where, expectedFor(m[4]), got)
-		}
-		lines = append(lines, l)
+		return errors.New(strings.Join(lines, "; "))
 	}
-	return errors.New(strings.Join(lines, "; "))
+	var le *yaml.LoadError
+	if errors.As(err, &le) {
+		return errors.New(formatLoadError(le, keyLines))
+	}
+	msg := strings.TrimPrefix(err.Error(), "yaml: ")
+	return errors.New(strings.TrimSpace(msg))
+}
+
+func formatLoadError(le *yaml.LoadError, keyLines map[int]string) string {
+	line := le.Mark.Line
+	msg := strings.TrimSpace(le.Message)
+	if m := unknownField.FindStringSubmatch(msg); m != nil {
+		section := sectionName(m[2])
+		s := fmt.Sprintf(i18n.S("line %d: unknown key %q", "第 %d 行：未知键 %q"), line, m[1])
+		if section != "" {
+			s += fmt.Sprintf(i18n.S(" in %q", "（位于 %q）"), section)
+		}
+		if sug := suggest(m[1], keysOf(m[2])); sug != "" {
+			s += fmt.Sprintf(i18n.S(" (did you mean %q?)", "（你是不是想写 %q？）"), sug)
+		}
+		return s
+	}
+	if m := dupField.FindStringSubmatch(msg); m != nil {
+		return fmt.Sprintf(i18n.S("line %d: duplicate key %q", "第 %d 行：重复的键 %q"), line, m[1])
+	}
+	if m := typeError.FindStringSubmatch(msg); m != nil {
+		where := ""
+		if k := keyLines[line]; k != "" {
+			where = k + ": "
+		}
+		got := strconv.Quote(m[2])
+		if m[1] == "map" || m[1] == "seq" {
+			got = map[string]string{"map": i18n.S("a map", "映射"), "seq": i18n.S("a list", "列表")}[m[1]]
+		}
+		return fmt.Sprintf(i18n.S("line %d: %sexpected %s, got %s", "第 %d 行：%s应为 %s，实际为 %s"), line, where, expectedFor(m[3]), got)
+	}
+	if line > 0 && !strings.HasPrefix(msg, "line ") && !strings.HasPrefix(msg, "第 ") {
+		return fmt.Sprintf(i18n.S("line %d: %s", "第 %d 行：%s"), line, msg)
+	}
+	return msg
 }
 
 var typeSections = map[string]reflect.Type{}
 
 func init() {
-	var walk func(prefix string, t reflect.Type)
-	walk = func(prefix string, t reflect.Type) {
+	var walk func(t reflect.Type)
+	walk = func(t reflect.Type) {
 		typeSections[t.Name()] = t
-		for i := 0; i < t.NumField(); i++ {
-			f := t.Field(i)
-			if f.Type.Kind() == reflect.Struct {
-				walk(prefix, f.Type)
+		for f := range t.Fields() {
+			if isSection(f.Type) {
+				walk(f.Type)
 			}
 		}
 	}
-	walk("", reflect.TypeOf(Config{}))
+	walk(reflect.TypeFor[Config]())
 }
 
 func sectionName(typeName string) string {
 	var find func(prefix string, t reflect.Type) string
 	find = func(prefix string, t reflect.Type) string {
-		for i := 0; i < t.NumField(); i++ {
-			f := t.Field(i)
-			tag := strings.Split(f.Tag.Get("yaml"), ",")[0]
-			if tag == "" || tag == "-" || f.Type.Kind() != reflect.Struct {
+		for f := range t.Fields() {
+			tag := yamlName(f)
+			if tag == "" || !isSection(f.Type) {
 				continue
 			}
 			p := tag
@@ -787,7 +802,7 @@ func sectionName(typeName string) string {
 		}
 		return ""
 	}
-	return find("", reflect.TypeOf(Config{}))
+	return find("", reflect.TypeFor[Config]())
 }
 
 func keysOf(typeName string) []string {
@@ -796,9 +811,8 @@ func keysOf(typeName string) []string {
 		return nil
 	}
 	var out []string
-	for i := 0; i < t.NumField(); i++ {
-		tag := strings.Split(t.Field(i).Tag.Get("yaml"), ",")[0]
-		if tag != "" && tag != "-" {
+	for f := range t.Fields() {
+		if tag := yamlName(f); tag != "" {
 			out = append(out, tag)
 		}
 	}
@@ -1059,7 +1073,7 @@ func (c *Config) Validate() []string {
 			vals = x
 		}
 		for _, v := range vals {
-			if v != "" && !contains(k.Enum, v) {
+			if v != "" && !slices.Contains(k.Enum, v) {
 				msg := fmt.Sprintf(i18n.S("%s must be one of %s (got %q)", "%s 必须是 %s 之一（实际为 %q）"), k.Path, strings.Join(k.Enum, ", "), v)
 				if s := suggest(v, k.Enum); s != "" {
 					msg += fmt.Sprintf(i18n.S(" — did you mean %q?", "——你是不是想写 %q？"), s)
@@ -1069,7 +1083,7 @@ func (c *Config) Validate() []string {
 		}
 	}
 	for _, a := range c.Android.ABIs {
-		if !contains(KnownABIs, a) {
+		if !slices.Contains(KnownABIs, a) {
 			p = append(p, fmt.Sprintf(i18n.S("android.abis: unknown ABI %q (use %s)", "android.abis：未知 ABI %q（可用 %s）"), a, strings.Join(KnownABIs, ", ")))
 		}
 	}
@@ -1106,7 +1120,7 @@ func (c *Config) Validate() []string {
 		p = append(p, fmt.Sprintf(i18n.S("windows.inno_setup.app_id must be a GUID like 8F0E7C2A-1B3D-4E5F-9A6B-7C8D9E0F1A2B (got %q)", "windows.inno_setup.app_id 必须是 GUID，如 8F0E7C2A-1B3D-4E5F-9A6B-7C8D9E0F1A2B（实际为 %q）"), g))
 	}
 	for name, tmpl := range c.Output.Names {
-		if !contains(TargetNames, name) {
+		if !slices.Contains(TargetNames, name) {
 			p = append(p, fmt.Sprintf(i18n.S("output.names: unknown target %q%s", "output.names：未知目标 %q%s"), name, didYouMean(name, TargetNames)))
 		}
 		if bad := unknownPlaceholders(tmpl); len(bad) > 0 {
@@ -1118,7 +1132,7 @@ func (c *Config) Validate() []string {
 	}
 	for _, m := range []map[string]List{c.Hooks.PrePackage, c.Hooks.PostPackage} {
 		for name := range m {
-			if !contains(TargetNames, name) {
+			if !slices.Contains(TargetNames, name) {
 				p = append(p, fmt.Sprintf(i18n.S("hooks: unknown target %q%s", "hooks：未知目标 %q%s"), name, didYouMean(name, TargetNames)))
 			}
 		}
@@ -1167,7 +1181,7 @@ var namePlaceholder = regexp.MustCompile(`\{([-_.+]?)([a-z]+)}`)
 func unknownPlaceholders(tmpl string) []string {
 	var bad []string
 	for _, sm := range namePlaceholder.FindAllStringSubmatch(tmpl, -1) {
-		if !contains(NamePlaceholders, sm[2]) {
+		if !slices.Contains(NamePlaceholders, sm[2]) {
 			bad = append(bad, sm[0])
 		}
 	}
@@ -1212,15 +1226,6 @@ func InnoLanguageNames() []string {
 	}
 	sort.Strings(out)
 	return out
-}
-
-func contains(list []string, v string) bool {
-	for _, x := range list {
-		if x == v {
-			return true
-		}
-	}
-	return false
 }
 
 var snapNameRe = regexp.MustCompile(`^[a-z0-9](?:-?[a-z0-9])*$`)

@@ -4,10 +4,12 @@
 package build
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Matkurban/fpack/go/internal/config"
 	"github.com/Matkurban/fpack/go/internal/flutter"
@@ -49,18 +51,12 @@ func NewContext(o Options) (*targets.Context, error) {
 	if o.Tools == nil {
 		o.Tools = targets.SystemTools{}
 	}
-	dir := o.ProjectDir
-	if dir == "" {
-		dir = "."
-	}
+	dir := cmp.Or(o.ProjectDir, ".")
 	proj, err := project.Find(dir)
 	if err != nil {
 		return nil, err
 	}
-	explicit := o.ConfigPath
-	if explicit == "" {
-		explicit = o.Getenv("FPACK_CONFIG")
-	}
+	explicit := cmp.Or(o.ConfigPath, o.Getenv("FPACK_CONFIG"))
 	cfgPath, err := config.Find(proj.Root, explicit)
 	if err != nil {
 		return nil, &ConfigError{err}
@@ -80,7 +76,7 @@ func NewContext(o Options) (*targets.Context, error) {
 		}
 	}
 	if probs := cfg.Validate(); len(probs) > 0 {
-		return nil, &ConfigError{errors.New(joinLines(probs))}
+		return nil, &ConfigError{errors.New(strings.Join(probs, "\n"))}
 	}
 
 	h := host.Current()
@@ -102,9 +98,9 @@ func NewContext(o Options) (*targets.Context, error) {
 		c.SDK = &flutter.SDK{Flutter: "flutter", Dart: "dart"}
 	}
 
-	c.AppName = pack.SanitizeName(firstNonEmpty(cfg.App.Name, proj.Name))
-	c.BuildName = firstNonEmpty(string(cfg.Build.BuildName), proj.Version)
-	c.BuildNumber = firstNonEmpty(string(cfg.Build.BuildNumber), proj.BuildNumber)
+	c.AppName = pack.SanitizeName(cmp.Or(cfg.App.Name, proj.Name))
+	c.BuildName = cmp.Or(string(cfg.Build.BuildName), proj.Version)
+	c.BuildNumber = cmp.Or(string(cfg.Build.BuildNumber), proj.BuildNumber)
 	outRel, err := pack.RenderDir(cfg.OutputDir(), pack.Fields{App: c.AppName, Version: c.BuildName, Build: c.BuildNumber, Mode: cfg.Mode(), Flavor: cfg.Build.Flavor})
 	if err != nil {
 		return nil, &ConfigError{err}
@@ -123,24 +119,4 @@ func NewContext(o Options) (*targets.Context, error) {
 		_, _ = fmt.Fprintln(os.Stderr, i18n.F("fpack: warning: %s references unset environment variables: %v", "fpack：警告：%s 引用了未设置的环境变量：%v", filepath.Base(cfg.File), cfg.UnsetEnv))
 	}
 	return c, nil
-}
-
-func firstNonEmpty(v ...string) string {
-	for _, s := range v {
-		if s != "" {
-			return s
-		}
-	}
-	return ""
-}
-
-func joinLines(l []string) string {
-	out := ""
-	for i, s := range l {
-		if i > 0 {
-			out += "\n"
-		}
-		out += s
-	}
-	return out
 }

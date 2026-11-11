@@ -1,6 +1,7 @@
 package targets
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 	"time"
@@ -9,10 +10,7 @@ import (
 // Identifier is the reverse-DNS app id: app.identifier, else detected from
 // the project (Linux APPLICATION_ID, Android applicationId, iOS bundle id).
 func (c *Context) Identifier() string {
-	if id := c.Config.App.Identifier; id != "" {
-		return id
-	}
-	if id := c.Project.Identifier(); id != "" {
+	if id := cmp.Or(c.Config.App.Identifier, c.Project.Identifier()); id != "" {
 		return id
 	}
 	return "com.example." + strings.ReplaceAll(c.Project.Name, "-", "_")
@@ -32,10 +30,7 @@ func (c *Context) Description() string {
 // Publisher is app.publisher, else the CompanyName of the Windows runner
 // (may be empty).
 func (c *Context) Publisher() string {
-	if p := c.Config.App.Publisher; p != "" {
-		return p
-	}
-	return c.Project.WindowsCompany
+	return cmp.Or(c.Config.App.Publisher, c.Project.WindowsCompany)
 }
 
 // Maintainer is "Name <email>" for deb/rpm.
@@ -57,27 +52,18 @@ func (c *Context) Copyright() string {
 	if s := c.Config.App.Copyright; s != "" {
 		return s
 	}
-	who := c.Publisher()
-	if who == "" {
-		who = c.DisplayName()
-	}
+	who := cmp.Or(c.Publisher(), c.DisplayName())
 	return fmt.Sprintf("© %d %s", time.Now().Year(), who)
 }
 
 // License is app.license, else Proprietary.
 func (c *Context) License() string {
-	if s := c.Config.App.License; s != "" {
-		return s
-	}
-	return "Proprietary"
+	return cmp.Or(c.Config.App.License, "Proprietary")
 }
 
 // SupportURL is app.support_url, else app.homepage.
 func (c *Context) SupportURL() string {
-	if s := c.Config.App.SupportURL; s != "" {
-		return s
-	}
-	return c.Config.App.Homepage
+	return cmp.Or(c.Config.App.SupportURL, c.Config.App.Homepage)
 }
 
 func boolOr(b *bool, def bool) bool {
@@ -88,8 +74,5 @@ func boolOr(b *bool, def bool) bool {
 }
 
 func orDefault(s, def string) string {
-	if s == "" {
-		return def
-	}
-	return s
+	return cmp.Or(s, def)
 }

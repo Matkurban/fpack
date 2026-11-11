@@ -114,6 +114,12 @@ String? _macLanguage() {
   var v = firstAppleLanguage(run('AppleLanguages'));
   if (v.isEmpty) v = run('AppleLocale');
   if (v.isEmpty) return null;
+  if (stamp != null) {
+    try {
+      cache.parent.createSync(recursive: true);
+      cache.writeAsStringSync('$stamp $v\n');
+    } catch (_) {}
+  }
   return v;
 }
 

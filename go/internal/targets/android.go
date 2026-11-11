@@ -189,11 +189,8 @@ func verifyKeystore(c *Context, keytool string) []Issue {
 }
 
 func firstLine(s string) string {
-	s = strings.TrimSpace(s)
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return s[:i]
-	}
-	return s
+	line, _, _ := strings.Cut(strings.TrimSpace(s), "\n")
+	return line
 }
 
 // --------------------------------------------------------------------- apk --
@@ -427,6 +424,8 @@ func (t *APK) Package(c *Context, in Inputs) (*Plan, error) {
 	return pl, nil
 }
 
+var reVerifiedScheme = regexp.MustCompile(`(?m)^Verified using (v[0-9.]+) scheme[^:]*: true`)
+
 // signerCheck turns apksigner/keytool output into a note, flagging debug keys.
 func signerCheck(c *Context, pattern string) func(runner.Result) (string, error) {
 	injected := c.Signing.Enabled
@@ -439,7 +438,7 @@ func signerCheck(c *Context, pattern string) func(runner.Result) (string, error)
 		}
 		dn := strings.TrimSpace(m[1])
 		var schemes strings.Builder
-		for _, v := range regexp.MustCompile(`(?m)^Verified using (v[0-9.]+) scheme[^:]*: true`).FindAllStringSubmatch(r.Output, -1) {
+		for _, v := range reVerifiedScheme.FindAllStringSubmatch(r.Output, -1) {
 			schemes.WriteString(" " + v[1])
 		}
 		if strings.Contains(dn, "CN=Android Debug") {

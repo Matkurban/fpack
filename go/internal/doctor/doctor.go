@@ -13,7 +13,6 @@ import (
 	"github.com/Matkurban/fpack/go/internal/flutter"
 	"github.com/Matkurban/fpack/go/internal/host"
 	"github.com/Matkurban/fpack/go/internal/i18n"
-	"github.com/Matkurban/fpack/go/internal/project"
 	"github.com/Matkurban/fpack/go/internal/targets"
 	"github.com/Matkurban/fpack/go/internal/ui"
 	"github.com/Matkurban/fpack/go/internal/version"
@@ -287,8 +286,11 @@ func platformInfo(pl host.Platform, in Input) []Line {
 			}
 		}
 		if p := t.Find("pod"); p != "" {
-			v, _ := t.Probe(p, "--version")
-			out = append(out, Line{OK, "CocoaPods " + strings.TrimSpace(lastLine(v)), ""})
+			if v, ok := t.Probe(p, "--version"); ok && strings.TrimSpace(v) != "" {
+				out = append(out, Line{OK, "CocoaPods " + strings.TrimSpace(lastLine(v)), ""})
+			} else {
+				out = append(out, Line{OK, "CocoaPods · " + p, ""})
+			}
 		}
 		all, _ := targets.AllIdentities(t)
 		var ids, revoked []string
@@ -460,5 +462,3 @@ func printLines(u *ui.UI, lines []Line) {
 		}
 	}
 }
-
-var _ = project.SplitVersion

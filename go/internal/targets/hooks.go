@@ -91,7 +91,7 @@ func ConfigIssues(c *Context, t string) []Issue {
 		}
 		v, _ := c.Config.Get(k.Path)
 		s, _ := v.(string)
-		if s == "" || strings.HasPrefix(k.Path, "linux.appimagetool") || k.Path == "flutter.path" {
+		if s == "" || strings.HasPrefix(k.Path, "linux.appimagetool") || k.Path == "flutter.sdk" {
 			continue
 		}
 		if !exists(c.Project.Abs(s)) {

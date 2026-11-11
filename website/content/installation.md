@@ -81,7 +81,7 @@ The `fpack` command is a small Dart launcher. The real work is done by `fpack-co
 2. the user cache: macOS `~/Library/Caches/fpack/<version>/<os>-<arch>/`, Linux `$XDG_CACHE_HOME/fpack/…` (default `~/.cache/fpack`), Windows `%LOCALAPPDATA%\fpack\…` (override with `FPACK_HOME`)
 3. the bundled prebuilt binary `prebuilt/<os>-<arch>/` (when present): verified against the SHA-256 in `prebuilt/manifest.json`, then copied into the cache
 4. a download of this platform's binary from the GitHub Release, verified against `checksums.txt`: a mismatching file is never executed
-5. **only if the download fails or is disabled**: a local build from the bundled Go sources (`go build -trimpath`, dependencies are vendored, no network needed), with a clear note that it fell back to a local build and which Go it used:
+5. **only if the download fails or is disabled**: a local build from the bundled Go sources (`go build -trimpath`), with a clear note that it fell back to a local build and which Go it used:
 
    ```text
    fpack: note: no verified prebuilt core available (download: …connection refused…);

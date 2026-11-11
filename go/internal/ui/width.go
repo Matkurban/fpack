@@ -3,7 +3,6 @@ package ui
 import (
 	"regexp"
 	"strings"
-	"unicode/utf8"
 )
 
 var ansiRe = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]`)
@@ -68,5 +67,3 @@ func Pad(s string, width int) string {
 	}
 	return s + strings.Repeat(" ", width-n)
 }
-
-var _ = utf8.RuneLen

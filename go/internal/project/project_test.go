@@ -103,9 +103,9 @@ msix_config:
   publisher_display_name: Acme
 `)
 	write(t, filepath.Join(app, "android", "app", "build.gradle.kts"), kts+"\n// applicationId = \"com.xuehua.im\"\n")
-	write(t, filepath.Join(app, "macos", "Runner", "Configs", "AppInfo.xcconfig"), "PRODUCT_NAME = 雪花IM\nPRODUCT_BUNDLE_IDENTIFIER = com.x\n")
+	write(t, filepath.Join(app, "macos", "Runner", "Configs", "AppInfo.xcconfig"), "PRODUCT_NAME = 雪花IM\nPRODUCT_BUNDLE_IDENTIFIER = com.xue_hua.im\n")
 	write(t, filepath.Join(app, "linux", "CMakeLists.txt"), `set(BINARY_NAME "xue_hua_im")`+"\n"+`set(APPLICATION_ID "com.xuehua.im")`)
-	write(t, filepath.Join(app, "ios", "Runner.xcodeproj", "project.pbxproj"), "DEVELOPMENT_TEAM = ABCDE12345;\nPRODUCT_BUNDLE_IDENTIFIER = com.xuehua.im;\n")
+	write(t, filepath.Join(app, "ios", "Runner.xcodeproj", "project.pbxproj"), "DEVELOPMENT_TEAM = ABCDE12345;\nPRODUCT_BUNDLE_IDENTIFIER = com.xue_hua.im;\n")
 	write(t, filepath.Join(app, "ios", "Runner.xcodeproj", "xcshareddata", "xcschemes", "Runner.xcscheme"), "")
 	write(t, filepath.Join(app, "ios", "Runner.xcodeproj", "xcshareddata", "xcschemes", "prod.xcscheme"), "")
 	write(t, filepath.Join(app, "lib", "main.dart"), "")
@@ -126,7 +126,7 @@ msix_config:
 	if !reflect.DeepEqual(p.AndroidFlavors, []string{"dev", "prod"}) || !reflect.DeepEqual(p.IOSSchemes, []string{"prod"}) {
 		t.Fatalf("flavors: %v %v", p.AndroidFlavors, p.IOSSchemes)
 	}
-	if !p.AndroidReleaseDebugSigned || p.IOSTeam != "ABCDE12345" || p.MacProductName != "雪花IM" || p.LinuxBinary != "xue_hua_im" {
+	if !p.AndroidReleaseDebugSigned || p.IOSTeam != "ABCDE12345" || p.MacProductName != "雪花IM" || p.MacBundleID != "com.xue_hua.im" || p.IOSBundleID != "com.xue_hua.im" || p.LinuxBinary != "xue_hua_im" {
 		t.Fatalf("details: %+v", p)
 	}
 	if p.Identifier() != "com.xuehua.im" || p.LauncherIcon != "assets/icon.png" || !p.HasDep("msix") {

@@ -15,6 +15,7 @@ cd "$ROOT"
 GO="${GO:-$(command -v go || echo /usr/local/go/bin/go)}"
 # Release binaries are built with exactly the toolchain pinned in go.mod.
 want="$(sed -n 's/^toolchain //p' go/go.mod)"
+[ -n "$want" ] || want="go$(sed -n 's/^go //p' go/go.mod)"
 have="$("$GO" env GOVERSION)"
 if [ -n "$want" ] && [ "$have" != "$want" ] && [ "${ALLOW_GO_MISMATCH:-}" != 1 ]; then
   echo "error: go.mod pins $want but $GO is $have (set GO=/path/to/$want/bin/go, or ALLOW_GO_MISMATCH=1)" >&2
@@ -37,8 +38,8 @@ for t in "${TARGETS[@]}"; do
   exe="fpack-core"; [ "$os" = windows ] && exe="fpack-core.exe"
   out="prebuilt/$os-$arch/$exe"
   rm -rf "prebuilt/$os-$arch"; mkdir -p "prebuilt/$os-$arch"
-  (cd go && CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" GOFLAGS=-mod=vendor GOTOOLCHAIN=local \
-    "$GO" build -trimpath -ldflags "-s -w" -o "../$out" ./cmd/fpack-core)
+  (cd go && CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" GOTOOLCHAIN=local \
+    "$GO" build -trimpath -buildvcs=false -ldflags "-s -w" -o "../$out" ./cmd/fpack-core)
   printf '  %-15s %6s KB\n' "$os/$arch" "$(( $(wc -c < "$out") / 1024 ))"
 done
 

@@ -301,7 +301,7 @@ func (*WinExe) Package(c *Context, in Inputs) (*Plan, error) {
 	var secrets []string
 	if sign {
 		st, sec := signtoolArgs(c, func(s string) string { return "$q" + s + "$q" })
-		args = append(args, "/Sfpack=$q"+orName(signtool(c), "signtool.exe")+"$q sign "+strings.Join(st, " ")+" $f")
+		args = append(args, "/Sfpack=$q"+orDefault(signtool(c), "signtool.exe")+"$q sign "+strings.Join(st, " ")+" $f")
 		secrets = sec
 	}
 	for _, k := range sortedKeys(defines) {
@@ -312,7 +312,7 @@ func (*WinExe) Package(c *Context, in Inputs) (*Plan, error) {
 	if sign {
 		kind = "Windows installer (Inno Setup, signed)"
 	}
-	ops = append(ops, Op{Desc: i18n.S("compile installer (ISCC)", "编译安装程序（ISCC）"), Cmd: &runner.Cmd{Name: orName(iscc(c), "ISCC.exe"), Args: args, Secret: secrets}},
+	ops = append(ops, Op{Desc: i18n.S("compile installer (ISCC)", "编译安装程序（ISCC）"), Cmd: &runner.Cmd{Name: orDefault(iscc(c), "ISCC.exe"), Args: args, Secret: secrets}},
 		moveOp(c, filepath.Join(stage, base+".exe"), dst))
 	if v := verifyOp(c, []string{dst}, filepath.Base(dst)); sign && v.Cmd != nil {
 		ops = append(ops, v)
@@ -623,11 +623,4 @@ func msixDescriptionNote(c *Context) string {
 func has(c *Context, key string) bool {
 	_, ok := c.Project.Section("msix_config")[key]
 	return ok
-}
-
-func orName(p, name string) string {
-	if p == "" {
-		return name
-	}
-	return p
 }

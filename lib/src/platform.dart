@@ -1,5 +1,4 @@
 import 'dart:ffi' show Abi;
-import 'dart:io' show Platform;
 
 import 'i18n.dart';
 
@@ -79,6 +78,3 @@ String defaultCacheRoot(Map<String, String> env, HostTarget host) {
       return '$base/fpack';
   }
 }
-
-/// Whether the current process runs on Windows (used for path joining).
-bool get hostIsWindows => Platform.isWindows;
