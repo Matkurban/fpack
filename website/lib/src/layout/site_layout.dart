@@ -47,7 +47,7 @@ class SiteLayout extends DocsLayout {
   @override
   Component buildBody(Page page, Component child) {
     final locales = localizedData(page);
-    final tocs = localizedTocs(page);
+    final tocs = page.data['tocs'] as Map<String, List<TocItem>>? ?? const {};
     return div(classes: 'docs', [
       if (header case final header?)
         div(classes: 'header-container', attributes: {if (sidebar != null) 'data-has-sidebar': ''}, [header]),
@@ -95,21 +95,6 @@ Map<String, Map<String, Object?>> localizedData(Page page) => {
   for (final MapEntry(:key, :value) in ((page.data.page['locales'] as Map?) ?? const {}).entries)
     if (value is Map) '$key': value.cast<String, Object?>(),
 };
-
-/// Table of contents of every locale (set by the heading extensions or doc pages).
-Map<String, List<TocItem>> localizedTocs(Page page) {
-  final raw = page.data['tocs'];
-  if (raw is Map<String, List<TocItem>>) return raw;
-  if (raw is! Map) return const {};
-  return {
-    for (final MapEntry(:key, :value) in raw.entries)
-      if (value is Iterable)
-        '$key': [
-          for (final item in value)
-            if (item is TocItem) item,
-        ],
-  };
-}
 
 /// An in-page link that survives `<base href>`: a bare `#id` would resolve
 /// against the base (the site root) and navigate to the home page.
