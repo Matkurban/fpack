@@ -38,7 +38,7 @@ ClientOptions get defaultClientOptions => ClientOptions(
       loader: _code_block_copy_button.loadLibrary,
     ),
     'jaspr_content:github_button': ClientLoader(
-      (p) => _github_button.GitHubButton(repo: p['repo'] as String),
+      (p) => _github_button.GitHubButton(repo: p.get<String>('repo')),
       loader: _github_button.loadLibrary,
     ),
     'jaspr_content:sidebar_toggle_button': ClientLoader(
